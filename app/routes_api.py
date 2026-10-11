@@ -114,14 +114,25 @@ def stats_payload() -> dict:
 
 
 def tasks_payload() -> list[dict]:
-    """Uppgifterna som är kvar, i samma ordning som i appen (period, deadline)."""
-    from .entities import ENTITIES
-    today = dt.date.today().isoformat()
+    """Uppgifterna som är kvar, i samma ordning som i appen (period, deadline).
+    Saknar en uppgift deadline räknas den fram från bröllopsdatumet och perioden, som i appen."""
+    from .core import add_months
+    from .entities import ENTITIES, PERIOD_OFFSETS
+    today = dt.date.today()
+    wd = parse_date(get_settings().get("wedding_date"))
     with dbm.db() as c:
         rows = c.execute(f"SELECT id, title, period, due_date, assignee FROM tasks WHERE done=0 "
                          f"ORDER BY {ENTITIES['tasks']['order']} LIMIT ?", (TASKS_MAX,)).fetchall()
-    return [{"id": r["id"], "title": r["title"], "period": r["period"] or None, "due_date": r["due_date"] or None,
-             "assignee": r["assignee"] or None, "overdue": bool(r["due_date"] and r["due_date"] < today)} for r in rows]
+    out = []
+    for r in rows:
+        due = parse_date(r["due_date"]) if r["due_date"] else None
+        if not due and wd and r["period"] in PERIOD_OFFSETS:
+            months, days = PERIOD_OFFSETS[r["period"]]
+            due = add_months(wd, months) + dt.timedelta(days=days)
+        out.append({"id": r["id"], "title": r["title"], "period": r["period"] or None,
+                    "due_date": due.isoformat() if due else None, "assignee": r["assignee"] or None,
+                    "overdue": bool(due and due < today)})
+    return out
 
 
 async def api_countdown(request: Request):

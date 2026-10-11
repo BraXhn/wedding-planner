@@ -1,7 +1,7 @@
 # Ändringslogg
 
 ## 1.1.0 – 2026-10-11
-- API: ny behörighet *Att göra-lista* för API-nycklar. Svaret får då `tasks` med uppgifterna som är kvar (titel, period, deadline, ansvarig, försenad), t.ex. för att visa listan i Hemmahub.
+- API: ny behörighet *Att göra-lista* för API-nycklar. Svaret får då `tasks` med uppgifterna som är kvar (titel, period, deadline, ansvarig, försenad), t.ex. för att visa listan i Hemmahub. Saknar en uppgift deadline räknas den fram från bröllopsdatumet och perioden.
 
 ## 1.0.0 – 2026-10-11
 Första versionen.
