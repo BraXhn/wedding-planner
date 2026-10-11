@@ -91,7 +91,7 @@ WARNING wedding: api_auth_failed ip=203.0.113.7
 
 ## Nedräknings-API (Hemmahub)
 
-1. Gå till **API** (syns för administratörer) → *Ny nyckel* → namnge den "Hemmahub". Kryssa i *Statistik* om du vill ha OSA-siffror också.
+1. Gå till **API** (syns för administratörer) → *Ny nyckel* → namnge den "Hemmahub". Kryssa i *Statistik* om du vill ha OSA-siffror också, och *Att göra-lista* om du vill visa uppgifterna som är kvar.
 2. Kopiera nyckeln. Den visas bara en gång.
 3. Låt Hemmahub anropa:
 
@@ -117,7 +117,10 @@ Exempelsvar:
     "guests": {"invited": 120, "attending": 84, "declined": 6, "pending": 30},
     "tasks": {"total": 38, "done": 12, "percent": 32},
     "speeches": 5
-  }
+  },
+  "tasks": [
+    {"id": 7, "title": "Boka fotograf", "period": "12 månader innan", "due_date": "2026-10-20", "assignee": "Anna", "overdue": false}
+  ]
 }
 ```
 
@@ -125,7 +128,8 @@ Exempelsvar:
 - Nyckeln kan också skickas som `X-API-Key: wp_…`. Nycklar i URL:en accepteras inte, eftersom de hamnar i loggar.
 - Gränsen är 120 anrop per minut och nyckel. Hämta gärna en gång per timme och räkna ner sekunderna lokalt.
 - **Om Hemmahub anropar från webbläsaren** (JavaScript i frontend) i stället för från sin server: sätt `API_CORS_ORIGINS=https://hemmahub.dindomän.se`. Då lägger API:t till rätt CORS-headers för just den adressen. Anrop från servern behöver ingenting.
-- API:t lämnar aldrig ut namn eller annan persondata, bara datum, plats och siffror.
+- `tasks` (behörigheten *Att göra-lista*) innehåller upp till 50 uppgifter som är kvar, i samma ordning som i appen, med deadline, ansvarig och om den är försenad.
+- Utan *Att göra-lista* lämnar API:t aldrig ut namn eller annan persondata, bara datum, plats och siffror. Med den behörigheten ingår uppgifternas text och vem som är ansvarig, men aldrig gästernas namn.
 
 Exempel för Home Assistant (`configuration.yaml`):
 ```yaml

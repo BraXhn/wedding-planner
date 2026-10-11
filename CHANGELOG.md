@@ -1,5 +1,8 @@
 # Ändringslogg
 
+## 1.1.0 – 2026-10-11
+- API: ny behörighet *Att göra-lista* för API-nycklar. Svaret får då `tasks` med uppgifterna som är kvar (titel, period, deadline, ansvarig, försenad), t.ex. för att visa listan i Hemmahub.
+
 ## 1.0.0 – 2026-10-11
 Första versionen.
 - Gäster med personliga OSA-länkar och gästportal (OSA, information, önskelista, bilder, kalender)
