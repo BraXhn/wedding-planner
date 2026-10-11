@@ -17,7 +17,9 @@ from . import db as dbm
 from .core import auth, client_ip, csrf_form, get_settings, log, parse_date, public_base, render, safe_log
 from .security import RateLimiter, new_token, token_hash
 
-SCOPES = {"countdown": "Nedräkning (datum, plats, dagar kvar)", "stats": "Statistik (OSA-svar, uppgifter, tal)"}
+SCOPES = {"countdown": "Nedräkning (datum, plats, dagar kvar)", "stats": "Statistik (OSA-svar, uppgifter, tal)",
+          "tasks": "Att göra-lista (uppgifterna som är kvar)"}
+TASKS_MAX = 50
 CORS_ORIGINS = {o.strip().rstrip("/") for o in os.environ.get("API_CORS_ORIGINS", "").split(",") if o.strip()}
 KEY_RE = re.compile(r"wp_[A-Za-z0-9_-]{40,60}")
 
@@ -111,6 +113,28 @@ def stats_payload() -> dict:
             "percent": round(100 * t["done"] / t["total"]) if t["total"] else 0}, "speeches": sp}
 
 
+def tasks_payload() -> list[dict]:
+    """Uppgifterna som är kvar, i samma ordning som i appen (period, deadline).
+    Saknar en uppgift deadline räknas den fram från bröllopsdatumet och perioden, som i appen."""
+    from .core import add_months
+    from .entities import ENTITIES, PERIOD_OFFSETS
+    today = dt.date.today()
+    wd = parse_date(get_settings().get("wedding_date"))
+    with dbm.db() as c:
+        rows = c.execute(f"SELECT id, title, period, due_date, assignee FROM tasks WHERE done=0 "
+                         f"ORDER BY {ENTITIES['tasks']['order']} LIMIT ?", (TASKS_MAX,)).fetchall()
+    out = []
+    for r in rows:
+        due = parse_date(r["due_date"]) if r["due_date"] else None
+        if not due and wd and r["period"] in PERIOD_OFFSETS:
+            months, days = PERIOD_OFFSETS[r["period"]]
+            due = add_months(wd, months) + dt.timedelta(days=days)
+        out.append({"id": r["id"], "title": r["title"], "period": r["period"] or None,
+                    "due_date": due.isoformat() if due else None, "assignee": r["assignee"] or None,
+                    "overdue": bool(due and due < today)})
+    return out
+
+
 async def api_countdown(request: Request):
     if request.method == "OPTIONS":
         return Response(status_code=204, headers=_cors_headers(request))
@@ -123,13 +147,15 @@ async def api_countdown(request: Request):
     data = countdown_payload(get_settings())
     if "stats" in scopes:
         data["stats"] = stats_payload()
+    if "tasks" in scopes:
+        data["tasks"] = tasks_payload()
     return JSONResponse(data, headers=_cors_headers(request))
 
 
 async def api_spec(request: Request):
     """Liten självbeskrivning (ingen nyckel krävs, inga data)."""
     return JSONResponse({"name": "Bröllopsplaneraren API", "version": 1,
-                         "endpoints": {"GET /api/v1/countdown": "Nedräkning (+ stats om nyckeln har det)"},
+                         "endpoints": {"GET /api/v1/countdown": "Nedräkning (+ stats och tasks om nyckeln har de behörigheterna)"},
                          "auth": "Authorization: Bearer <api-nyckel>  eller  X-API-Key: <api-nyckel>"})
 
 

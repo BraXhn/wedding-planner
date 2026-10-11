@@ -205,6 +205,12 @@ r = req(client(), "/api/v1/countdown", method="OPTIONS", headers={"Origin": "htt
 r = req(a, "/api-keys", {"csrf": c, "name": "Stats", "scope_countdown": "on", "scope_stats": "on"}); key2 = re.search(r'id="newkey" value="(wp_[^"]+)"', html(r)).group(1)
 j = json.loads(req(client(), "/api/v1/countdown", headers={"X-API-Key": key2})[2])
 ok(j["stats"]["guests"]["attending"] == 3 and "Andersson" not in json.dumps(j), "statistik utan persondata")
+ok("tasks" not in j, "att göra-listan kräver egen behörighet")
+r = req(a, "/api-keys", {"csrf": c, "name": "Lista", "scope_countdown": "on", "scope_tasks": "on"}); key3 = re.search(r'id="newkey" value="(wp_[^"]+)"', html(r)).group(1)
+j = json.loads(req(client(), "/api/v1/countdown", headers={"X-API-Key": key3})[2])
+open_n = q("SELECT COUNT(*) FROM tasks WHERE done=0")[0][0]
+ok(isinstance(j.get("tasks"), list) and len(j["tasks"]) == min(open_n, 50) and "stats" not in j, "att göra-listan med bara tasks-behörighet")
+ok(all(set(t) == {"id", "title", "period", "due_date", "assignee", "overdue"} for t in j["tasks"]), "att göra-listan har rätt fält")
 ok(key not in html(req(a, "/api-keys")), "nyckeln visas bara en gång")
 ok(q("SELECT key_hash FROM api_keys LIMIT 1")[0][0] != key, "nyckeln lagras hashad")
 kid = q("SELECT id FROM api_keys WHERE name='Hemmahub'")[0][0]
