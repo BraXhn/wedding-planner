@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Placering · {{ super() }}{% endblock %}
+{% block bodyclass %}{{ 'printing' if print_mode }}{% endblock %}
+{% block content %}
+<div class="pagehead noprint">
+  <h1>Bordsplacering</h1>
+  <div class="actions">
+    <a class="btn" href="/seating?print=1">Utskriftsvy</a>
+    <a class="btn" href="/m/tables">Lista bord</a>
+    {% if can_write %}<a class="btn primary" href="/m/tables/new">+ Nytt bord</a>{% endif %}
+  </div>
+</div>
+<p class="hint noprint">
+  {{ total_need }} platser behövs · {{ total_seats }} finns.
+  {% if total_need > total_seats %}<strong class="warn">{{ total_need - total_seats }} platser saknas.</strong>{% endif %}
+  {% if can_write %}Dra ett hushåll till ett bord – eller tryck på hushållet och sedan på bordet (mobil).{% endif %}
+  Hushåll som inte svarat räknas med alla inbjudna och är streckade.
+</p>
+
+{% if print_mode %}<h1 class="printonly">Placering – {{ settings.couple_names }}</h1>{% endif %}
+
+<div class="seating {{ 'editable' if can_write }}" data-csrf="{{ user.csrf if can_write }}">
+  <section class="pool noprint" data-table="" {% if can_write %}tabindex="0"{% endif %}>
+    <header><h2>Utan bord</h2><span class="cap" data-cap><b data-used>{{ unseated|sum(attribute='need') }}</b> pers.</span></header>
+    <ul class="drop">
+      {% for g in unseated %}{% include "_seat_chip.html" %}{% endfor %}
+    </ul>
+  </section>
+  <div class="tables">
+    {% for t in tables %}
+    <section class="seat-table {{ t.shape|lower }} {{ 'over' if t.used > t.seats }}" data-table="{{ t.id }}" data-seats="{{ t.seats }}" {% if can_write %}tabindex="0"{% endif %}>
+      <header>
+        <h2><a href="/m/tables/{{ t.id }}">{{ t.name }}</a></h2>
+        <span class="cap"><b data-used>{{ t.used }}</b>/{{ t.seats }}</span>
+      </header>
+      <ul class="drop">
+        {% for g in t.guests %}{% include "_seat_chip.html" %}{% endfor %}
+      </ul>
+    </section>
+    {% else %}
+    <div class="card empty"><p class="muted">Inga bord än. {% if can_write %}<a href="/m/tables/new">Lägg till ett bord</a>.{% endif %}</p></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

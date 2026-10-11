@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Utskick · {{ super() }}{% endblock %}
+{% block content %}
+<h1>E-postutskick</h1>
+{% if msg == 'confirm' %}<p class="alert warn">Kryssa i bekräftelserutan för att skicka.</p>{% endif %}
+{% if msg == 'busy' %}<p class="alert warn">Ett utskick pågår redan.</p>{% endif %}
+{% if msg == 'test_ok' %}<p class="alert ok">Testmejlet är skickat.</p>{% endif %}
+{% if msg == 'test_fail' %}<p class="alert error">Testmejlet kunde inte skickas – se loggen nedan.</p>{% endif %}
+
+{% if not configured %}
+<div class="alert warn">
+  E-post är inte konfigurerat. Lägg till miljövariablerna <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>,
+  <code>SMTP_PASSWORD</code> och <code>SMTP_FROM</code> på containern (se README). Gmail: använd ett app-lösenord.
+</div>
+{% endif %}
+
+{% if job.running %}
+<p class="alert ok" data-autorefresh="5">Skickar {{ {'invite': 'inbjudningar', 'reminder': 'påminnelser'}[job.kind] }} … {{ job.sent + job.failed }} av {{ job.total }} ({{ job.failed }} misslyckade). Sidan uppdateras automatiskt.</p>
+{% elif job.finished %}
+<p class="alert {{ 'error' if job.failed else 'ok' }}">Senaste utskicket klart {{ job.finished }}: {{ job.sent }} skickade, {{ job.failed }} misslyckade.</p>
+{% endif %}
+
+<div class="grid">
+  <div class="card stat"><p class="eyebrow">Med e-post</p><p class="num">{{ stats.with_email }} <small>av {{ stats.total }} hushåll</small></p>{% if stats.no_email %}<p class="muted small"><a href="/m/guests">{{ stats.no_email }} saknar adress</a></p>{% endif %}</div>
+  <div class="card stat"><p class="eyebrow">Ej inbjudna</p><p class="num">{{ stats.not_invited }}</p></div>
+  <div class="card stat"><p class="eyebrow">Har inte svarat</p><p class="num">{{ stats.pending }}</p></div>
+</div>
+
+{% if can_write and configured %}
+<div class="grid two">
+  <section class="card">
+    <h2>Skicka inbjudan</h2>
+    <p class="muted small">Varje hushåll får sin personliga länk. Mallen ändras under <a href="/settings">Inställningar → E-postmallar</a>.</p>
+    <form method="post" action="/mail/send">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="kind" value="invite">
+      <fieldset class="choice small-choice">
+        <label><input type="radio" name="scope" value="new" checked> Bara nya ({{ stats.not_invited }})</label>
+        <label><input type="radio" name="scope" value="all"> Alla med e-post ({{ stats.with_email }})</label>
+      </fieldset>
+      <label class="field checkbox"><span>Ja, skicka nu</span><input type="checkbox" name="confirm"></label>
+      <button class="btn primary" {{ 'disabled' if job.running }}>Skicka inbjudningar</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Påminn om OSA</h2>
+    <p class="muted small">Går till de {{ stats.pending }} hushåll med e-post som inte svarat.</p>
+    <form method="post" action="/mail/send">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="kind" value="reminder">
+      <label class="field checkbox"><span>Ja, skicka nu</span><input type="checkbox" name="confirm"></label>
+      <button class="btn primary" {{ 'disabled' if job.running or not stats.pending }}>Skicka påminnelser</button>
+    </form>
+    <hr>
+    <h2>Testa</h2>
+    <form method="post" action="/mail/test" class="copyrow">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}">
+      <input type="email" name="to" placeholder="din@adress.se" required maxlength="200">
+      <button class="btn">Skicka test</button>
+    </form>
+  </section>
+</div>
+{% endif %}
+
+<section class="card">
+  <h2>Förhandsvisning – inbjudan</h2>
+  <p><strong>{{ preview.subject }}</strong></p>
+  <pre class="mailpreview">{{ preview.body }}</pre>
+</section>
+
+{% if mlog %}
+<section class="card flush">
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Tid (UTC)</th><th>Typ</th><th>Mottagare</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for m in mlog %}
+      <tr><td>{{ m.created_at }}</td><td>{{ {'invite': 'Inbjudan', 'reminder': 'Påminnelse', 'test': 'Test'}.get(m.kind, m.kind) }}</td>
+        <td>{{ m.name or m.recipient or '–' }}</td>
+        <td>{% if m.ok %}<span class="pill yes">Skickat</span>{% else %}<span class="pill no">Fel</span> <small class="muted">{{ m.error }}</small>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

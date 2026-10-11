@@ -1,0 +1,29 @@
+{% macro field(f, v, disabled=false, refs=none) %}
+{% if f.type == 'section' %}
+<h2 class="wide section-head">{{ f.label }}</h2>
+{% else %}
+<label class="field {{ 'wide' if f.type == 'textarea' }} {{ 'checkbox' if f.type == 'bool' }}">
+  <span>{{ f.label }}{% if f.required %} <b class="req">*</b>{% endif %}</span>
+  {% if f.type == 'textarea' %}
+    <textarea name="{{ f.name }}" rows="{{ 6 if f.name.endswith('_body') else 3 }}" maxlength="4000" {{ 'disabled' if disabled }}>{{ v if v is not none }}</textarea>
+  {% elif f.type == 'select' %}
+    <select name="{{ f.name }}" {{ 'disabled' if disabled }}>{% for val, lab in f.options %}<option value="{{ val }}" {{ 'selected' if v == val }}>{{ lab }}</option>{% endfor %}</select>
+  {% elif f.type == 'ref' %}
+    <select name="{{ f.name }}" {{ 'disabled' if disabled }}>
+      <option value="">–</option>
+      {% for rid, lab in (refs or {}).get(f.ref, {}).items() %}<option value="{{ rid }}" {{ 'selected' if v == rid or v == rid|string }}>{{ lab }}</option>{% endfor %}
+    </select>
+  {% elif f.type == 'bool' %}
+    <input type="checkbox" name="{{ f.name }}" {{ 'checked' if v and v != '0' }} {{ 'disabled' if disabled }}>
+  {% else %}
+    <input name="{{ f.name }}" value="{{ v if v is not none }}"
+      type="{{ {'int': 'number', 'date': 'date', 'time': 'time', 'email': 'email', 'url': 'url'}.get(f.type, 'text') }}"
+      {% if f.type == 'int' %}min="{{ f.min }}" max="{{ f.max }}"{% endif %}
+      {% if f.type == 'money' %}inputmode="decimal"{% endif %}
+      {% if f.type in ('text', 'email', 'url') %}maxlength="200"{% endif %}
+      {{ 'required' if f.required }} {{ 'disabled' if disabled }}>
+  {% endif %}
+  {% if f.help %}<small>{{ f.help }}</small>{% endif %}
+</label>
+{% endif %}
+{% endmacro %}

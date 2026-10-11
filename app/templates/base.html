@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}{{ settings.couple_names or "Bröllopsplaneraren" }}{% endblock %}</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<script src="/static/app.js" defer></script>
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+{% if user and not public_page %}
+<header class="top">
+  <a class="brand" href="/"><span class="ring">◇</span> {{ settings.couple_names or "Vårt bröllop" }}</a>
+  <nav>
+    {% set items = [
+      ("home", "/", "Översikt"), ("guests", "/m/guests", "Gäster"), ("seating", "/seating", "Placering"),
+      ("tasks", "/m/tasks", "Att göra"), ("budget", "/m/budget", "Budget"), ("vendors", "/m/vendors", "Leverantörer"),
+      ("timeline", "/m/timeline", "Körschema"), ("speeches", "/m/speeches", "Tal"), ("wishlist", "/m/wishlist", "Önskelista"),
+      ("photos", "/photos", "Bilder"), ("mail", "/mail", "Utskick"), ("settings", "/settings", "Inställningar") ] %}
+    {% for key, href, label in items %}<a href="{{ href }}" class="{{ 'active' if active == key }}">{{ label }}</a>{% endfor %}
+    {% if user.role == 'admin' %}<a href="/users" class="{{ 'active' if active == 'users' }}">Användare</a><a href="/api-keys" class="{{ 'active' if active == 'api' }}">API</a>{% endif %}
+    <a href="/account" class="{{ 'active' if active == 'account' }}">Konto</a>
+    <form method="post" action="/logout" class="inline">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}">
+      <button class="linklike">Logga ut</button>
+    </form>
+  </nav>
+</header>
+{% endif %}
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>

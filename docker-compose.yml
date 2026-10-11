@@ -1,0 +1,28 @@
+# Alternativ till Unraid-mallen: Docker Compose Manager-pluginen, eller `docker compose up -d`.
+# Uppdatera: docker compose pull && docker compose up -d
+services:
+  wedding-planner:
+    image: ghcr.io/braxhn/wedding-planner:latest
+    container_name: wedding-planner
+    restart: unless-stopped
+    ports: ["8080:8080"]            # öppna INTE i routern – använd en reverse proxy
+    environment:
+      TZ: Europe/Stockholm
+      BASE_URL: ""                  # t.ex. https://brollop.example.se
+      ADMIN_USERNAME: admin
+      # SMTP_HOST: smtp.gmail.com
+      # SMTP_PORT: "587"
+      # SMTP_USER: era.namn@gmail.com
+      # SMTP_PASSWORD: app-lösenord
+      # SMTP_FROM: era.namn@gmail.com
+      # SMTP_FROM_NAME: Anna & Erik
+      # API_CORS_ORIGINS: https://hemmahub.example.se
+    volumes:
+      - /mnt/user/appdata/wedding-planner:/data
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m"]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID]   # bara för att sätta ägare på /data vid start, släpps direkt
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    pids_limit: 100

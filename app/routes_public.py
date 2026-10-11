@@ -1,0 +1,156 @@
+"""Gästportalen. Allt nås via gästens personliga, ogissbara token – inga konton för gäster."""
+from starlette.exceptions import HTTPException
+from starlette.requests import Request
+from starlette.responses import RedirectResponse
+from starlette.routing import Route
+
+from . import db as dbm
+from .core import (
+    MAX_UPLOAD_MB, TOKEN_RE, flag, get_settings, log, parse_date, public_rate_limit, read_form, render,
+    sync_speech_from_guest, today,
+)
+from .routes_photos import handle_upload, serve_photo, visible_photos
+
+
+def guest_by_token(request: Request):
+    public_rate_limit(request)
+    token = request.path_params["token"]
+    if not TOKEN_RE.fullmatch(token):
+        raise HTTPException(404)
+    with dbm.db() as c:
+        g = c.execute("SELECT * FROM guests WHERE rsvp_token = ?", (token,)).fetchone()
+    if not g:
+        raise HTTPException(404)
+    return g
+
+
+def _portal_ctx(g, tab: str) -> dict:
+    s = get_settings()
+    with dbm.db() as c:
+        has_gifts = bool(c.execute("SELECT 1 FROM wishlist LIMIT 1").fetchone()) or bool(s.get("gift_info"))
+        programme = c.execute("SELECT time, title, location FROM timeline WHERE public = 1 ORDER BY time").fetchall()
+    deadline = parse_date(s.get("rsvp_deadline"))
+    return dict(settings=s, guest=g, tab=tab, base=f"/r/{g['rsvp_token']}", has_gifts=has_gifts,
+                has_photos=flag(s, "photos_enabled"), programme=programme,
+                wedding_date=parse_date(s.get("wedding_date")), deadline=deadline,
+                closed=bool(deadline and today() > deadline), max_count=g["invited_count"] or 1)
+
+
+# ======================================================================= OSA
+async def rsvp(request: Request):
+    g = guest_by_token(request)
+    ctx = _portal_ctx(g, "rsvp")
+    if request.method == "GET":
+        return render(request, "rsvp.html", saved=request.query_params.get("ok") == "1", **ctx)
+    if ctx["closed"]:
+        return render(request, "rsvp.html", status=403, error="Sista dag för OSA har passerat. Kontakta brudparet.", **ctx)
+
+    form = await read_form(request)
+    answer = form.get("answer")
+    errors = []
+    if answer not in ("yes", "no"):
+        errors.append("Välj om ni kommer eller inte.")
+    count = 0
+    if answer == "yes":
+        try:
+            count = int(form.get("count", "0"))
+        except ValueError:
+            count = 0
+        if not 1 <= count <= ctx["max_count"]:
+            errors.append(f"Antal ska vara mellan 1 och {ctx['max_count']}.")
+    diet = str(form.get("diet", "")).strip()[:1000]
+    song = str(form.get("song", "")).strip().replace("\n", " ").replace("\r", " ")[:200]
+    message = str(form.get("message", "")).strip()[:2000]
+    speech = 1 if form.get("speech") == "on" and answer == "yes" else 0
+    if errors:
+        return render(request, "rsvp.html", status=400, errors=errors, **ctx)
+    with dbm.db() as c:
+        c.execute("UPDATE guests SET rsvp=?, attending=?, diet=?, song=?, message=?, speech=?, rsvp_at=datetime('now') "
+                  "WHERE id = ?", (answer, count, diet, song, message, speech, g["id"]))
+        sync_speech_from_guest(c, g["id"])
+    log.info("rsvp guest_id=%s answer=%s count=%s", g["id"], answer, count)
+    return RedirectResponse(f"/r/{g['rsvp_token']}?ok=1", 303)
+
+
+# ======================================================================= information
+async def info(request: Request):
+    g = guest_by_token(request)
+    return render(request, "portal_info.html", **_portal_ctx(g, "info"))
+
+
+# ======================================================================= önskelista
+def _gifts(guest_id: int):
+    with dbm.db() as c:
+        return c.execute(
+            """SELECT w.*,
+                      (SELECT COALESCE(SUM(qty),0) FROM gift_reservations r WHERE r.gift_id = w.id) AS reserved,
+                      (SELECT COALESCE(SUM(qty),0) FROM gift_reservations r WHERE r.gift_id = w.id AND r.guest_id = ?) AS mine
+               FROM wishlist w ORDER BY sort_no, title COLLATE NOCASE""", (guest_id,)).fetchall()
+
+
+async def gifts(request: Request):
+    g = guest_by_token(request)
+    ctx = _portal_ctx(g, "gifts")
+    error = None
+    if request.method == "POST":
+        form = await read_form(request)
+        try:
+            gift_id = int(form.get("gift_id", ""))
+        except ValueError:
+            raise HTTPException(400)
+        action = form.get("action")
+        with dbm.db() as c:
+            c.execute("BEGIN IMMEDIATE")  # lås så två gäster inte kan ta sista exemplaret samtidigt
+            w = c.execute("SELECT quantity, title FROM wishlist WHERE id = ?", (gift_id,)).fetchone()
+            if not w:
+                raise HTTPException(404)
+            taken = c.execute("SELECT COALESCE(SUM(qty),0) FROM gift_reservations WHERE gift_id = ?", (gift_id,)).fetchone()[0]
+            if action == "reserve":
+                if taken >= w["quantity"]:
+                    error = f"”{w['title']}” hann tyvärr bli reserverad av någon annan."
+                else:
+                    c.execute("INSERT INTO gift_reservations (gift_id, guest_id, qty) VALUES (?, ?, 1)", (gift_id, g["id"]))
+                    log.info("gift_reserved gift=%s guest=%s", gift_id, g["id"])
+            elif action == "release":
+                r = c.execute("SELECT id FROM gift_reservations WHERE gift_id = ? AND guest_id = ? ORDER BY id DESC LIMIT 1",
+                              (gift_id, g["id"])).fetchone()
+                if r:
+                    c.execute("DELETE FROM gift_reservations WHERE id = ?", (r["id"],))
+                    log.info("gift_released gift=%s guest=%s", gift_id, g["id"])
+            else:
+                raise HTTPException(400)
+        if not error:
+            return RedirectResponse(f"/r/{g['rsvp_token']}/gifts#g{gift_id}", 303)
+    return render(request, "portal_gifts.html", status=409 if error else 200, gifts=_gifts(g["id"]), error=error, **ctx)
+
+
+# ======================================================================= bilder
+async def photos(request: Request):
+    g = guest_by_token(request)
+    ctx = _portal_ctx(g, "photos")
+    if not ctx["has_photos"]:
+        raise HTTPException(404)
+    saved, errors = 0, []
+    if request.method == "POST":
+        saved, errors = await handle_upload(request, guest=g)
+        if saved and not errors:
+            return RedirectResponse(f"/r/{g['rsvp_token']}/photos?ok={saved}", 303)
+    ok = request.query_params.get("ok", "")
+    return render(request, "photos_public.html", saved=saved or (int(ok) if ok.isdigit() else 0), errors=errors,
+                  photos=visible_photos() if flag(ctx["settings"], "gallery_public") else [], max_mb=MAX_UPLOAD_MB, **ctx)
+
+
+async def photo_img(request: Request):
+    guest_by_token(request)
+    if not flag(get_settings(), "gallery_public"):
+        raise HTTPException(404)
+    return serve_photo(request.path_params["file"], public=True)
+
+
+routes = [
+    Route("/r/{token}", rsvp, methods=["GET", "POST"]),
+    Route("/r/{token}/info", info),
+    Route("/r/{token}/gifts", gifts, methods=["GET", "POST"]),
+    Route("/r/{token}/photos", photos, methods=["GET", "POST"]),
+    Route("/r/{token}/img/{file}", photo_img),
+]

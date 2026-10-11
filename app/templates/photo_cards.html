@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block bodyclass %}printing{% endblock %}
+{% block content %}
+<div class="noprint pagehead">
+  <h1>Bordskort</h1>
+  <div class="actions">
+    <form method="get" class="inline"><label class="inline-field">Antal <input type="number" name="n" value="{{ n }}" min="1" max="60"></label> <button class="btn">Uppdatera</button></form>
+    <a class="btn primary" href="#" data-print>Skriv ut</a>
+  </div>
+</div>
+<p class="hint noprint">Fyra kort per A4. Klipp och vik på mitten, eller sätt i en bordsställning.</p>
+<div class="cards">
+  {% for i in range(n) %}
+  <div class="tcard">
+    <p class="eyebrow">{{ settings.couple_names }}</p>
+    <h2 class="script">Dela era bilder!</h2>
+    <div class="qrbox">{{ qr }}</div>
+    <p class="small">Skanna med mobilkameran och ladda upp era bästa bilder från dagen.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

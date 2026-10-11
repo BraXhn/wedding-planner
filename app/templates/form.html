@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_field.html" import field %}
+{% block content %}
+<p class="crumb"><a href="{{ back }}">← {{ 'Placering' if ent == 'tables' else spec.title }}</a></p>
+<h1>{% if item %}{{ item[spec.fields[0].name] or 'Redigera' }}{% else %}Ny {{ spec.singular }}{% endif %}</h1>
+
+{% if errors %}<div class="alert error"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+
+{% if ent == 'guests' and item %}
+<section class="card linkbox">
+  <p class="eyebrow">Personlig länk till gästportalen</p>
+  <div class="copyrow">
+    <input id="rsvplink" value="{{ link }}" readonly>
+    <button type="button" class="btn" data-copy="rsvplink">Kopiera</button>
+  </div>
+  <p class="muted small">Gästen svarar på OSA, ser information, önskelistan och kan ladda upp bilder.
+  {% if item.rsvp_at %}Svarade senast {{ item.rsvp_at }} (UTC).{% endif %}
+  {% if item.invite_sent_at %}Inbjudan mejlad {{ item.invite_sent_at[:10] }}.{% endif %}
+  {% if item.reminder_sent_at %}Påminnelse mejlad {{ item.reminder_sent_at[:10] }}.{% endif %}</p>
+  {% if can_write %}
+  <form method="post" action="/m/guests/{{ item.id }}/newlink" class="inline" data-confirm="Skapa en ny länk? Den gamla slutar fungera.">
+    <input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <button class="linklike small">Skapa ny länk</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<form method="post" class="card form-grid">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  {% for f in spec.fields %}{{ field(f, vals.get(f.name), not can_write, refs) }}{% endfor %}
+  {% if can_write %}
+  <div class="form-actions wide">
+    <button class="btn primary">Spara</button>
+    <a class="btn" href="{{ back }}">Avbryt</a>
+  </div>
+  {% endif %}
+</form>
+
+{% if item and can_write %}
+<form method="post" action="/m/{{ ent }}/{{ item.id }}/delete" class="danger-zone" data-confirm="Ta bort permanent?">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  <button class="btn danger">Ta bort {{ spec.singular }}</button>
+</form>
+{% endif %}
+{% endblock %}

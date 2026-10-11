@@ -1,0 +1,3 @@
+<li class="chip-guest {{ 'pending' if g.rsvp == 'pending' }}" {% if can_write %}draggable="true" tabindex="0"{% endif %} data-guest="{{ g.id }}" data-need="{{ g.need }}">
+  <span class="gname">{{ g.name }}</span><span class="gneed">{{ g.need }}</span>{% if g.diet %}<span class="gdiet" title="{{ g.diet }}">🍽</span>{% endif %}
+</li>

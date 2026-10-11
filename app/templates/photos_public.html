@@ -1,0 +1,38 @@
+{% extends "guest_base.html" %}
+{% block portal %}
+<div class="narrow-col">
+  <section class="card">
+    <h2>Dela era bilder 📸</h2>
+    <p class="muted">Ladda upp bilder från dagen – upp till 20 åt gången, max {{ max_mb }} MB per bild. Platsinformation tas bort automatiskt.</p>
+    {% if saved %}<p class="alert ok">Tack! {{ saved }} {{ 'bild' if saved == 1 else 'bilder' }} uppladdade{% if flag(settings, 'photo_moderation') %} – de visas när brudparet godkänt dem{% endif %}.</p>{% endif %}
+    {% if errors %}<div class="alert error"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if flag(settings, 'photos_enabled') %}
+    <form method="post" enctype="multipart/form-data" data-upload>
+      {% if not guest %}<label class="field"><span>Ditt namn (valfritt)</span><input name="name" maxlength="60" autocomplete="name"></label>{% endif %}
+      <label class="upload-drop">
+        <input type="file" name="photos" accept="image/*" multiple required>
+        <span>Välj bilder</span>
+      </label>
+      <button class="btn primary wide">Ladda upp</button>
+      <p class="muted small upload-status" data-upload-status hidden>Laddar upp … stäng inte sidan.</p>
+    </form>
+    {% else %}<p>Bilduppladdning är inte öppen just nu.</p>{% endif %}
+  </section>
+
+  {% if not guest and programme %}
+  <section class="card">
+    <h2>Dagens program</h2>
+    <ol class="programme">{% for p in programme %}<li><time>{{ p.time }}</time><span>{{ p.title }}{% if p.location %} <small class="muted">· {{ p.location }}</small>{% endif %}</span></li>{% endfor %}</ol>
+  </section>
+  {% endif %}
+
+  {% if photos %}
+  <section>
+    <h2 class="center">Galleriet</h2>
+    <div class="gallery">
+      {% for p in photos %}<a href="{{ base }}/img/{{ p.file }}" target="_blank" rel="noopener"><img src="{{ base }}/img/{{ p.file|replace('.jpg', '_t.jpg') }}" alt="Bild{% if p.uploader %} från {{ p.uploader }}{% endif %}" loading="lazy"></a>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

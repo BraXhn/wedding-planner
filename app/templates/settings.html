@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_field.html" import field %}
+{% block content %}
+<h1>Inställningar</h1>
+{% if saved %}<p class="alert ok">Sparat.{% if filled %} {{ filled }} deadlines i att göra-listan fylldes i utifrån bröllopsdatumet.{% endif %}</p>{% endif %}
+{% if errors %}<div class="alert error"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card form-grid">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  {% for f in fields %}{{ field(f, vals.get(f.name), not can_write) }}{% endfor %}
+  {% if can_write %}<div class="form-actions wide sticky-actions"><button class="btn primary">Spara</button></div>{% endif %}
+</form>
+{% endblock %}

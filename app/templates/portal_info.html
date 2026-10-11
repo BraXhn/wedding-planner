@@ -1,0 +1,25 @@
+{% extends "guest_base.html" %}
+{% block portal %}
+<div class="narrow-col">
+  <section class="card">
+    <h2>När & var</h2>
+    <dl class="facts">
+      {% if wedding_date %}<dt>Datum</dt><dd>{{ sv_date(wedding_date) }}{% if settings.wedding_time %} kl. {{ settings.wedding_time }}{% endif %}</dd>{% endif %}
+      {% if settings.venue %}<dt>Plats</dt><dd>{{ settings.venue }}</dd>{% endif %}
+      {% if settings.address %}<dt>Adress</dt><dd>{{ settings.address }}</dd>{% endif %}
+      {% if settings.dress_code %}<dt>Klädkod</dt><dd>{{ settings.dress_code }}</dd>{% endif %}
+      {% if deadline %}<dt>OSA senast</dt><dd>{{ sv_date(deadline) }}</dd>{% endif %}
+    </dl>
+    {% if wedding_date %}<p><a class="btn" href="{{ base }}/brollop.ics">📅 Lägg till i kalendern</a></p>{% endif %}
+  </section>
+  {% if programme %}
+  <section class="card">
+    <h2>Program</h2>
+    <ol class="programme">{% for p in programme %}<li><time>{{ p.time }}</time><span>{{ p.title }}{% if p.location %} <small class="muted">· {{ p.location }}</small>{% endif %}</span></li>{% endfor %}</ol>
+  </section>
+  {% endif %}
+  {% if settings.info_text %}<section class="card"><h2>Välkommen</h2><p class="prewrap">{{ settings.info_text }}</p></section>{% endif %}
+  {% if settings.directions %}<section class="card"><h2>Hitta hit</h2><p class="prewrap">{{ settings.directions }}</p></section>{% endif %}
+  {% if settings.accommodation %}<section class="card"><h2>Boende</h2><p class="prewrap">{{ settings.accommodation }}</p></section>{% endif %}
+</div>
+{% endblock %}

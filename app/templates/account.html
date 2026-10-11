@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Ditt konto <small class="muted">{{ user.username }}</small></h1>
+{% if user.must_change_pw %}<p class="alert warn">Du måste byta lösenord innan du kan fortsätta.</p>{% endif %}
+
+<div class="grid two">
+<section class="card">
+  <h2>Byt lösenord</h2>
+  {% if pw_error %}<p class="alert error">{{ pw_error }}</p>{% endif %}
+  {% if pw_ok %}<p class="alert ok">Lösenordet är bytt. Andra inloggade enheter har loggats ut.</p>{% endif %}
+  <form method="post" action="/account/password">
+    <input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <input type="text" name="username" value="{{ user.username }}" autocomplete="username" hidden>
+    <label class="field"><span>Nuvarande lösenord</span><input type="password" name="current" autocomplete="current-password" required></label>
+    <label class="field"><span>Nytt lösenord</span><input type="password" name="new" autocomplete="new-password" minlength="12" required><small>Minst 12 tecken. En lösenfras som ”fyra slumpade ord” är både stark och lätt att minnas.</small></label>
+    <label class="field"><span>Upprepa nytt lösenord</span><input type="password" name="new2" autocomplete="new-password" minlength="12" required></label>
+    <button class="btn primary">Byt lösenord</button>
+  </form>
+</section>
+
+{% if not user.must_change_pw %}
+<section class="card">
+  <h2>Tvåstegsverifiering</h2>
+  {% if totp_error %}<p class="alert error">{{ totp_error }}</p>{% endif %}
+  {% if totp_ok %}<p class="alert ok">{{ totp_ok }}</p>{% endif %}
+  {% if totp_secret %}
+    <p>Skanna QR-koden med en autentiseringsapp (Google/Microsoft Authenticator, 1Password, Bitwarden …).</p>
+    <div class="qrbox">{{ totp_qr }}</div>
+    <details><summary class="small">Kan du inte skanna? Ange nyckeln manuellt</summary><code class="secret">{{ totp_secret_spaced }}</code></details>
+    <form method="post" action="/account/totp/confirm">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}">
+      <label class="field"><span>Sexsiffrig kod från appen</span><input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required autofocus></label>
+      <button class="btn primary">Aktivera</button>
+    </form>
+  {% elif user.has_totp %}
+    <p><span class="pill yes">Aktiverad</span> Inloggning kräver en kod från din app.</p>
+    <form method="post" action="/account/totp/disable">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}">
+      <label class="field"><span>Bekräfta med lösenord för att stänga av</span><input type="password" name="password" autocomplete="current-password" required></label>
+      <button class="btn danger">Stäng av</button>
+    </form>
+  {% else %}
+    <p class="muted">Rekommenderas starkt eftersom appen nås från internet.</p>
+    <form method="post" action="/account/totp/start">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}">
+      <button class="btn primary">Aktivera tvåstegsverifiering</button>
+    </form>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Kalender</h2>
+  <p class="muted small">Prenumerera i din telefons kalender på bröllopet, körschemat, deadlines och obetalda räkningar. Uppdateras automatiskt.</p>
+  {% if ics_ok %}<p class="alert ok">{{ ics_ok }}</p>{% endif %}
+  {% if ics_url %}
+    <p class="alert warn">Kopiera länken nu – den visas bara den här gången. Den som har länken kan läsa kalendern.</p>
+    <div class="copyrow"><input id="icsurl" value="{{ ics_url }}" readonly><button type="button" class="btn" data-copy="icsurl">Kopiera</button></div>
+    <p class="muted small">iPhone: Inställningar → Kalender → Konton → Lägg till konto → Annat → Lägg till prenumererad kalender. Google: Andra kalendrar → Från webbadress.</p>
+  {% endif %}
+  <form method="post" action="/account/ics" class="inline">
+    <input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <button class="btn {{ '' if user.has_ics else 'primary' }}" name="action" value="create" {% if user.has_ics %}data-confirm="Skapa ny länk? Den gamla slutar fungera."{% endif %}>{{ 'Skapa ny länk' if user.has_ics else 'Skapa kalenderlänk' }}</button>
+    {% if user.has_ics %}<button class="btn danger" name="action" value="revoke">Återkalla</button>{% endif %}
+  </form>
+</section>
+{% endif %}
+</div>
+<p class="muted small center">Bröllopsplaneraren {{ APP_VERSION }}</p>
+{% endblock %}

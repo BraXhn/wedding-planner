@@ -1,0 +1,36 @@
+{% extends "guest_base.html" %}
+{% block portal %}
+<div class="card narrow">
+  <h2>Hej {{ guest.name }}!</h2>
+  {% if settings.info_text %}<p class="prewrap">{{ settings.info_text }}</p>{% endif %}
+  {% if saved %}
+    <p class="alert ok">Tack! Ert svar är sparat{% if guest.rsvp == 'yes' %} – vi ser fram emot att fira med er{% endif %}. Ni kan ändra svaret via samma länk{% if deadline %} fram till {{ sv_date(deadline, false) }}{% endif %}.</p>
+    {% if guest.rsvp == 'yes' %}<p><a class="btn" href="{{ base }}/brollop.ics">📅 Lägg till i kalendern</a> <a class="btn" href="{{ base }}/info">Läs mer om dagen</a></p>{% endif %}
+  {% endif %}
+  {% if error %}<p class="alert error">{{ error }}</p>{% endif %}
+  {% if errors %}<div class="alert error"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+
+  {% if closed %}
+    <p>Sista dag för OSA har passerat. Ert svar: <strong>{{ {'pending': 'inget svar', 'yes': 'kommer', 'no': 'kommer inte'}[guest.rsvp] }}</strong>.</p>
+  {% else %}
+  <form method="post">
+    <fieldset class="choice">
+      <legend>Kommer ni?</legend>
+      <label><input type="radio" name="answer" value="yes" {{ 'checked' if guest.rsvp == 'yes' }} required> Ja, gärna!</label>
+      <label><input type="radio" name="answer" value="no" {{ 'checked' if guest.rsvp == 'no' }}> Tyvärr inte</label>
+    </fieldset>
+    {% if max_count > 1 %}
+    <label class="field"><span>Hur många kommer?</span>
+      <select name="count">{% for n in range(1, max_count + 1) %}<option value="{{ n }}" {{ 'selected' if (guest.attending or max_count) == n }}>{{ n }}</option>{% endfor %}</select>
+    </label>
+    {% else %}<input type="hidden" name="count" value="1">{% endif %}
+    <label class="field"><span>Specialkost eller allergier</span><textarea name="diet" rows="2" maxlength="1000">{{ guest.diet or '' }}</textarea></label>
+    <label class="field checkbox"><span>Jag/vi vill hålla tal eller göra ett framträdande<small>Toastmaster hör av sig om tid och ordning.</small></span><input type="checkbox" name="speech" {{ 'checked' if guest.speech }}></label>
+    <label class="field"><span>Låten som får dig upp på dansgolvet</span><input name="song" maxlength="200" value="{{ guest.song or '' }}"></label>
+    <label class="field"><span>Hälsning till brudparet</span><textarea name="message" rows="3" maxlength="2000">{{ guest.message or '' }}</textarea></label>
+    {% if deadline %}<p class="muted small">Svara senast {{ sv_date(deadline) }}.</p>{% endif %}
+    <button class="btn primary wide">Skicka svar</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

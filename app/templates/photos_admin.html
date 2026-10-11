@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Bilder · {{ super() }}{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <h1>Gästbilder <small class="muted">{{ photos|length }}</small></h1>
+  <div class="actions">
+    <a class="btn" href="/photos/cards">Skriv ut bordskort</a>
+    {% if photos %}<a class="btn" href="/photos/all.zip">Ladda ner alla (zip)</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid two">
+  <section class="card">
+    <h2>Uppladdningslänk</h2>
+    {% if not flag(settings, 'photos_enabled') %}<p class="alert warn">Uppladdning är avstängd. Slå på den under <a href="/settings">Inställningar</a>.</p>{% endif %}
+    <div class="qr-row">
+      <div class="qrbox small">{{ qr }}</div>
+      <div>
+        <p class="muted small">Sätt QR-koden på borden. Gästerna kan också ladda upp via sin egen portal.</p>
+        <div class="copyrow"><input id="upurl" value="{{ upload_url }}" readonly><button type="button" class="btn" data-copy="upurl">Kopiera</button></div>
+        {% if can_write %}
+        <form method="post" action="/photos/bulk" class="inline" data-confirm="Skapa ny länk? Utskrivna QR-koder slutar fungera.">
+          <input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike small" name="action" value="new_token">Skapa ny länk</button>
+        </form>{% endif %}
+      </div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Lagring</h2>
+    <p class="num">{{ used_mb }} <small>av {{ quota_mb }} MB</small></p>
+    <div class="bar {{ 'over' if used_mb > quota_mb * 0.9 }}"><span class="w{{ [((used_mb / quota_mb * 20)|round|int * 5), 100]|min if quota_mb else 0 }}"></span></div>
+    <p class="muted small">
+      Galleriet för gäster: <strong>{{ 'på' if flag(settings, 'gallery_public') else 'av' }}</strong> ·
+      Granskning: <strong>{{ 'på' if flag(settings, 'photo_moderation') else 'av' }}</strong> · <a href="/settings">Ändra</a>
+    </p>
+    {% if can_write and photos|selectattr('hidden')|list %}
+    <form method="post" action="/photos/bulk"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="btn" name="action" value="approve_all">Godkänn alla dolda</button></form>
+    {% endif %}
+  </section>
+</div>
+
+{% if photos %}
+<div class="gallery admin">
+  {% for p in photos %}
+  <figure class="{{ 'hidden-photo' if p.hidden }}" id="p{{ p.id }}">
+    <a href="/photos/img/{{ p.file }}" target="_blank" rel="noopener"><img src="/photos/img/{{ p.file|replace('.jpg', '_t.jpg') }}" alt="" loading="lazy"></a>
+    <figcaption>
+      <span class="small">{{ p.guest_name or p.uploader or 'Anonym' }}{% if p.hidden %} · <strong class="warn">dold</strong>{% endif %}</span>
+      {% if can_write %}
+      <span>
+        <form method="post" action="/photos/{{ p.id }}" class="inline"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike small" name="action" value="toggle">{{ 'Visa' if p.hidden else 'Dölj' }}</button></form>
+        <form method="post" action="/photos/{{ p.id }}" class="inline" data-confirm="Radera bilden permanent?"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike small danger-text" name="action" value="delete">Radera</button></form>
+      </span>
+      {% endif %}
+    </figcaption>
+  </figure>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty"><p class="muted">Inga bilder än. Dela länken eller skriv ut bordskort.</p></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "guest_base.html" %}
+{% block portal %}
+<div class="narrow-col">
+  {% if settings.gift_info %}<section class="card"><h2>Presenter</h2><p class="prewrap">{{ settings.gift_info }}</p></section>{% endif %}
+  {% if error %}<p class="alert error">{{ error }}</p>{% endif %}
+  {% if gifts %}
+  <p class="muted small">Reservera det ni tänker köpa så att ingen annan köper samma sak. Brudparet ser inte vem som reserverat vad.</p>
+  <ul class="gifts">
+    {% for w in gifts %}
+    {% set left = w.quantity - w.reserved %}
+    <li class="card gift {{ 'taken' if left <= 0 and not w.mine }}" id="g{{ w.id }}">
+      <div class="gift-body">
+        <h3>{{ w.title }}</h3>
+        {% if w.description %}<p class="prewrap small">{{ w.description }}</p>{% endif %}
+        <p class="muted small">
+          {% if w.price %}ca {{ kr(w.price) }} · {% endif %}
+          {% if w.quantity > 1 %}{{ w.reserved }} av {{ w.quantity }} reserverade{% elif left <= 0 %}Reserverad{% else %}Ledig{% endif %}
+          {% if w.url %} · <a href="{{ w.url }}" target="_blank" rel="noopener noreferrer nofollow">Visa produkt ↗</a>{% endif %}
+        </p>
+      </div>
+      <form method="post" class="gift-actions">
+        <input type="hidden" name="gift_id" value="{{ w.id }}">
+        {% if w.mine %}<span class="pill yes">Ni har reserverat {{ w.mine if w.mine > 1 }}</span>
+          <button class="linklike small" name="action" value="release">Ångra</button>{% endif %}
+        {% if left > 0 %}<button class="btn {{ '' if w.mine else 'primary' }}" name="action" value="reserve">{{ 'Reservera en till' if w.mine else 'Reservera' }}</button>
+        {% elif not w.mine %}<span class="pill">Tagen</span>{% endif %}
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>wedding-planner</Name>
+  <Repository>ghcr.io/braxhn/wedding-planner:latest</Repository>
+  <Registry>https://github.com/BraXhn/wedding-planner/pkgs/container/wedding-planner</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/BraXhn/wedding-planner/issues</Support>
+  <Project>https://github.com/BraXhn/wedding-planner</Project>
+  <ReadMe>https://github.com/BraXhn/wedding-planner#readme</ReadMe>
+  <Overview>Bröllopsplanerare: gästportal med OSA, bordsplacering, önskelista, gästernas bilduppladdning via QR, e-postutskick, talarlista, budget, att göra, körschema, kalenderexport och nedräknings-API. Byggd för att exponeras säkert bakom en reverse proxy.&#xD;
+&#xD;
+Första inloggning: ett engångslösenord skrivs i containerns logg.</Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/BraXhn/wedding-planner/main/unraid/wedding-planner.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/BraXhn/wedding-planner/main/unraid/icon.png</Icon>
+  <ExtraParams>--read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --cap-drop=ALL --cap-add=CHOWN --cap-add=SETUID --cap-add=SETGID --security-opt=no-new-privileges:true --memory=512m --pids-limit=100</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/wedding-planner" Mode="rw" Description="Databas och gästbilder. Behörigheter sätts automatiskt vid start." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/wedding-planner</Config>
+  <Config Name="WebUI-port" Target="8080" Default="8080" Mode="tcp" Description="Port på Unraid-servern. Öppna INTE denna port i routern – använd en reverse proxy (se README)." Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="BASE_URL" Target="BASE_URL" Default="" Mode="" Description="Publik adress, t.ex. https://brollop.example.se – används i gästlänkar, e-post och QR-koder. Lämna tom vid test på LAN." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="TZ" Target="TZ" Default="Europe/Stockholm" Mode="" Description="Tidszon (används för nedräkningen)" Type="Variable" Display="always" Required="false" Mask="false">Europe/Stockholm</Config>
+  <Config Name="ADMIN_USERNAME" Target="ADMIN_USERNAME" Default="admin" Mode="" Description="Första administratörens namn (används bara vid första start)" Type="Variable" Display="always" Required="false" Mask="false">admin</Config>
+  <Config Name="SMTP_HOST" Target="SMTP_HOST" Default="" Mode="" Description="E-postserver för utskick, t.ex. smtp.gmail.com (valfritt)" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="SMTP_USER" Target="SMTP_USER" Default="" Mode="" Description="Inloggning till e-postservern" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="SMTP_PASSWORD" Target="SMTP_PASSWORD" Default="" Mode="" Description="Lösenord (Gmail: app-lösenord)" Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="SMTP_FROM" Target="SMTP_FROM" Default="" Mode="" Description="Avsändaradress" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="SMTP_FROM_NAME" Target="SMTP_FROM_NAME" Default="" Mode="" Description="Avsändarnamn, t.ex. Anna &amp; Erik" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="SMTP_PORT" Target="SMTP_PORT" Default="587" Mode="" Description="587 (starttls) eller 465 (ssl)" Type="Variable" Display="advanced" Required="false" Mask="false">587</Config>
+  <Config Name="SMTP_SECURITY" Target="SMTP_SECURITY" Default="starttls" Mode="" Description="starttls eller ssl" Type="Variable" Display="advanced" Required="false" Mask="false">starttls</Config>
+  <Config Name="TRUSTED_PROXIES" Target="TRUSTED_PROXIES" Default="172.16.0.0/12,10.0.0.0/8,192.168.0.0/16" Mode="" Description="Vilka IP/subnät som får ange besökarens IP och https (X-Forwarded-*). Standard: privata nät, dvs. din reverse proxy." Type="Variable" Display="advanced" Required="true" Mask="false">172.16.0.0/12,10.0.0.0/8,192.168.0.0/16</Config>
+  <Config Name="COOKIE_SECURE" Target="COOKIE_SECURE" Default="auto" Mode="" Description="auto: säkra cookies via https, fungerar även över http på LAN. true: kräv https." Type="Variable" Display="advanced" Required="false" Mask="false">auto</Config>
+  <Config Name="ADMIN_PASSWORD" Target="ADMIN_PASSWORD" Default="" Mode="" Description="Lämna tomt – då skrivs ett engångslösenord i loggen." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="API_CORS_ORIGINS" Target="API_CORS_ORIGINS" Default="" Mode="" Description="Webbadresser som får anropa API:t från webbläsaren (t.ex. Hemmahub), kommaseparerade" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MAX_UPLOAD_MB" Target="MAX_UPLOAD_MB" Default="20" Mode="" Description="Max storlek per uppladdad bild (MB)" Type="Variable" Display="advanced" Required="false" Mask="false">20</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="Användar-ID appen kör som (99 = nobody)" Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Grupp-ID appen kör som (100 = users)" Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+</Container>

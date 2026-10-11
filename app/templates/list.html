@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ spec.title }} · {{ super() }}{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <h1>{{ spec.title }} <small class="muted">{{ rows|length }}</small></h1>
+  <div class="actions">
+    {% if ent == 'guests' %}<a class="btn" href="/seating">Placering</a><a class="btn" href="/mail">Utskick</a>{% endif %}
+    {% if ent == 'speeches' %}<a class="btn" href="#" data-print>Skriv ut</a>{% endif %}
+    <a class="btn" href="/m/{{ ent }}/export.csv">Exportera CSV</a>
+    {% if can_write %}<a class="btn primary" href="/m/{{ ent }}/new">+ Ny {{ spec.singular }}</a>{% endif %}
+  </div>
+</div>
+
+{% if ent == 'tasks' and can_write %}
+<form method="post" action="/m/tasks/deadlines" class="hint">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  {% if settings.wedding_date %}
+    Deadlines räknas ut från bröllopsdatumet ({{ sv_date(settings.wedding_date) }}).
+    <button class="linklike" name="mode" value="all" data-confirm="Räkna om ALLA deadlines utifrån tidsperioden? Egna datum skrivs över.">Räkna om alla</button>
+  {% else %}
+    Ange <a href="/settings">bröllopsdatum</a> så fylls deadlines i automatiskt.
+  {% endif %}
+</form>
+{% endif %}
+{% if ent == 'speeches' %}
+<p class="hint">Gäster som kryssar i ”vill hålla tal” på OSA-sidan hamnar här automatiskt. Total talartid: <strong>{{ totals.minutes }} min</strong>. Ge toastmaster en <a href="/users">läsare-inloggning</a>.</p>
+{% endif %}
+{% if ent == 'wishlist' %}
+<p class="hint">Gästerna reserverar via sin portal. Ni ser hur många som är reserverade – men inte av vem, så överraskningen består.</p>
+{% endif %}
+
+<form class="toolbar" method="get">
+  <input type="search" name="q" value="{{ q }}" placeholder="Sök…" maxlength="100">
+  {% if flt %}<input type="hidden" name="f" value="{{ flt }}">{% endif %}
+  <button class="btn">Sök</button>
+  {% if spec.filters %}
+  <span class="chips">
+    {% for val, lab in spec.filters %}<a class="chip {{ 'on' if flt == val }}" href="?f={{ val }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">{{ lab }}</a>{% endfor %}
+  </span>
+  {% endif %}
+</form>
+
+{% if rows %}
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    {% for col in spec.list %}{% set f = spec.by_name[col] %}<th class="{{ 'num' if f.type in ('money','int') }}">{{ f.label }}</th>{% endfor %}
+    {% for name, label, _ in spec.computed %}<th class="num">{{ label }}</th>{% endfor %}
+  </tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr class="{{ 'done' if (ent == 'tasks' and r.done) or (ent == 'speeches' and r.status == 'Struken') }}">
+    {% for col in spec.list %}{% set f = spec.by_name[col] %}
+      <td class="{{ 'num' if f.type in ('money','int') }} {{ 'late' if f.type == 'date' and r[col] and r[col] < today and not (r.done or r.paid) }}">
+      {% if ent == 'tasks' and col == 'done' %}
+        {% if can_write %}
+        <form method="post" action="/m/tasks/{{ r.id }}/toggle" class="inline">
+          <input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="next" value="/m/tasks{{ '?f=open' if flt == 'open' }}">
+          <button class="check {{ 'on' if r.done }}" aria-label="Växla klar"></button>
+        </form>
+        {% else %}{{ display(f, r[col]) }}{% endif %}
+      {% elif loop.first or (ent == 'tasks' and col == 'title') or (ent == 'speeches' and col == 'speaker') %}
+        <a href="/m/{{ ent }}/{{ r.id }}">{{ display(f, r[col], refs) or '(namnlös)' }}</a>
+      {% elif col == 'rsvp' %}
+        <span class="pill {{ r.rsvp }}">{{ display(f, r[col]) }}</span>
+      {% elif col == 'diet' %}
+        <span class="clip">{{ r[col] or '' }}</span>
+      {% else %}{{ display(f, r[col], refs) }}{% endif %}
+      </td>
+    {% endfor %}
+    {% for name, label, _ in spec.computed %}
+      <td class="num">{% if ent == 'wishlist' %}<span class="pill {{ 'yes' if r.reserved >= r.quantity else ('pending' if r.reserved else '') }}">{{ r.reserved }} / {{ r.quantity }}</span>{% else %}{{ r[name] }}{% endif %}</td>
+    {% endfor %}
+    </tr>
+  {% endfor %}
+  </tbody>
+  {% if totals %}
+  <tfoot><tr>{% for col in spec.list %}{% set f = spec.by_name[col] %}<td class="{{ 'num' if f.type in ('money','int') }}">{% if loop.first %}Summa{% elif col in totals %}{{ kr(totals[col]) if f.type == 'money' else totals[col] }}{% endif %}</td>{% endfor %}{% for _ in spec.computed %}<td></td>{% endfor %}</tr></tfoot>
+  {% endif %}
+</table>
+</div>
+{% else %}
+<div class="card empty"><p class="muted">Inget här än.{% if can_write %} <a href="/m/{{ ent }}/new">Lägg till den första</a>.{% endif %}</p></div>
+{% endif %}
+{% endblock %}

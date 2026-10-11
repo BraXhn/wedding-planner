@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ settings.couple_names or "Bröllop" }}{% endblock %}
+{% block bodyclass %}public{% endblock %}
+{% block content %}
+<div class="invite">
+  <p class="eyebrow">Välkommen på bröllop</p>
+  <h1 class="script">{{ settings.couple_names or "Vårt bröllop" }}</h1>
+  <p class="details">
+    {% if wedding_date %}{{ sv_date(wedding_date) }}{% endif %}{% if settings.wedding_time %} kl. {{ settings.wedding_time }}{% endif %}
+    {% if settings.venue %}<br>{{ settings.venue }}{% endif %}
+  </p>
+</div>
+{% if guest %}
+<nav class="tabs">
+  <a href="{{ base }}" class="{{ 'on' if tab == 'rsvp' }}">OSA</a>
+  <a href="{{ base }}/info" class="{{ 'on' if tab == 'info' }}">Information</a>
+  {% if has_gifts %}<a href="{{ base }}/gifts" class="{{ 'on' if tab == 'gifts' }}">Önskelista</a>{% endif %}
+  {% if has_photos %}<a href="{{ base }}/photos" class="{{ 'on' if tab == 'photos' }}">Bilder</a>{% endif %}
+</nav>
+{% endif %}
+{% block portal %}{% endblock %}
+{% endblock %}
