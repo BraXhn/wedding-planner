@@ -1,6 +1,7 @@
 """Gemensamma delar: konfiguration, mallar, sessioner/behörighet, validering och hjälpfunktioner."""
 import calendar
 import datetime as dt
+import hashlib
 import hmac
 import logging
 import os
@@ -155,6 +156,21 @@ def public_base(request: Request) -> str:
     return BASE_URL or str(request.base_url).rstrip("/")
 
 
+_ASSET_VERSIONS: dict[str, str] = {}
+
+
+def asset(path: str) -> str:
+    """URL till en statisk fil med innehållshash, t.ex. /static/style.css?v=3f9a1c… – byts automatiskt
+    när filen ändras, så webbläsare och Cloudflare aldrig visar en gammal version efter en uppdatering."""
+    if path not in _ASSET_VERSIONS:
+        try:
+            _ASSET_VERSIONS[path] = hashlib.sha256((BASE / "static" / path).read_bytes()).hexdigest()[:12]
+        except OSError:
+            _ASSET_VERSIONS[path] = APP_VERSION
+    return f"/static/{path}?v={_ASSET_VERSIONS[path]}"
+
+
+templates.env.globals.update(asset=asset)
 templates.env.globals.update(display=display, kr=kr, sv_date=sv_date, ENTITIES=ENTITIES, flag=flag,
                              APP_VERSION=APP_VERSION)
 

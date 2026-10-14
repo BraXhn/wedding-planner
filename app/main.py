@@ -80,6 +80,7 @@ class SecurityMiddleware:
             return message
 
         is_static = path.startswith("/static/")
+        versioned = is_static and b"v=" in scope.get("query_string", b"")
 
         async def send_wrapper(message):
             if message["type"] == "http.response.start":
@@ -97,7 +98,13 @@ class SecurityMiddleware:
                 if not path.startswith("/api/"):
                     h.append((b"cross-origin-resource-policy", b"same-origin"))
                 if not has_cache:
-                    h.append((b"cache-control", b"public, max-age=3600" if is_static else b"no-store"))
+                    if versioned:    # adressen byts när filen ändras → kan cachas länge
+                        cc = b"public, max-age=31536000, immutable"
+                    elif is_static:  # utan version: kontrollera alltid mot servern (ETag → 304)
+                        cc = b"no-cache"
+                    else:
+                        cc = b"no-store"
+                    h.append((b"cache-control", cc))
                 if scope.get("scheme") == "https" or COOKIE_MODE == "true":
                     h.append((b"strict-transport-security", b"max-age=31536000; includeSubDomains"))
                 message["headers"] = h
