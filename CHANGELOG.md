@@ -2,6 +2,7 @@
 
 ## 1.2.0 – 2026-10-14
 - **OSA via QR-kod för tryckta inbjudningar.** Varje hushåll får en kort OSA-kod och en QR-kod. Under *Gäster → OSA-kort med QR* finns ett utskriftsark (A7-kort, 8 per A4) och en zip med QR-koderna som PNG/SVG plus en CSV för dokumentkoppling. Den som inte kan skanna går till `/osa` och skriver in koden. Koden byts tillsammans med länken via *Skapa ny länk och kod*. Felaktiga koder spärras per IP och totalt.
+- Texten under koden på OSA-korten kan redigeras direkt på sidan *OSA-kort*, med förhandsvisning och platshållarna `{osa_senast}`, `{namn}`, `{antal}`, `{datum}`, `{brudpar}` och `{plats}`. Den finns också under Inställningar.
 - Nya platshållare i e-postmallarna: `{kod}` och `{osa_adress}`.
 - **"Kommer" utan antal** betyder nu att hela hushållet kommer. Befintliga gäster med "Kommer" och antal 0 rättas automatiskt vid uppdateringen. "Kommer inte" sätter antalet till 0.
 - **Responsiv layout.** Sidan använder bredden på stora skärmar (upp till 1360 px), menyn fälls ihop bakom en *Meny*-knapp på mobil och surfplatta, och tabellerna visas som kort på mobilen.

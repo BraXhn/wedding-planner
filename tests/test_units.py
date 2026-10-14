@@ -34,5 +34,7 @@ ok(len(codes) == 2000 and all(len(x) == 10 and not set(x) & set("IL01O") for x i
 x = new_code()
 ok(normalize_code(" " + format_code(x).lower() + " ") == x, "kod tål gemener, bindestreck och mellanslag")
 ok(normalize_code("ABCDE-FGHI1") is None and normalize_code("x" * 50) is None, "ogiltiga koder avvisas")
+from app.core import get_settings  # noqa: E402
+ok(get_settings().get("osa_card_footer") == "Svara senast {osa_senast}", "ny installation: standardtext under koden")
 print(f"\n{len(fails)} fel")
 sys.exit(1 if fails else 0)

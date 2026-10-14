@@ -14,7 +14,8 @@ from starlette.responses import Response
 from starlette.routing import Route
 
 from . import db as dbm
-from .core import auth, get_settings, log, parse_date, public_base, render, today
+from .core import auth, csrf_form, get_settings, log, parse_date, public_base, render, set_settings, sv_date, today
+from .routes_mail import fill
 from .qr import qr_png, qr_svg
 from .security import format_code
 
@@ -39,17 +40,42 @@ def _safe_filename(i: int, name: str) -> str:
     return f"{i:03d}_{base}"
 
 
+FOOTER_MAX = 300
+
+
+def footer_values(s: dict) -> dict:
+    """Gemensamma platshållare för texten under koden ({namn} och {antal} sätts per kort)."""
+    return {"osa_senast": sv_date(s.get("rsvp_deadline")) or "", "datum": sv_date(s.get("wedding_date")) or "",
+            "brudpar": s.get("couple_names") or "", "plats": s.get("venue") or ""}
+
+
 async def qr_sheet(request: Request):
-    """Utskriftsark: ett A7-kort per hushåll (8 per A4)."""
-    user = auth(request)
+    """Utskriftsark: ett A7-kort per hushåll (8 per A4). POST sparar texten under koden."""
+    write = request.method == "POST"
+    user = auth(request, write=write)
     scope = request.query_params.get("scope", "all")
     scope = scope if scope in ("all", "pending") else "all"
-    guests = _guests(scope)
+    saved, error = False, None
+    if write:
+        form = await csrf_form(request, user)
+        text = str(form.get("osa_card_footer", "")).replace("\r\n", "\n").strip()
+        if len(text) > FOOTER_MAX:
+            error = f"Texten får vara högst {FOOTER_MAX} tecken."
+        else:
+            set_settings({"osa_card_footer": text})
+            saved = True
+            log.info("osa_card_footer_saved by=%s", user["username"])
     s = get_settings()
-    cards = [{"name": g["name"], "code": format_code(g["rsvp_code"]),
-              "qr": Markup(qr_svg(code_url(request, g["rsvp_code"]), "M"))} for g in guests if g["rsvp_code"]]
-    return render(request, "invite_cards.html", user, settings=s, cards=cards, scope=scope,
-                  host=short_host(request), deadline=parse_date(s.get("rsvp_deadline")), active="guests")
+    footer = s.get("osa_card_footer", "")
+    if error:
+        footer = str(form.get("osa_card_footer", ""))[:FOOTER_MAX * 2]
+    common = footer_values(s)
+    cards = [{"name": g["name"], "code": format_code(g["rsvp_code"]), "count": g["invited_count"] or 1,
+              "footer": fill(footer, {**common, "namn": g["name"], "antal": str(g["invited_count"] or 1)}),
+              "qr": Markup(qr_svg(code_url(request, g["rsvp_code"]), "M"))} for g in _guests(scope) if g["rsvp_code"]]
+    return render(request, "invite_cards.html", user, status=400 if error else 200, settings=s, cards=cards,
+                  scope=scope, host=short_host(request), footer=footer, common=common, saved=saved, error=error,
+                  footer_max=FOOTER_MAX, can_write=user["role"] != "viewer", active="guests")
 
 
 async def qr_zip(request: Request):
@@ -101,7 +127,7 @@ async def qr_single(request: Request):
 
 
 routes = [
-    Route("/m/guests/qr", qr_sheet),
+    Route("/m/guests/qr", qr_sheet, methods=["GET", "POST"]),
     Route("/m/guests/qr.zip", qr_zip),
     Route("/m/guests/{item_id:int}/qr.{fmt}", qr_single),
 ]

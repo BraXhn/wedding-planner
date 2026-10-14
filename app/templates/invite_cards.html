@@ -15,6 +15,23 @@
     Ett kort per hushåll i A7-format, 8 per A4. Lägg kortet i kuvertet tillsammans med inbjudan.
     Har ni en egen design? Ladda ner zip-filen: där finns QR-koderna som PNG/SVG och en CSV för dokumentkoppling i Word, InDesign eller Canva.
   </p>
+  {% if saved %}<p class="alert ok">Texten är sparad.</p>{% endif %}
+  {% if error %}<p class="alert error">{{ error }}</p>{% endif %}
+  {% if can_write %}
+  <form method="post" class="card footer-editor" data-vars='{{ common|tojson }}'>
+    <input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <label class="field"><span>Text under koden</span>
+      <textarea name="osa_card_footer" rows="2" maxlength="{{ footer_max }}" data-footer-input>{{ footer }}</textarea>
+      <small>Visas på alla kort – förhandsvisas direkt nedan. Platshållare:
+        <code>{osa_senast}</code> <code>{namn}</code> <code>{antal}</code> <code>{datum}</code> <code>{brudpar}</code> <code>{plats}</code>.
+        Lämna tomt för ingen text. <span data-footer-count></span></small>
+    </label>
+    <div class="form-actions">
+      <button class="btn primary">Spara text</button>
+      <button type="button" class="btn" data-footer-reset="Svara senast {osa_senast}">Återställ standard</button>
+    </div>
+  </form>
+  {% endif %}
   <p class="chips">
     <a class="chip {{ 'on' if scope == 'all' }}" href="?scope=all">Alla hushåll</a>
     <a class="chip {{ 'on' if scope == 'pending' }}" href="?scope=pending">Bara de som inte svarat</a>
@@ -31,7 +48,7 @@
     <div class="osa-card-qr">{{ c.qr }}</div>
     <p class="osa-how">Skanna med mobilkameran<br>eller gå till <strong>{{ host }}/osa</strong></p>
     <p class="osa-code">{{ c.code }}</p>
-    {% if deadline %}<p class="osa-deadline">Svara senast {{ sv_date(deadline) }}</p>{% endif %}
+    <p class="osa-deadline osa-footer" data-namn="{{ c.name }}" data-antal="{{ c.count }}" {% if not c.footer %}hidden{% endif %}>{{ c.footer }}</p>
   </article>
   {% endfor %}
 </div>

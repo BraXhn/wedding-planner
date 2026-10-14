@@ -365,11 +365,14 @@ details summary { cursor: pointer; color: var(--muted); margin: 8px 0; }
 .osa-card-qr svg { display: block; width: 100%; height: auto; }
 .osa-how { font-size: .78rem; color: var(--muted); line-height: 1.35; }
 .osa-code { font-size: 1.05rem; margin-top: 6px !important; color: var(--ink); }
-.osa-deadline { font-size: .75rem; color: var(--gold); margin-top: 6px !important; }
+.osa-deadline { font-size: .75rem; color: var(--gold); margin-top: 6px !important; white-space: pre-line; }
+.osa-footer[hidden] { display: none; }
+.footer-editor code { font-size: .8rem; background: var(--soft); padding: 0 4px; border-radius: 4px; }
+.footer-editor .field { margin-bottom: 8px; }
 @media print {
   @page osa { size: A4; margin: 0; }
   .osa-cards { page: osa; grid-template-columns: 105mm 105mm; gap: 0; }
-  .osa-card { width: 105mm; height: 74.25mm; border: 0; outline: 1px dashed #ccc; outline-offset: -1px; border-radius: 0; padding: 6mm; break-inside: avoid; }
+  .osa-card { width: 105mm; height: 74.25mm; border: 0; outline: 1px dashed #ccc; outline-offset: -1px; border-radius: 0; padding: 6mm; break-inside: avoid; overflow: hidden; }
   .osa-card .script { font-size: 15pt; }
   .osa-card-qr { width: 26mm; margin: 2mm auto 1mm; }
   .osa-name { font-size: 10pt; }

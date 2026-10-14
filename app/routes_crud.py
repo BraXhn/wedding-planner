@@ -268,6 +268,8 @@ async def settings_view(request: Request):
                       can_write=user["role"] != "viewer", active="settings")
     form = await csrf_form(request, user)
     vals, errors = parse_form(SETTINGS_FIELDS, form)
+    if len(vals.get("osa_card_footer") or "") > 300:
+        errors.append("Text under koden på OSA-korten: högst 300 tecken.")
     if errors:
         return render(request, "settings.html", user, status=400, fields=SETTINGS_FIELDS, vals=vals,
                       errors=errors, can_write=True, active="settings")

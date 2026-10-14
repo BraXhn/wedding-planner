@@ -211,6 +211,7 @@ SETTINGS_DEFAULTS = {
     "gallery_public": "0",
     "photo_moderation": "0",
     "photo_quota_mb": "5000",
+    "osa_card_footer": "Svara senast {osa_senast}",
 }
 
 SETTINGS_FIELDS = [
@@ -233,6 +234,9 @@ SETTINGS_FIELDS = [
     F("gallery_public", "Gäster får se alla uppladdade bilder", "bool"),
     F("photo_moderation", "Granska bilder innan de visas för gäster", "bool"),
     F("photo_quota_mb", "Max lagring för bilder (MB)", "int", min=100, max=200_000),
+    S("OSA-kort"),
+    F("osa_card_footer", "Text under koden på OSA-korten", "textarea",
+      help="Platshållare: {osa_senast} {namn} {antal} {datum} {brudpar} {plats}. Redigera gärna direkt på sidan OSA-kort med förhandsvisning."),
     S("E-postmallar"),
     F("invite_subject", "Ämne – inbjudan"),
     F("invite_body", "Text – inbjudan", "textarea", help="Platshållare: {namn} {länk} {kod} {osa_adress} {brudpar} {datum} {plats} {osa_senast}"),

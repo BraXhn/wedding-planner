@@ -160,6 +160,7 @@ Mejlen skickas med en kort paus mellan varje mejl (`SMTP_DELAY_SECONDS`, standar
 1. Lägg in gästerna, ett hushåll per rad, och ange *Antal inbjudna*.
 2. Kontrollera att `BASE_URL` är satt till er publika adress, t.ex. `https://gift.braxhn.net`. QR-koderna pekar dit.
 3. Gå till **Gäster → OSA-kort med QR**.
+   - Ändra vid behov **texten under koden**, t.ex. "Svara senast {osa_senast}" eller en egen hälsning med `{namn}`. Ändringen förhandsvisas direkt.
    - **Skriv ut** ger ett A7-kort per hushåll, 8 per A4, att lägga i kuvertet.
    - **Ladda ner QR-filer (zip)** om ni har en egen inbjudningsdesign: `png/` (300 dpi) och `svg/` per hushåll plus `gaster.csv` med namn, kod och filnamn för dokumentkoppling.
 4. Gästen skannar koden och hamnar direkt på sin OSA-sida. Den som inte kan skanna går till `er-adress/osa` och skriver in koden, t.ex. `2BTU7-Q3VF8`.

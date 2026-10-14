@@ -134,3 +134,27 @@ if (rsvpSel && attIn && invIn) {
     if (rsvpSel.value === "no") attIn.value = "0";
   });
 }
+
+// OSA-kort: förhandsvisa texten under koden medan man skriver (textContent → aldrig HTML)
+const footerForm = document.querySelector(".footer-editor");
+if (footerForm) {
+  const input = footerForm.querySelector("[data-footer-input]");
+  const counter = footerForm.querySelector("[data-footer-count]");
+  let vars = {};
+  try { vars = JSON.parse(footerForm.dataset.vars || "{}"); } catch { vars = {}; }
+  const render = () => {
+    const tpl = input.value;
+    document.querySelectorAll(".osa-footer").forEach((el) => {
+      const v = { ...vars, namn: el.dataset.namn || "", antal: el.dataset.antal || "" };
+      const text = tpl.replace(/\{(osa_senast|namn|antal|datum|brudpar|plats)\}/g, (_, k) => v[k] ?? "");
+      el.textContent = text.trim();
+      el.hidden = !text.trim();
+    });
+    if (counter) counter.textContent = `(${input.value.length}/${input.maxLength})`;
+  };
+  input.addEventListener("input", render);
+  footerForm.querySelector("[data-footer-reset]")?.addEventListener("click", (e) => {
+    input.value = e.currentTarget.dataset.footerReset; render(); input.focus();
+  });
+  render();
+}
