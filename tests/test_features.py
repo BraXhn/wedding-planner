@@ -233,6 +233,47 @@ sec = re.search(r'<code class="secret">([A-Z2-7 ]+)</code>', h).group(1).replace
 r = req(a, "/account/totp/confirm", {"csrf": c, "code": totp_now(sec)}); ok("aktiverad" in html(r), "2FA aktiveras via QR-nyckel")
 hd = req(client(), "/login")[1]
 ok("'unsafe-inline'" not in hd["Content-Security-Policy"], "CSP utan unsafe-inline")
+# ---------------------------------------------------------------- "Kommer" utan antal
+req(a, "/m/guests/new", {"csrf": c, "name": "Familjen Ek", "invited_count": 4, "rsvp": "yes", "attending": "", "side": "Gemensam"})
+ok(q("SELECT attending FROM guests WHERE name='Familjen Ek'")[0][0] == 4, "Kommer utan antal → alla 4 i hushållet")
+ek = q("SELECT id FROM guests WHERE name='Familjen Ek'")[0][0]
+req(a, f"/m/guests/{ek}", {"csrf": c, "name": "Familjen Ek", "invited_count": 4, "rsvp": "yes", "attending": "3", "side": "Gemensam"})
+ok(q("SELECT attending FROM guests WHERE id=?", ek)[0][0] == 3, "angivet antal respekteras")
+req(a, f"/m/guests/{ek}", {"csrf": c, "name": "Familjen Ek", "invited_count": 4, "rsvp": "no", "attending": "3", "side": "Gemensam"})
+ok(q("SELECT attending FROM guests WHERE id=?", ek)[0][0] == 0, "Kommer inte → 0")
+
+# ---------------------------------------------------------------- OSA via QR / kod
+g = q("SELECT id, rsvp_token, rsvp_code FROM guests WHERE name='Bertil'")[0]
+ok(g["rsvp_code"] and len(g["rsvp_code"]) == 10, "gäst har OSA-kod")
+pub = client()
+r = req(pub, f"/o/{g['rsvp_code']}", follow=False)
+ok(r[0] == 303 and r[1]["location"] == f"/r/{g['rsvp_token']}", "QR-länk /o/KOD → gästportalen")
+fmt = (g["rsvp_code"][:5] + "-" + g["rsvp_code"][5:]).lower()
+r = req(pub, "/osa", {"code": f"  {fmt} "}, follow=False)
+ok(r[0] == 303 and r[1]["location"] == f"/r/{g['rsvp_token']}", "manuell kod (gemener, bindestreck) fungerar")
+ok("Er kod" in html(req(pub, "/osa")), "/osa visar kodformulär")
+r = req(pub, "/osa", {"code": "AAAAA-AAAAA"}); ok(r[0] == 400 and "hittade ingen" in html(r), "fel kod → 400")
+r = req(a, "/m/guests/qr"); h = html(r)
+n_guests = q("SELECT COUNT(*) FROM guests")[0][0]
+ok(r[0] == 200 and h.count('class="osa-card"') == n_guests and h.count("<svg") >= n_guests, f"utskriftsark med {n_guests} OSA-kort")
+ok(fmt.upper() in h, "koden står på kortet")
+r = req(a, "/m/guests/qr?scope=pending"); ok(html(r).count('class="osa-card"') == q("SELECT COUNT(*) FROM guests WHERE rsvp='pending'")[0][0], "filter: bara de som inte svarat")
+r = req(a, "/m/guests/qr.zip")
+import zipfile as _zf
+z = _zf.ZipFile(io.BytesIO(r[2])); names = z.namelist()
+ok(r[0] == 200 and "gaster.csv" in names and sum(n.startswith("png/") for n in names) == n_guests and sum(n.startswith("svg/") for n in names) == n_guests, "zip med PNG, SVG och CSV")
+ok(z.read([n for n in names if n.startswith("png/")][0])[:8] == b"\x89PNG\r\n\x1a\n", "PNG är giltig")
+ok(fmt.upper() in z.read("gaster.csv").decode("utf-8-sig"), "CSV för koppling innehåller koden")
+r = req(a, f"/m/guests/{g['id']}/qr.png"); ok(r[0] == 200 and r[1]["Content-Type"] == "image/png", "QR per gäst som PNG")
+ok(req(a, f"/m/guests/{g['id']}/qr.exe")[0] == 404, "okänt format 404")
+ok("OSA-kod" in req(a, "/m/guests/export.csv")[2].decode("utf-8-sig"), "CSV-export har OSA-kod")
+ok(fmt.upper() in html(req(a, f"/m/guests/{g['id']}")), "gästsidan visar kod och QR")
+ok(req(client(), "/m/guests/qr", follow=False)[0] == 303 and req(client(), "/m/guests/qr.zip", follow=False)[0] == 303, "OSA-kort kräver inloggning")
+req(a, f"/m/guests/{g['id']}/newlink", {"csrf": c})
+ok(req(client(), f"/o/{g['rsvp_code']}", follow=False)[0] == 404, "ny länk → gammal QR-kod slutar fungera")
+for i in range(16): r = req(pub, "/osa", {"code": "BBBBB-BBBBC"})
+ok(r[0] == 429 and "många" in html(r), "gissning av koder stoppas (rate limit)")
+
 r = req(client(), "/login", {"username": "nobody", "password": "x"*12}, headers={"X-Forwarded-Proto": "https"})
 hx = req(client(), "/login", headers={"X-Forwarded-Proto": "https"})[1]
 ok("strict-transport-security" in {k.lower() for k in hx.keys()}, "HTTPS via betrodd proxy → HSTS")

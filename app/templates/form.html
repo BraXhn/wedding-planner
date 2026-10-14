@@ -8,6 +8,18 @@
 
 {% if ent == 'guests' and item %}
 <section class="card linkbox">
+  {% if qr %}
+  <div class="osa-qr">
+    <div class="qrbox small">{{ qr }}</div>
+    <div>
+      <p class="eyebrow">OSA för tryckt inbjudan</p>
+      <p class="osa-code-big">{{ code }}</p>
+      <p class="muted small">Skanna QR-koden – eller gå till <strong>{{ osa_host }}/osa</strong> och skriv in koden.</p>
+      <p class="small"><a href="/m/guests/{{ item.id }}/qr.png">Ladda ner PNG</a> · <a href="/m/guests/{{ item.id }}/qr.svg">SVG</a> · <a href="/m/guests/qr">Alla OSA-kort</a></p>
+    </div>
+  </div>
+  <hr>
+  {% endif %}
   <p class="eyebrow">Personlig länk till gästportalen</p>
   <div class="copyrow">
     <input id="rsvplink" value="{{ link }}" readonly>
@@ -18,9 +30,9 @@
   {% if item.invite_sent_at %}Inbjudan mejlad {{ item.invite_sent_at[:10] }}.{% endif %}
   {% if item.reminder_sent_at %}Påminnelse mejlad {{ item.reminder_sent_at[:10] }}.{% endif %}</p>
   {% if can_write %}
-  <form method="post" action="/m/guests/{{ item.id }}/newlink" class="inline" data-confirm="Skapa en ny länk? Den gamla slutar fungera.">
+  <form method="post" action="/m/guests/{{ item.id }}/newlink" class="inline" data-confirm="Skapa ny länk och ny OSA-kod? De gamla – även utskrivna QR-koder – slutar fungera.">
     <input type="hidden" name="csrf" value="{{ user.csrf }}">
-    <button class="linklike small">Skapa ny länk</button>
+    <button class="linklike small">Skapa ny länk och kod</button>
   </form>
   {% endif %}
 </section>

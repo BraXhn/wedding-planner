@@ -15,40 +15,40 @@
 <div class="grid">
   <a class="card stat" href="/m/guests">
     <p class="eyebrow">Gäster</p>
-    <p class="num">{{ g.coming }} <small>av {{ g.invited }} kommer</small></p>
+    <p class="bignum">{{ g.coming }} <small>av {{ g.invited }} kommer</small></p>
     <div class="bar"><span class="w{{ [((g.coming / g.invited * 20)|round|int * 5), 100]|min if g.invited else 0 }}"></span></div>
     <p class="muted">{{ g.pending }} väntar på svar · {{ g.declined }} tackat nej</p>
     <p class="muted">{{ g.diets }} med specialkost</p>
   </a>
   <a class="card stat" href="/m/budget">
     <p class="eyebrow">Budget</p>
-    <p class="num">{{ kr(b.planned) }}{% if total_budget %} <small>av {{ kr(total_budget) }}</small>{% endif %}</p>
+    <p class="bignum">{{ kr(b.planned) }}{% if total_budget %} <small>av {{ kr(total_budget) }}</small>{% endif %}</p>
     {% if total_budget %}<div class="bar {{ 'over' if b.planned > total_budget }}"><span class="w{{ [ (b.planned / total_budget * 20)|round|int * 5, 100 ]|min }}"></span></div>{% endif %}
     <p class="muted">Betalt: {{ kr(b.paid) }}</p>
     {% if total_budget %}<p class="muted">{% if b.planned > total_budget %}<strong class="warn">Över budget med {{ kr(b.planned - total_budget) }}</strong>{% else %}Kvar att fördela: {{ kr(total_budget - b.planned) }}{% endif %}</p>{% endif %}
   </a>
   <a class="card stat" href="/m/tasks?f=open">
     <p class="eyebrow">Att göra</p>
-    <p class="num">{{ t.total - t.open }} <small>av {{ t.total }} klara</small></p>
+    <p class="bignum">{{ t.total - t.open }} <small>av {{ t.total }} klara</small></p>
     <div class="bar"><span class="w{{ (((t.total - t.open) / t.total * 20)|round|int * 5) if t.total else 0 }}"></span></div>
     <p class="muted">{% if t.overdue %}<strong class="warn">{{ t.overdue }} försenade</strong>{% else %}Inget försenat{% endif %}</p>
   </a>
   <a class="card stat" href="/seating">
     <p class="eyebrow">Placering</p>
-    <p class="num">{{ g.unseated }} <small>hushåll utan bord</small></p>
+    <p class="bignum">{{ g.unseated }} <small>hushåll utan bord</small></p>
     <p class="muted">Leverantörer: {{ v.booked }} av {{ v.total }} bokade</p>
   </a>
   <a class="card stat" href="/m/speeches">
     <p class="eyebrow">Tal</p>
-    <p class="num">{{ sp.n }} <small>anmälda · {{ sp.minutes }} min</small></p>
+    <p class="bignum">{{ sp.n }} <small>anmälda · {{ sp.minutes }} min</small></p>
   </a>
   <a class="card stat" href="/m/wishlist">
     <p class="eyebrow">Önskelista</p>
-    <p class="num">{{ w.reserved }} <small>av {{ w.wanted }} reserverade</small></p>
+    <p class="bignum">{{ w.reserved }} <small>av {{ w.wanted }} reserverade</small></p>
   </a>
   <a class="card stat" href="/photos">
     <p class="eyebrow">Gästbilder</p>
-    <p class="num">{{ ph.n }} <small>uppladdade</small></p>
+    <p class="bignum">{{ ph.n }} <small>uppladdade</small></p>
     {% if ph.hidden %}<p class="muted"><strong class="warn">{{ ph.hidden }} väntar på granskning</strong></p>{% endif %}
   </a>
 </div>

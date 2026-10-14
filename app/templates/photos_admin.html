@@ -27,7 +27,7 @@
   </section>
   <section class="card">
     <h2>Lagring</h2>
-    <p class="num">{{ used_mb }} <small>av {{ quota_mb }} MB</small></p>
+    <p class="bignum">{{ used_mb }} <small>av {{ quota_mb }} MB</small></p>
     <div class="bar {{ 'over' if used_mb > quota_mb * 0.9 }}"><span class="w{{ [((used_mb / quota_mb * 20)|round|int * 5), 100]|min if quota_mb else 0 }}"></span></div>
     <p class="muted small">
       Galleriet för gäster: <strong>{{ 'på' if flag(settings, 'gallery_public') else 'av' }}</strong> ·

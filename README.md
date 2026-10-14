@@ -19,6 +19,7 @@ En självhostad bröllopsplanerare för Unraid. Den är liten (fem Python-beroen
 | **Tal** | Talarlista för toastmaster. Gäster som anmäler tal i OSA-formuläret hamnar här automatiskt. Visar total talartid. |
 | **Önskelista** | Gästerna reserverar presenter. Ni ser hur många som är reserverade, men inte av vem. |
 | **Bilder** | Gästernas bilder i ett galleri, med valfri granskning innan de visas, nedladdning som zip och utskrivbara **bordskort med QR-kod** |
+| **OSA-kort med QR** | För inbjudningar som skickas med posten: en QR-kod och en kort kod per hushåll, utskriftsark (8 kort per A4) och zip med PNG/SVG + CSV för dokumentkoppling i Word, InDesign eller Canva |
 | **Utskick** | E-post med personlig länk till varje hushåll, påminnelser till dem som inte svarat, redigerbara mallar och testutskick |
 | **Kalender** | Personlig prenumerationslänk (.ics) med bröllopet, körschemat, deadlines och räkningar |
 | **API** | Nedräkningen (och valfri statistik) som JSON för t.ex. **Hemmahub** |
@@ -70,6 +71,7 @@ Med en tunnel behövs inga öppna portar alls.
    | Sökväg | Används av | Skyddas av |
    |---|---|---|
    | `/r/*` | Gästportalen | Personlig 192-bitars länk |
+| `/osa`, `/o/*` | OSA-kod och QR på tryckta inbjudningar | 50-bitars kod + spärr mot gissning |
    | `/p/*` | QR-koden på borden | Slumpad länk, kan bytas |
    | `/cal/*` | Kalenderprenumeration | Personlig länk, kan återkallas |
    | `/api/*` | Hemmahub | API-nyckel |
@@ -151,7 +153,20 @@ Sätt `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USER`, `SMTP_PASSWORD`, `
 - **Outlook/Hotmail:** `smtp-mail.outlook.com`, port `587`, `starttls`.
 - **One.com, Loopia m.fl.:** se respektive webbhotells SMTP-uppgifter.
 
-Mejlen skickas med en kort paus mellan varje mejl (`SMTP_DELAY_SECONDS`, standard 1,5 s) så att e-postleverantören inte spärrar kontot. Gmail tillåter ungefär 500 mejl per dygn. Mallarna redigeras under *Inställningar → E-postmallar* med platshållarna `{namn} {länk} {brudpar} {datum} {plats} {osa_senast}`. Skicka alltid ett testmejl till dig själv först.
+Mejlen skickas med en kort paus mellan varje mejl (`SMTP_DELAY_SECONDS`, standard 1,5 s) så att e-postleverantören inte spärrar kontot. Gmail tillåter ungefär 500 mejl per dygn. Mallarna redigeras under *Inställningar → E-postmallar* med platshållarna `{namn} {länk} {kod} {osa_adress} {brudpar} {datum} {plats} {osa_senast}`. Skicka alltid ett testmejl till dig själv först.
+
+## Inbjudningar per post (OSA med QR)
+
+1. Lägg in gästerna, ett hushåll per rad, och ange *Antal inbjudna*.
+2. Kontrollera att `BASE_URL` är satt till er publika adress, t.ex. `https://gift.braxhn.net`. QR-koderna pekar dit.
+3. Gå till **Gäster → OSA-kort med QR**.
+   - **Skriv ut** ger ett A7-kort per hushåll, 8 per A4, att lägga i kuvertet.
+   - **Ladda ner QR-filer (zip)** om ni har en egen inbjudningsdesign: `png/` (300 dpi) och `svg/` per hushåll plus `gaster.csv` med namn, kod och filnamn för dokumentkoppling.
+4. Gästen skannar koden och hamnar direkt på sin OSA-sida. Den som inte kan skanna går till `er-adress/osa` och skriver in koden, t.ex. `2BTU7-Q3VF8`.
+
+Tips: tryck QR-koden minst 2 × 2 cm och testa att skanna ett utskrivet kort innan ni trycker alla. Har ett kort hamnat fel kan ni klicka *Skapa ny länk och kod* på gästen, så slutar den gamla koden att fungera.
+
+Koden består av 10 tecken utan förväxlingsbara tecken (inga I, L, O, 0 eller 1), vilket ger cirka 50 bitars slump. Efter 15 felaktiga försök spärras en IP-adress i 15 minuter. Efter 400 felaktiga försök totalt under en timme stängs kodinmatningen tillfälligt, vilket stoppar gissning från många adresser samtidigt. QR-länkarna som redan skannats fungerar som vanligt.
 
 ## Bilder från gästerna
 

@@ -39,12 +39,12 @@
 {% if keys %}
 <section class="card flush">
   <div class="table-wrap">
-  <table>
+  <table class="responsive">
     <thead><tr><th>Namn</th><th>Nyckel</th><th>Behörighet</th><th>Skapad</th><th>Senast använd</th><th></th></tr></thead>
     <tbody>
     {% for k in keys %}
-    <tr><td>{{ k.name }}</td><td><code>{{ k.prefix }}…</code></td><td>{{ k.scopes.replace(',', ', ') }}</td><td>{{ k.created_at[:10] }}</td><td>{{ k.last_used_at or '–' }}</td>
-      <td><form method="post" class="inline" data-confirm="Återkalla nyckeln {{ k.name }}?"><input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="id" value="{{ k.id }}"><button class="linklike danger-text" name="action" value="delete">Återkalla</button></form></td></tr>
+    <tr><td class="primary" data-label="Namn">{{ k.name }}</td><td data-label="Nyckel"><code>{{ k.prefix }}…</code></td><td data-label="Behörighet">{{ k.scopes.replace(',', ', ') }}</td><td data-label="Skapad">{{ k.created_at[:10] }}</td><td data-label="Senast använd">{{ k.last_used_at or '–' }}</td>
+      <td class="actions-cell" data-label=""><form method="post" class="inline" data-confirm="Återkalla nyckeln {{ k.name }}?"><input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="id" value="{{ k.id }}"><button class="linklike danger-text" name="action" value="delete">Återkalla</button></form></td></tr>
     {% endfor %}
     </tbody>
   </table>

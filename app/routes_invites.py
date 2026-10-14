@@ -1,0 +1,107 @@
+"""QR-koder för tryckta inbjudningar.
+
+Varje hushåll har en OSA-kod (10 tecken). QR-koden pekar på /o/KOD, och samma kod kan skrivas in
+manuellt på /osa av den som inte kan skanna. Koden roteras med "Skapa ny länk" på gästen."""
+import csv
+import io
+import re
+import zipfile
+
+from markupsafe import Markup
+from starlette.exceptions import HTTPException
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.routing import Route
+
+from . import db as dbm
+from .core import auth, get_settings, log, parse_date, public_base, render, today
+from .qr import qr_png, qr_svg
+from .security import format_code
+
+
+def code_url(request: Request, code: str) -> str:
+    return f"{public_base(request)}/o/{code}"
+
+
+def short_host(request: Request) -> str:
+    return re.sub(r"^https?://", "", public_base(request))
+
+
+def _guests(scope: str):
+    where = {"pending": "WHERE rsvp = 'pending'", "all": ""}.get(scope, "")
+    with dbm.db() as c:
+        return c.execute(f"SELECT id, name, invited_count, rsvp, rsvp_code, group_name FROM guests {where} "
+                         "ORDER BY group_name COLLATE NOCASE, name COLLATE NOCASE").fetchall()
+
+
+def _safe_filename(i: int, name: str) -> str:
+    base = re.sub(r"[^\w]+", "_", name, flags=re.UNICODE).strip("_")[:40] or "gast"
+    return f"{i:03d}_{base}"
+
+
+async def qr_sheet(request: Request):
+    """Utskriftsark: ett A7-kort per hushåll (8 per A4)."""
+    user = auth(request)
+    scope = request.query_params.get("scope", "all")
+    scope = scope if scope in ("all", "pending") else "all"
+    guests = _guests(scope)
+    s = get_settings()
+    cards = [{"name": g["name"], "code": format_code(g["rsvp_code"]),
+              "qr": Markup(qr_svg(code_url(request, g["rsvp_code"]), "M"))} for g in guests if g["rsvp_code"]]
+    return render(request, "invite_cards.html", user, settings=s, cards=cards, scope=scope,
+                  host=short_host(request), deadline=parse_date(s.get("rsvp_deadline")), active="guests")
+
+
+async def qr_zip(request: Request):
+    """QR-koder som PNG + SVG och en CSV för koppling (Word, InDesign, Canva Bulk Create)."""
+    user = auth(request)
+    scope = request.query_params.get("scope", "all")
+    guests = [g for g in _guests(scope if scope in ("all", "pending") else "all") if g["rsvp_code"]]
+    host = short_host(request)
+    buf = io.BytesIO()
+    rows = io.StringIO()
+    w = csv.writer(rows, delimiter=";")
+    w.writerow(["Namn", "Antal inbjudna", "Grupp", "OSA-kod", "OSA-länk", "Svara på", "QR-fil"])
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for i, g in enumerate(guests, 1):
+            fn = _safe_filename(i, g["name"])
+            url = code_url(request, g["rsvp_code"])
+            z.writestr(f"png/{fn}.png", qr_png(url, "M"))
+            z.writestr(f"svg/{fn}.svg", qr_svg(url, "M"))
+            name = g["name"]
+            safe_name = "'" + name if name[:1] in ("=", "+", "-", "@") else name  # formelinjektion
+            w.writerow([safe_name, g["invited_count"], g["group_name"] or "", format_code(g["rsvp_code"]), url,
+                        f"{host}/osa", f"png/{fn}.png"])
+        z.writestr("gaster.csv", "﻿" + rows.getvalue())
+        z.writestr("LASMIG.txt",
+                   "QR-koder för OSA\r\n\r\n"
+                   "png/  – för Word, Canva m.fl. (300 dpi, minst 2 x 2 cm i tryck)\r\n"
+                   "svg/  – vektorformat för tryckeri och InDesign\r\n"
+                   "gaster.csv – för koppling (dokumentkoppling): namn, kod, länk och filnamn per hushåll\r\n\r\n"
+                   f"Den som inte kan skanna går till {host}/osa och skriver in sin kod.\r\n")
+    log.info("invite_qr_zip n=%s by=%s", len(guests), user["username"])
+    return Response(buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="osa-qr-{today().isoformat()}.zip"'})
+
+
+async def qr_single(request: Request):
+    auth(request)
+    fmt = request.path_params["fmt"]
+    with dbm.db() as c:
+        g = c.execute("SELECT name, rsvp_code FROM guests WHERE id = ?", (request.path_params["item_id"],)).fetchone()
+    if not g or not g["rsvp_code"] or fmt not in ("svg", "png"):
+        raise HTTPException(404)
+    url = code_url(request, g["rsvp_code"])
+    fn = _safe_filename(request.path_params["item_id"], g["name"])
+    if fmt == "svg":
+        return Response(qr_svg(url, "M"), media_type="image/svg+xml",
+                        headers={"Content-Disposition": f'attachment; filename="{fn}.svg"'})
+    return Response(qr_png(url, "M"), media_type="image/png",
+                    headers={"Content-Disposition": f'attachment; filename="{fn}.png"'})
+
+
+routes = [
+    Route("/m/guests/qr", qr_sheet),
+    Route("/m/guests/qr.zip", qr_zip),
+    Route("/m/guests/{item_id:int}/qr.{fmt}", qr_single),
+]

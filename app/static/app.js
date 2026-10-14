@@ -123,3 +123,14 @@ if (board) {
     }
   });
 }
+
+// Gästformulär: när OSA sätts till "Kommer" och antal saknas → fyll i antal inbjudna
+const rsvpSel = document.querySelector('select[name="rsvp"]');
+const attIn = document.querySelector('input[name="attending"]');
+const invIn = document.querySelector('input[name="invited_count"]');
+if (rsvpSel && attIn && invIn) {
+  rsvpSel.addEventListener("change", () => {
+    if (rsvpSel.value === "yes" && (!attIn.value || attIn.value === "0")) attIn.value = invIn.value || "1";
+    if (rsvpSel.value === "no") attIn.value = "0";
+  });
+}

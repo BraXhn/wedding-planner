@@ -77,6 +77,25 @@ def new_token(nbytes: int = 32) -> str:
     return secrets.token_urlsafe(nbytes)
 
 
+# OSA-kod för tryckta inbjudningar: 10 tecken utan förväxlingsbara tecken (I, L, O, 0, 1)
+# → 31^10 ≈ 2^49,5 kombinationer. Skyddas dessutom av rate limiting per IP och globalt.
+CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+CODE_LEN = 10
+
+
+def new_code() -> str:
+    return "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LEN))
+
+
+def normalize_code(raw: str) -> str | None:
+    s = re.sub(r"[\s\-–.]", "", (raw or "")[:40]).upper()
+    return s if len(s) == CODE_LEN and all(ch in CODE_ALPHABET for ch in s) else None
+
+
+def format_code(code: str | None) -> str:
+    return f"{code[:5]}-{code[5:]}" if code else ""
+
+
 def token_hash(token: str) -> str:
     """Sessionstokens lagras enbart som SHA-256 – en läckt databas ger inga giltiga sessioner."""
     return hashlib.sha256(token.encode()).hexdigest()

@@ -12,7 +12,7 @@ from .core import (
     public_base, render, set_settings, sync_speech_from_guest, today,
 )
 from .entities import ENTITIES, SETTINGS_FIELDS
-from .security import new_token
+from .security import format_code, new_code, new_token
 
 
 def get_spec(request: Request) -> tuple[str, dict]:
@@ -27,6 +27,14 @@ def get_item(c, ent: str, item_id: int):
     if not row:
         raise HTTPException(404)
     return row
+
+
+def normalize_attending(vals: dict) -> None:
+    """"Kommer" utan angivet antal → hela hushållet kommer. "Kommer inte" → 0."""
+    if vals.get("rsvp") == "yes" and not vals.get("attending"):
+        vals["attending"] = vals.get("invited_count") or 1
+    elif vals.get("rsvp") == "no":
+        vals["attending"] = 0
 
 
 def rsvp_link(request: Request, token: str | None) -> str:
@@ -126,7 +134,14 @@ async def item_form(request: Request):
             row = get_item(c, ent, item_id)
         if ent == "guests":
             link = rsvp_link(request, row["rsvp_token"])
-    ctx = dict(ent=ent, spec=spec, item=row, link=link, refs=refs, back=_back(ent, spec),
+    qr = code = None
+    if ent == "guests" and row is not None and row["rsvp_code"]:
+        from markupsafe import Markup
+        from .qr import qr_svg
+        qr = Markup(qr_svg(f"{public_base(request)}/o/{row['rsvp_code']}"))  # SVG genererad av oss själva
+        code = format_code(row["rsvp_code"])
+    ctx = dict(ent=ent, spec=spec, item=row, link=link, refs=refs, back=_back(ent, spec), qr=qr, code=code,
+               osa_host=public_base(request).split("://", 1)[-1],
                active="seating" if ent == "tables" else ent)
 
     if request.method == "GET":
@@ -135,6 +150,8 @@ async def item_form(request: Request):
 
     form = await csrf_form(request, user)
     vals, errors = parse_form(spec["fields"], form, refs)
+    if ent == "guests" and not errors:
+        normalize_attending(vals)
     if errors:
         return render(request, "form.html", user, status=400, vals=vals, errors=errors, can_write=True, **ctx)
     cols = list(vals)
@@ -142,7 +159,8 @@ async def item_form(request: Request):
         if row is None:
             if ent == "guests":
                 vals["rsvp_token"] = new_token(24)
-                cols.append("rsvp_token")
+                vals["rsvp_code"] = new_code()
+                cols += ["rsvp_token", "rsvp_code"]
             item_id = c.execute(f"INSERT INTO {ent} ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",
                                 [vals[k] for k in cols]).lastrowid
         else:
@@ -207,7 +225,7 @@ async def guest_newlink(request: Request):
     item_id = request.path_params["item_id"]
     with dbm.db() as c:
         get_item(c, "guests", item_id)
-        c.execute("UPDATE guests SET rsvp_token = ? WHERE id = ?", (new_token(24), item_id))
+        c.execute("UPDATE guests SET rsvp_token = ?, rsvp_code = ? WHERE id = ?", (new_token(24), new_code(), item_id))
     return RedirectResponse(f"/m/guests/{item_id}", 303)
 
 
@@ -227,13 +245,14 @@ async def export_csv(request: Request):
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";")
     w.writerow([f["label"] for f in spec["fields"]] + [lab for _, lab, _ in spec["computed"]]
-               + (["OSA-länk"] if ent == "guests" else []))
+               + (["OSA-länk", "OSA-kod", "QR-länk"] if ent == "guests" else []))
     for r in rows:
         line = [csv_cell(display(f, r[f["name"]], refs) if f["type"] in ("select", "bool", "ref") else r[f["name"]])
                 for f in spec["fields"]]
         line += [csv_cell(r[name]) for name, _, _ in spec["computed"]]
         if ent == "guests":
-            line.append(rsvp_link(request, r["rsvp_token"]))
+            line += [rsvp_link(request, r["rsvp_token"]), format_code(r["rsvp_code"]),
+                     f"{public_base(request)}/o/{r['rsvp_code']}" if r["rsvp_code"] else ""]
         w.writerow(line)
     log.info("export %s by=%s", ent, user["username"])
     return Response("﻿" + buf.getvalue(), media_type="text/csv; charset=utf-8",

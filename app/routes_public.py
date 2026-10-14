@@ -6,9 +6,10 @@ from starlette.routing import Route
 
 from . import db as dbm
 from .core import (
-    MAX_UPLOAD_MB, TOKEN_RE, flag, get_settings, log, parse_date, public_rate_limit, read_form, render,
+    MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_settings, log, parse_date, public_rate_limit, read_form, render,
     sync_speech_from_guest, today,
 )
+from .security import RateLimiter, normalize_code
 from .routes_photos import handle_upload, serve_photo, visible_photos
 
 
@@ -22,6 +23,54 @@ def guest_by_token(request: Request):
     if not g:
         raise HTTPException(404)
     return g
+
+
+# ======================================================================= OSA-kod (tryckta inbjudningar)
+CODE_FAIL_IP = RateLimiter(15, 15 * 60)       # felaktiga koder per IP
+CODE_FAIL_GLOBAL = RateLimiter(400, 60 * 60)  # felaktiga koder totalt – stoppar gissning från många IP
+
+
+def _lookup_code(request: Request, raw: str):
+    """Returnerar (gäst, felmeddelande)."""
+    ip = client_ip(request)
+    if CODE_FAIL_IP.blocked(ip) or CODE_FAIL_GLOBAL.blocked("all"):
+        log.warning("osa_code_blocked ip=%s", ip)
+        return None, "För många felaktiga försök. Vänta en stund och försök igen."
+    code = normalize_code(raw)
+    g = None
+    if code:
+        with dbm.db() as c:
+            g = c.execute("SELECT id, rsvp_token FROM guests WHERE rsvp_code = ?", (code,)).fetchone()
+    if not g:
+        CODE_FAIL_IP.hit(ip)
+        CODE_FAIL_GLOBAL.hit("all")
+        log.warning("osa_code_failed ip=%s", ip)
+        return None, "Vi hittade ingen inbjudan med den koden. Kontrollera att du skrivit av den rätt."
+    return g, None
+
+
+async def osa_code(request: Request):
+    public_rate_limit(request)
+    error = None
+    if request.method == "POST":
+        form = await read_form(request)
+        g, error = _lookup_code(request, str(form.get("code", "")))
+        if g:
+            return RedirectResponse(f"/r/{g['rsvp_token']}", 303)
+    s = get_settings()
+    return render(request, "osa_code.html", status=429 if error and "många" in error else (400 if error else 200),
+                  settings=s, guest=None, error=error, wedding_date=parse_date(s.get("wedding_date")))
+
+
+async def osa_code_link(request: Request):
+    """Mål för QR-koden: /o/KOD → gästens portal."""
+    public_rate_limit(request)
+    g, error = _lookup_code(request, request.path_params["code"])
+    if g:
+        return RedirectResponse(f"/r/{g['rsvp_token']}", 303)
+    s = get_settings()
+    return render(request, "osa_code.html", status=404, settings=s, guest=None, error=error,
+                  wedding_date=parse_date(s.get("wedding_date")))
 
 
 def _portal_ctx(g, tab: str) -> dict:
@@ -148,6 +197,8 @@ async def photo_img(request: Request):
 
 
 routes = [
+    Route("/osa", osa_code, methods=["GET", "POST"]),
+    Route("/o/{code}", osa_code_link),
     Route("/r/{token}", rsvp, methods=["GET", "POST"]),
     Route("/r/{token}/info", info),
     Route("/r/{token}/gifts", gifts, methods=["GET", "POST"]),
