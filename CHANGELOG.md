@@ -1,5 +1,8 @@
 # Ändringslogg
 
+## 1.2.1 – 2026-10-14
+- Rättat: efter en uppdatering kunde webbläsaren eller Cloudflare fortsätta visa den gamla stilmallen i upp till en timme. Sidan såg då trasig ut, med bland annat en synlig kryssruta vid "Meny". Stilmall, skript och ikon länkas nu med en hash av innehållet (`style.css?v=…`), så adressen byts när filen ändras. Versionerade filer cachas länge, och oversionerade kontrolleras alltid mot servern.
+
 ## 1.2.0 – 2026-10-14
 - **OSA via QR-kod för tryckta inbjudningar.** Varje hushåll får en kort OSA-kod och en QR-kod. Under *Gäster → OSA-kort med QR* finns ett utskriftsark (A7-kort, 8 per A4) och en zip med QR-koderna som PNG/SVG plus en CSV för dokumentkoppling. Den som inte kan skanna går till `/osa` och skriver in koden. Koden byts tillsammans med länken via *Skapa ny länk och kod*. Felaktiga koder spärras per IP och totalt.
 - Texten under koden på OSA-korten kan redigeras direkt på sidan *OSA-kort*, med förhandsvisning och platshållarna `{osa_senast}`, `{namn}`, `{antal}`, `{datum}`, `{brudpar}` och `{plats}`. Den finns också under Inställningar.

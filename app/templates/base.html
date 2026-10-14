@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>{% block title %}{{ settings.couple_names or "Bröllopsplaneraren" }}{% endblock %}</title>
-<link rel="stylesheet" href="/static/style.css">
-<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-<script src="/static/app.js" defer></script>
+<link rel="stylesheet" href="{{ asset('style.css') }}">
+<link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+<script src="{{ asset('app.js') }}" defer></script>
 </head>
 <body class="{% block bodyclass %}{% endblock %}">
 {% if user and not public_page %}

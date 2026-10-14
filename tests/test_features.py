@@ -288,6 +288,17 @@ ok(req(client(), f"/o/{g['rsvp_code']}", follow=False)[0] == 404, "ny länk → 
 for i in range(16): r = req(pub, "/osa", {"code": "BBBBB-BBBBC"})
 ok(r[0] == 429 and "många" in html(r), "gissning av koder stoppas (rate limit)")
 
+# ---------------------------------------------------------------- cache-busting av statiska filer
+import hashlib as _hl
+from pathlib import Path as _P
+_css = _P(__file__).resolve().parents[1] / "app" / "static" / "style.css"
+_h = _hl.sha256(_css.read_bytes()).hexdigest()[:12]
+page = html(req(client(), "/login"))
+ok(f'/static/style.css?v={_h}' in page and "/static/app.js?v=" in page, "stilmall och skript länkas med innehållshash")
+r = req(client(), f"/static/style.css?v={_h}"); ok(r[0] == 200 and "immutable" in r[1]["Cache-Control"], "versionerad fil cachas länge")
+r = req(client(), "/static/style.css"); ok(r[0] == 200 and r[1]["Cache-Control"] == "no-cache", "oversionerad fil måste kontrolleras mot servern")
+ok(req(client(), "/login")[1]["Cache-Control"] == "no-store", "sidor cachas aldrig")
+
 r = req(client(), "/login", {"username": "nobody", "password": "x"*12}, headers={"X-Forwarded-Proto": "https"})
 hx = req(client(), "/login", headers={"X-Forwarded-Proto": "https"})[1]
 ok("strict-transport-security" in {k.lower() for k in hx.keys()}, "HTTPS via betrodd proxy → HSTS")
