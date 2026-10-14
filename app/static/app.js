@@ -123,3 +123,38 @@ if (board) {
     }
   });
 }
+
+// Gästformulär: när OSA sätts till "Kommer" och antal saknas → fyll i antal inbjudna
+const rsvpSel = document.querySelector('select[name="rsvp"]');
+const attIn = document.querySelector('input[name="attending"]');
+const invIn = document.querySelector('input[name="invited_count"]');
+if (rsvpSel && attIn && invIn) {
+  rsvpSel.addEventListener("change", () => {
+    if (rsvpSel.value === "yes" && (!attIn.value || attIn.value === "0")) attIn.value = invIn.value || "1";
+    if (rsvpSel.value === "no") attIn.value = "0";
+  });
+}
+
+// OSA-kort: förhandsvisa texten under koden medan man skriver (textContent → aldrig HTML)
+const footerForm = document.querySelector(".footer-editor");
+if (footerForm) {
+  const input = footerForm.querySelector("[data-footer-input]");
+  const counter = footerForm.querySelector("[data-footer-count]");
+  let vars = {};
+  try { vars = JSON.parse(footerForm.dataset.vars || "{}"); } catch { vars = {}; }
+  const render = () => {
+    const tpl = input.value;
+    document.querySelectorAll(".osa-footer").forEach((el) => {
+      const v = { ...vars, namn: el.dataset.namn || "", antal: el.dataset.antal || "" };
+      const text = tpl.replace(/\{(osa_senast|namn|antal|datum|brudpar|plats)\}/g, (_, k) => v[k] ?? "");
+      el.textContent = text.trim();
+      el.hidden = !text.trim();
+    });
+    if (counter) counter.textContent = `(${input.value.length}/${input.maxLength})`;
+  };
+  input.addEventListener("input", render);
+  footerForm.querySelector("[data-footer-reset]")?.addEventListener("click", (e) => {
+    input.value = e.currentTarget.dataset.footerReset; render(); input.focus();
+  });
+  render();
+}

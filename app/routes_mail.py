@@ -17,6 +17,7 @@ from starlette.responses import RedirectResponse
 from starlette.routing import Route
 
 from . import db as dbm
+from .security import format_code
 from .core import auth, csrf_form, get_settings, log, public_base, render, safe_log, sv_date
 
 SMTP = {
@@ -53,6 +54,8 @@ def _values(s: dict, guest, base: str) -> dict:
         "datum": sv_date(s.get("wedding_date")) or "",
         "plats": s.get("venue") or "",
         "osa_senast": sv_date(s.get("rsvp_deadline")) or "så snart ni kan",
+        "kod": format_code(guest["rsvp_code"]) if guest and guest["rsvp_code"] else "ABCDE-FGH23",
+        "osa_adress": f"{base}/osa",
     }
 
 

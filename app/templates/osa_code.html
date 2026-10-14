@@ -1,0 +1,17 @@
+{% extends "guest_base.html" %}
+{% block title %}OSA · {{ settings.couple_names or "Bröllop" }}{% endblock %}
+{% block portal %}
+<div class="card narrow">
+  <h2>Svara på inbjudan</h2>
+  <p class="muted">Skriv in koden som står på ert inbjudningskort.</p>
+  {% if error %}<p class="alert error">{{ error }}</p>{% endif %}
+  <form method="post" action="/osa" autocomplete="off">
+    <label class="field"><span>Er kod</span>
+      <input name="code" class="code-input" required maxlength="20" placeholder="ABCDE-FGH23"
+             autocapitalize="characters" autocorrect="off" spellcheck="false" autofocus>
+      <small>Bokstäver och siffror – bindestreck och mellanslag spelar ingen roll.</small>
+    </label>
+    <button class="btn primary wide">Fortsätt</button>
+  </form>
+</div>
+{% endblock %}

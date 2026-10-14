@@ -4,7 +4,7 @@
 <div class="pagehead">
   <h1>{{ spec.title }} <small class="muted">{{ rows|length }}</small></h1>
   <div class="actions">
-    {% if ent == 'guests' %}<a class="btn" href="/seating">Placering</a><a class="btn" href="/mail">Utskick</a>{% endif %}
+    {% if ent == 'guests' %}<a class="btn" href="/m/guests/qr">OSA-kort med QR</a><a class="btn" href="/seating">Placering</a><a class="btn" href="/mail">Utskick</a>{% endif %}
     {% if ent == 'speeches' %}<a class="btn" href="#" data-print>Skriv ut</a>{% endif %}
     <a class="btn" href="/m/{{ ent }}/export.csv">Exportera CSV</a>
     {% if can_write %}<a class="btn primary" href="/m/{{ ent }}/new">+ Ny {{ spec.singular }}</a>{% endif %}
@@ -42,7 +42,7 @@
 
 {% if rows %}
 <div class="table-wrap">
-<table>
+<table class="responsive">
   <thead><tr>
     {% for col in spec.list %}{% set f = spec.by_name[col] %}<th class="{{ 'num' if f.type in ('money','int') }}">{{ f.label }}</th>{% endfor %}
     {% for name, label, _ in spec.computed %}<th class="num">{{ label }}</th>{% endfor %}
@@ -50,8 +50,9 @@
   <tbody>
   {% for r in rows %}
     <tr class="{{ 'done' if (ent == 'tasks' and r.done) or (ent == 'speeches' and r.status == 'Struken') }}">
-    {% for col in spec.list %}{% set f = spec.by_name[col] %}
-      <td class="{{ 'num' if f.type in ('money','int') }} {{ 'late' if f.type == 'date' and r[col] and r[col] < today and not (r.done or r.paid) }}">
+    {% for col in spec.list %}{% set f = spec.by_name[col] %}{% set shown = display(f, r[col], refs) %}
+      {% set primary = loop.first or (ent == 'tasks' and col == 'title') or (ent == 'speeches' and col == 'speaker') %}
+      <td data-label="{{ f.label }}" class="{{ 'num' if f.type in ('money','int') }} {{ 'date' if f.type in ('date','time') }} {{ 'primary' if primary and not (ent == 'tasks' and col == 'done') }} {{ 'toggle' if ent == 'tasks' and col == 'done' }} {{ 'is-empty' if not shown and not (ent == 'tasks' and col == 'done') }} {{ 'late' if f.type == 'date' and r[col] and r[col] < today and not (r.done or r.paid) }}">
       {% if ent == 'tasks' and col == 'done' %}
         {% if can_write %}
         <form method="post" action="/m/tasks/{{ r.id }}/toggle" class="inline">
@@ -69,13 +70,13 @@
       </td>
     {% endfor %}
     {% for name, label, _ in spec.computed %}
-      <td class="num">{% if ent == 'wishlist' %}<span class="pill {{ 'yes' if r.reserved >= r.quantity else ('pending' if r.reserved else '') }}">{{ r.reserved }} / {{ r.quantity }}</span>{% else %}{{ r[name] }}{% endif %}</td>
+      <td class="num" data-label="{{ label }}">{% if ent == 'wishlist' %}<span class="pill {{ 'yes' if r.reserved >= r.quantity else ('pending' if r.reserved else '') }}">{{ r.reserved }} / {{ r.quantity }}</span>{% else %}{{ r[name] }}{% endif %}</td>
     {% endfor %}
     </tr>
   {% endfor %}
   </tbody>
   {% if totals %}
-  <tfoot><tr>{% for col in spec.list %}{% set f = spec.by_name[col] %}<td class="{{ 'num' if f.type in ('money','int') }}">{% if loop.first %}Summa{% elif col in totals %}{{ kr(totals[col]) if f.type == 'money' else totals[col] }}{% endif %}</td>{% endfor %}{% for _ in spec.computed %}<td></td>{% endfor %}</tr></tfoot>
+  <tfoot><tr>{% for col in spec.list %}{% set f = spec.by_name[col] %}<td data-label="{{ f.label }}" class="{{ 'num' if f.type in ('money','int') }} {{ 'primary' if loop.first }} {{ 'is-empty' if not loop.first and col not in totals }}">{% if loop.first %}Summa{% elif col in totals %}{{ kr(totals[col]) if f.type == 'money' else totals[col] }}{% endif %}</td>{% endfor %}{% for _ in spec.computed %}<td class="is-empty"></td>{% endfor %}</tr></tfoot>
   {% endif %}
 </table>
 </div>

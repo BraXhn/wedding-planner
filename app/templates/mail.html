@@ -21,9 +21,9 @@
 {% endif %}
 
 <div class="grid">
-  <div class="card stat"><p class="eyebrow">Med e-post</p><p class="num">{{ stats.with_email }} <small>av {{ stats.total }} hushåll</small></p>{% if stats.no_email %}<p class="muted small"><a href="/m/guests">{{ stats.no_email }} saknar adress</a></p>{% endif %}</div>
-  <div class="card stat"><p class="eyebrow">Ej inbjudna</p><p class="num">{{ stats.not_invited }}</p></div>
-  <div class="card stat"><p class="eyebrow">Har inte svarat</p><p class="num">{{ stats.pending }}</p></div>
+  <div class="card stat"><p class="eyebrow">Med e-post</p><p class="bignum">{{ stats.with_email }} <small>av {{ stats.total }} hushåll</small></p>{% if stats.no_email %}<p class="muted small"><a href="/m/guests">{{ stats.no_email }} saknar adress</a></p>{% endif %}</div>
+  <div class="card stat"><p class="eyebrow">Ej inbjudna</p><p class="bignum">{{ stats.not_invited }}</p></div>
+  <div class="card stat"><p class="eyebrow">Har inte svarat</p><p class="bignum">{{ stats.pending }}</p></div>
 </div>
 
 {% if can_write and configured %}
@@ -69,13 +69,13 @@
 {% if mlog %}
 <section class="card flush">
   <div class="table-wrap">
-  <table>
+  <table class="responsive">
     <thead><tr><th>Tid (UTC)</th><th>Typ</th><th>Mottagare</th><th>Status</th></tr></thead>
     <tbody>
     {% for m in mlog %}
-      <tr><td>{{ m.created_at }}</td><td>{{ {'invite': 'Inbjudan', 'reminder': 'Påminnelse', 'test': 'Test'}.get(m.kind, m.kind) }}</td>
-        <td>{{ m.name or m.recipient or '–' }}</td>
-        <td>{% if m.ok %}<span class="pill yes">Skickat</span>{% else %}<span class="pill no">Fel</span> <small class="muted">{{ m.error }}</small>{% endif %}</td></tr>
+      <tr><td class="primary" data-label="Tid (UTC)">{{ m.created_at }}</td><td data-label="Typ">{{ {'invite': 'Inbjudan', 'reminder': 'Påminnelse', 'test': 'Test'}.get(m.kind, m.kind) }}</td>
+        <td data-label="Mottagare">{{ m.name or m.recipient or '–' }}</td>
+        <td data-label="Status">{% if m.ok %}<span class="pill yes">Skickat</span>{% else %}<span class="pill no">Fel</span> <small class="muted">{{ m.error }}</small>{% endif %}</td></tr>
     {% endfor %}
     </tbody>
   </table>

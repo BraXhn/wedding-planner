@@ -5,13 +5,13 @@
 {% if error %}<p class="alert error">{{ error }}</p>{% endif %}
 {% if ok %}<p class="alert ok">{{ ok }}</p>{% endif %}
 <div class="table-wrap card flush">
-<table>
+<table class="responsive">
   <thead><tr><th>Användare</th><th>Roll</th><th>2FA</th><th>Skapad</th><th></th></tr></thead>
   <tbody>
   {% for u in users %}
   <tr>
-    <td>{{ u.username }}</td><td>{{ dict(roles)[u.role] }}</td><td>{{ '✓' if u.has_totp else '–' }}</td><td>{{ u.created_at[:10] }}</td>
-    <td>{% if u.id != user.user_id %}
+    <td class="primary" data-label="Användare">{{ u.username }}</td><td data-label="Roll">{{ dict(roles)[u.role] }}</td><td data-label="2FA">{{ '✓' if u.has_totp else '–' }}</td><td data-label="Skapad">{{ u.created_at[:10] }}</td>
+    <td class="actions-cell" data-label="">{% if u.id != user.user_id %}
       <form method="post" action="/users/{{ u.id }}/delete" class="inline" data-confirm="Ta bort {{ u.username }}?">
         <input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike danger-text">Ta bort</button>
       </form>{% endif %}</td>

@@ -25,7 +25,9 @@ start_server() {
 }
 
 status=0
-echo "== Grundtester =="; start_server
+echo "== Enhetstester =="
+python tests/test_units.py || status=1
+echo; echo "== Grundtester =="; start_server
 python tests/test_basic.py "$WORK/server.log" || status=1
 echo; echo "== Funktionstester =="; start_server
 python tests/test_features.py "$WORK/server.log" "$WORK" || status=1

@@ -266,3 +266,21 @@ class QrCode:
 
 def qr_svg(text: str, ecl: str = "M") -> str:
     return QrCode(text, ecl).svg()
+
+
+def qr_png(text: str, ecl: str = "M", scale: int = 16, border: int = 4) -> bytes:
+    """PNG i hög upplösning för tryck (t.ex. 16 px per modul ≈ 600+ px)."""
+    import io
+    from PIL import Image
+    q = QrCode(text, ecl)
+    n = q.size + border * 2
+    img = Image.new("1", (n, n), 1)
+    px = img.load()
+    for y in range(q.size):
+        for x in range(q.size):
+            if q.mod[y][x]:
+                px[x + border, y + border] = 0
+    img = img.resize((n * scale, n * scale), Image.Resampling.NEAREST)
+    buf = io.BytesIO()
+    img.save(buf, "PNG", optimize=True, dpi=(300, 300))
+    return buf.getvalue()

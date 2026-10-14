@@ -121,6 +121,11 @@ def init_db() -> None:
             wanted.update(spec.get("extra_columns", {}))
             _add_missing_columns(c, table, wanted)
         c.execute("CREATE UNIQUE INDEX IF NOT EXISTS guests_token ON guests(rsvp_token)")
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS guests_code ON guests(rsvp_code)")
+        from .security import new_code, new_token
+        for g in c.execute("SELECT id, rsvp_token, rsvp_code FROM guests WHERE rsvp_code IS NULL OR rsvp_token IS NULL").fetchall():
+            c.execute("UPDATE guests SET rsvp_code = COALESCE(rsvp_code, ?), rsvp_token = COALESCE(rsvp_token, ?) WHERE id = ?",
+                      (new_code(), new_token(24), g["id"]))
         c.execute("CREATE INDEX IF NOT EXISTS guests_table ON guests(table_id)")
 
         # migrering: gamla fritextfältet "Bord" → riktiga bord
@@ -129,6 +134,10 @@ def init_db() -> None:
             t = c.execute("SELECT id FROM tables WHERE name = ?", (name,)).fetchone()
             tid = t["id"] if t else c.execute("INSERT INTO tables (name, seats, shape, sort_no) VALUES (?, 8, 'Runt', 0)", (name,)).lastrowid
             c.execute("UPDATE guests SET table_id = ?, table_no = NULL WHERE table_no = ?", (tid, name))
+
+        # "Kommer" utan antal betyder att hela hushållet kommer
+        c.execute("UPDATE guests SET attending = COALESCE(invited_count, 1) "
+                  "WHERE rsvp = 'yes' AND COALESCE(attending, 0) = 0")
 
         if not c.execute("SELECT 1 FROM settings WHERE key='seeded'").fetchone():
             c.executemany(

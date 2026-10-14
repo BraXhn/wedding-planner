@@ -53,7 +53,8 @@ ENTITIES = {
             F("group_name", "Grupp", help="t.ex. Familj, Vänner, Kollegor"),
             F("invited_count", "Antal inbjudna", "int", default=1, min=1, max=20),
             F("rsvp", "OSA", "select", options=RSVP_OPTIONS, default="pending"),
-            F("attending", "Antal som kommer", "int", default=0, min=0, max=20),
+            F("attending", "Antal som kommer", "int", default=0, min=0, max=20,
+              help="Lämnas tomt vid ”Kommer” → alla inbjudna räknas"),
             F("diet", "Specialkost/allergier", "textarea"),
             F("speech", "Vill hålla tal", "bool"),
             F("song", "Låtönskemål"),
@@ -65,7 +66,7 @@ ENTITIES = {
         "search": ["name", "email", "group_name", "diet"],
         "sum": ["invited_count", "attending"],
         "filters": [("", "Alla"), ("pending", "Väntar"), ("yes", "Kommer"), ("no", "Kommer inte")],
-        "extra_columns": {"rsvp_token": "TEXT", "rsvp_at": "TEXT", "invite_sent_at": "TEXT",
+        "extra_columns": {"rsvp_token": "TEXT", "rsvp_code": "TEXT", "rsvp_at": "TEXT", "invite_sent_at": "TEXT",
                           "reminder_sent_at": "TEXT", "table_no": "TEXT"},
     },
     "tables": {
@@ -210,6 +211,7 @@ SETTINGS_DEFAULTS = {
     "gallery_public": "0",
     "photo_moderation": "0",
     "photo_quota_mb": "5000",
+    "osa_card_footer": "Svara senast {osa_senast}",
 }
 
 SETTINGS_FIELDS = [
@@ -232,9 +234,12 @@ SETTINGS_FIELDS = [
     F("gallery_public", "Gäster får se alla uppladdade bilder", "bool"),
     F("photo_moderation", "Granska bilder innan de visas för gäster", "bool"),
     F("photo_quota_mb", "Max lagring för bilder (MB)", "int", min=100, max=200_000),
+    S("OSA-kort"),
+    F("osa_card_footer", "Text under koden på OSA-korten", "textarea",
+      help="Platshållare: {osa_senast} {namn} {antal} {datum} {brudpar} {plats}. Redigera gärna direkt på sidan OSA-kort med förhandsvisning."),
     S("E-postmallar"),
     F("invite_subject", "Ämne – inbjudan"),
-    F("invite_body", "Text – inbjudan", "textarea", help="Platshållare: {namn} {länk} {brudpar} {datum} {plats} {osa_senast}"),
+    F("invite_body", "Text – inbjudan", "textarea", help="Platshållare: {namn} {länk} {kod} {osa_adress} {brudpar} {datum} {plats} {osa_senast}"),
     F("reminder_subject", "Ämne – påminnelse"),
     F("reminder_body", "Text – påminnelse", "textarea"),
 ]
