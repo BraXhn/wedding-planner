@@ -248,5 +248,10 @@ DATA_DIR=./data uvicorn app.main:app --reload --port 8080
 ```
 Pull requests testas automatiskt. En release görs med en tagg: `git tag v1.1.0 && git push --tags`. Den ger imagetaggarna `1.1.0` och `1.1`.
 
+### Med Claude Code
+Repot är förberett för [Claude Code](https://code.claude.com/docs/en/overview). `CLAUDE.md` beskriver arkitekturen, säkerhetsreglerna och arbetsflödet, och `.claude/settings.json` installerar beroendena automatiskt i molnsessioner.
+- **I webbläsaren eller mobilen:** öppna [claude.ai/code](https://claude.ai/code) och välj repot `BraXhn/wedding-planner`. Sessionen klonar repot, skapar en gren och kan öppna en pull request.
+- **I terminalen:** `git clone https://github.com/BraXhn/wedding-planner && cd wedding-planner && claude`.
+
 ## Licens
 MIT

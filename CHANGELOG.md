@@ -1,5 +1,8 @@
 # Ändringslogg
 
+## Ej släppt
+- Repot är förberett för Claude Code: `CLAUDE.md` med arkitektur, säkerhetsregler och arbetsflöde, och `.claude/settings.json` som installerar beroenden i molnsessioner.
+
 ## 1.2.1 – 2026-10-14
 - Rättat: efter en uppdatering kunde webbläsaren eller Cloudflare fortsätta visa den gamla stilmallen i upp till en timme. Sidan såg då trasig ut, med bland annat en synlig kryssruta vid "Meny". Stilmall, skript och ikon länkas nu med en hash av innehållet (`style.css?v=…`), så adressen byts när filen ändras. Versionerade filer cachas länge, och oversionerade kontrolleras alltid mot servern.
 
