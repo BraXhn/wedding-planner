@@ -7,3 +7,5 @@ unraid
 data/
 *.md
 docker-compose.yml
+.claude
+CLAUDE.md

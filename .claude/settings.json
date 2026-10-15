@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash tests/run.sh)",
+      "Bash(python tests/test_units.py)",
+      "Bash(pip install -r requirements.txt)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/install-deps.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
