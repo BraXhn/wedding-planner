@@ -1,6 +1,12 @@
 # Ändringslogg
 
 ## Ej släppt
+- **Säkerhet:** en aktiv tvåstegsverifiering kan inte längre bytas ut utan att först stängas av med lösenord. Andra inloggade sessioner loggas ut när den aktiveras. Kontroll av nuvarande lösenord (byte av lösenord, avstängning av 2FA) räknas mot samma spärr som inloggningen.
+- Rättat: flera fall som gav "Internt fel" (500) i stället för ett begripligt svar: TOTP-kod eller formulärtoken med icke-ASCII-tecken, belopp som `inf` eller `1e400`, datum som år 1, orimligt stora id i adresser, placering och önskelista, konstiga värden i `?ok=` på bildsidorna, och nedladdning av QR-kod för gäster med namn som Łukasz.
+- Rättat: "Antal som kommer" kan inte längre vara större än "Antal inbjudna".
+- Rättat: ett utskick där SMTP-anslutningen misslyckades visades som lyckat med "0 skickade, 0 misslyckade". Nu räknas de mottagare som inte nåddes som misslyckade.
+- Rättat: obetalda räkningar på översikten visade budgeterat belopp när det faktiska beloppet var 0 kr.
+- Rättat: en gäst kunde ange ett annat uppladdarnamn än sitt eget på bilder. Gruppnamnet i CSV:n för OSA-korten skyddas nu mot formelinjektion i Excel.
 - Repot är förberett för Claude Code: `CLAUDE.md` med arkitektur, säkerhetsregler och arbetsflöde, och `.claude/settings.json` som installerar beroenden i molnsessioner.
 
 ## 1.2.1 – 2026-10-14

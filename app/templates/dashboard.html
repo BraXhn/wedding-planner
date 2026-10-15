@@ -77,7 +77,7 @@
     <h2>Obetalda räkningar</h2>
     {% if bills %}
     <ul class="plain">
-      {% for x in bills %}<li><a href="/m/budget/{{ x.id }}">{{ x.item }}</a> <span class="tag {{ 'late' if x.due_date < today }}">{{ sv_date(x.due_date, short=true) }}</span> <span class="right">{{ kr(x.actual or x.estimated) }}</span></li>{% endfor %}
+      {% for x in bills %}<li><a href="/m/budget/{{ x.id }}">{{ x.item }}</a> <span class="tag {{ 'late' if x.due_date < today }}">{{ sv_date(x.due_date, short=true) }}</span> <span class="right">{{ kr(x.actual if x.actual is not none else x.estimated) }}</span></li>{% endfor %}
     </ul>
     {% else %}<p class="muted">Inga obetalda poster med förfallodatum.</p>{% endif %}
   </section>

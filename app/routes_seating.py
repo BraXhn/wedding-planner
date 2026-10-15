@@ -46,7 +46,9 @@ async def seating_assign(request: Request):
         guest_id = int(data["guest_id"])
         table_id = data.get("table_id")
         table_id = int(table_id) if table_id not in (None, "", 0, "0") else None
-    except (ValueError, KeyError, TypeError):
+        if not 0 < guest_id < 2**63 or not (table_id is None or 0 < table_id < 2**63):
+            raise ValueError
+    except (ValueError, KeyError, TypeError, OverflowError):
         raise HTTPException(400)
     with dbm.db() as c:
         if not c.execute("SELECT 1 FROM guests WHERE id = ?", (guest_id,)).fetchone():

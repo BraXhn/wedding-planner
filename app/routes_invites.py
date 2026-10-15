@@ -5,6 +5,7 @@ manuellt på /osa av den som inte kan skanna. Koden roteras med "Skapa ny länk"
 import csv
 import io
 import re
+import unicodedata
 import zipfile
 
 from markupsafe import Markup
@@ -15,6 +16,7 @@ from starlette.routing import Route
 
 from . import db as dbm
 from .core import auth, csrf_form, get_settings, log, parse_date, public_base, render, set_settings, sv_date, today
+from .routes_crud import csv_cell
 from .routes_mail import fill
 from .qr import qr_png, qr_svg
 from .security import format_code
@@ -35,8 +37,14 @@ def _guests(scope: str):
                          "ORDER BY group_name COLLATE NOCASE, name COLLATE NOCASE").fetchall()
 
 
+_NO_DECOMPOSE = str.maketrans({"Ł": "L", "ł": "l", "Ø": "O", "ø": "o", "Đ": "D", "đ": "d", "ß": "ss",
+                               "Æ": "AE", "æ": "ae", "Œ": "OE", "œ": "oe", "Þ": "Th", "þ": "th"})
+
+
 def _safe_filename(i: int, name: str) -> str:
-    base = re.sub(r"[^\w]+", "_", name, flags=re.UNICODE).strip("_")[:40] or "gast"
+    # bara ASCII: filnamnet hamnar i Content-Disposition, som måste vara latin-1 (Ł, ć … gav 500)
+    ascii_name = unicodedata.normalize("NFKD", name.translate(_NO_DECOMPOSE)).encode("ascii", "ignore").decode()
+    base = re.sub(r"[^A-Za-z0-9]+", "_", ascii_name).strip("_")[:40] or "gast"
     return f"{i:03d}_{base}"
 
 
@@ -94,9 +102,7 @@ async def qr_zip(request: Request):
             url = code_url(request, g["rsvp_code"])
             z.writestr(f"png/{fn}.png", qr_png(url, "M"))
             z.writestr(f"svg/{fn}.svg", qr_svg(url, "M"))
-            name = g["name"]
-            safe_name = "'" + name if name[:1] in ("=", "+", "-", "@") else name  # formelinjektion
-            w.writerow([safe_name, g["invited_count"], g["group_name"] or "", format_code(g["rsvp_code"]), url,
+            w.writerow([csv_cell(g["name"]), g["invited_count"], csv_cell(g["group_name"]), format_code(g["rsvp_code"]), url,
                         f"{host}/osa", f"png/{fn}.png"])
         z.writestr("gaster.csv", "﻿" + rows.getvalue())
         z.writestr("LASMIG.txt",
@@ -129,5 +135,5 @@ async def qr_single(request: Request):
 routes = [
     Route("/m/guests/qr", qr_sheet, methods=["GET", "POST"]),
     Route("/m/guests/qr.zip", qr_zip),
-    Route("/m/guests/{item_id:int}/qr.{fmt}", qr_single),
+    Route("/m/guests/{item_id:id}/qr.{fmt}", qr_single),
 ]

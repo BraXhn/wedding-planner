@@ -74,7 +74,7 @@ async def handle_upload(request: Request, guest=None) -> tuple[int, list[str]]:
     if not flag(s, "photos_enabled"):
         raise HTTPException(403, "Bilduppladdning är avstängd.")
     form = await request.form(max_files=20, max_fields=10, max_part_size=16 * 1024)
-    uploader = re.sub(r"[\r\n\t]", " ", str(form.get("name", "") or (guest["name"] if guest else "")))[:60].strip()
+    uploader = re.sub(r"[\r\n\t]", " ", str(guest["name"] if guest else form.get("name", "")))[:60].strip()
     files = [f for f in form.getlist("photos") if isinstance(f, UploadFile)]
     quota = int(s.get("photo_quota_mb") or 5000) * 1024 * 1024
     ip = client_ip(request)
@@ -111,6 +111,12 @@ async def handle_upload(request: Request, guest=None) -> tuple[int, list[str]]:
     if saved:
         log.info("photos_uploaded n=%s ip=%s guest=%s", saved, ip, guest["id"] if guest else "-")
     return saved, sorted(set(errors))
+
+
+def saved_count(request: Request) -> int:
+    """Antal sparade bilder från ?ok= efter redirect; ogiltigt värde → 0."""
+    ok = request.query_params.get("ok", "")
+    return int(ok) if re.fullmatch(r"[0-9]{1,3}", ok) else 0
 
 
 def visible_photos(limit: int = 500):
@@ -162,10 +168,9 @@ async def public_upload(request: Request):
         saved, errors = await handle_upload(request)
         if saved and not errors:
             return RedirectResponse(f"/p/{request.path_params['token']}?ok={saved}", 303)
-    ok = request.query_params.get("ok", "")
     return render(request, "photos_public.html", settings=s, base=f"/p/{request.path_params['token']}",
                   guest=None, wedding_date=parse_date(s.get("wedding_date")),
-                  saved=saved or (int(ok) if ok.isdigit() else 0), errors=errors, programme=_public_programme(),
+                  saved=saved or saved_count(request), errors=errors, programme=_public_programme(),
                   photos=visible_photos() if flag(s, "gallery_public") else [], max_mb=MAX_UPLOAD_MB)
 
 
@@ -265,7 +270,7 @@ routes = [
     Route("/p/{token}/img/{file}", public_img),
     Route("/photos", admin_photos),
     Route("/photos/img/{file}", admin_img),
-    Route("/photos/{photo_id:int}", admin_photo_action, methods=["POST"]),
+    Route("/photos/{photo_id:id}", admin_photo_action, methods=["POST"]),
     Route("/photos/bulk", admin_bulk, methods=["POST"]),
     Route("/photos/all.zip", admin_zip),
     Route("/photos/cards", table_cards),

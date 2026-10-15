@@ -119,6 +119,8 @@ def _run_job(kind: str, guests, base: str, actor: str) -> None:
             time.sleep(DELAY)
     except (smtplib.SMTPException, OSError) as e:
         log.error("mail_job_failed kind=%s error=%s", kind, type(e).__name__)
+        with _job_lock:  # resten nåddes aldrig – annars visas "0 skickade, 0 misslyckade" som lyckat
+            _job["failed"] = _job["total"] - _job["sent"]
         with dbm.db() as c:
             c.execute("INSERT INTO mail_log (kind, ok, error) VALUES (?, 0, ?)", (kind, f"Anslutning: {type(e).__name__}: {e}"[:300]))
     finally:
