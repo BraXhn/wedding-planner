@@ -83,6 +83,9 @@ ok(r[0] == 403, "placering utan CSRF-header nekas")
 r = req(a, "/seating/assign", raw=b"guest_id=1&table_id=1", headers={"Content-Type": "application/x-www-form-urlencoded", "X-CSRF-Token": c})
 ok(r[0] == 415, "placering måste vara JSON")
 r = req(a, "/seating/assign", raw=json.dumps({"guest_id": gB[0], "table_id": 9999}).encode(), headers=J); ok(r[0] == 404, "okänt bord 404")
+ok(req(a, "/seating/assign", raw=b'{"guest_id": 1e400}', headers=J)[0] == 400
+   and req(a, "/seating/assign", raw=json.dumps({"guest_id": 10**20}).encode(), headers=J)[0] == 400, "orimligt stort id i placering → 400")
+ok(req(a, "/m/guests/99999999999999999999")[0] == 404, "orimligt stort id i adressen → 404")
 req(a, "/seating/assign", raw=json.dumps({"guest_id": gB[0], "table_id": t1}).encode(), headers=J)
 r = req(a, "/seating"); h = html(r)
 ok("4</b>/4" in h or "<b data-used>4</b>/4" in h, "kapacitet räknas (3+1 av 4)")
@@ -117,6 +120,7 @@ ok(q("SELECT COUNT(*) FROM gift_reservations")[0][0] == 1, "gäst B kan inte sl�
 h = html(req(a, "/m/wishlist")); ok("1 / 1" in h and "Andersson" not in h, "brudparet ser antal men inte vem")
 req(p, f"/r/{gA[1]}/gifts", {"gift_id": gift, "action": "release"})
 ok(q("SELECT COUNT(*) FROM gift_reservations")[0][0] == 0, "gäst A ångrar")
+ok(req(client(), f"/r/{gB[1]}/gifts", {"gift_id": "9" * 25, "action": "reserve"})[0] == 400, "orimligt stort present-id → 400")
 ok('rel="noopener noreferrer nofollow"' in html(req(p, f"/r/{gA[1]}/gifts")), "externa länkar med noopener")
 
 # ---------------------------------------------------------------- kalenderprenumeration
@@ -149,9 +153,13 @@ ok(req(client(), f"/p/{'x'*24}")[0] == 404, "fel uppladdningstoken 404")
 ok(req(client(), f"/p/{ptok}/img/{f['file']}")[0] == 404, "galleri avstängt → bilder ej publika")
 ok(req(a, f"/photos/img/{f['file']}")[0] == 200, "admin ser bilden")
 ok(req(a, "/photos/img/..%2Fwedding.db")[0] == 404 and req(a, "/photos/img/../wedding.db")[0] == 404, "path traversal på bilder")
-body, hd = multipart({}, [("photos", ("p.jpg", raw, "image/jpeg"))])
+body, hd = multipart({"name": "Någon annan"}, [("photos", ("p.jpg", raw, "image/jpeg"))])
 r = req(p, f"/r/{gA[1]}/photos", raw=body, headers=hd)
-ok(q("SELECT guest_id FROM photos ORDER BY id DESC LIMIT 1")[0][0] == gA[0], "uppladdning via gästportal kopplas till gästen")
+last = q("SELECT guest_id, uploader FROM photos ORDER BY id DESC LIMIT 1")[0]
+ok(last[0] == gA[0], "uppladdning via gästportal kopplas till gästen")
+ok(last[1] == "Familjen Andersson", "gäst kan inte ange annat uppladdarnamn")
+ok(req(client(), f"/r/{gA[1]}/photos?ok=%C2%B2")[0] == 200 and req(client(), f"/p/{ptok}?ok=" + "9" * 5000)[0] == 200,
+   "konstigt ?ok= ger ingen krasch")
 s2 = html(req(a, "/settings"))
 form = {"csrf": c, "couple_names": "Anna & Erik", "wedding_date": "2027-06-12", "wedding_time": "14:00", "venue": "Ulriksdals slott",
         "rsvp_deadline": "2027-04-01", "photos_enabled": "on", "gallery_public": "on", "photo_moderation": "on", "photo_quota_mb": "500",
@@ -231,6 +239,11 @@ r = req(a, "/account/totp/start", {"csrf": c}); h = html(r)
 ok("<svg" in h and "otpauth" not in h.split("<details")[0][:0] , "2FA-QR visas")
 sec = re.search(r'<code class="secret">([A-Z2-7 ]+)</code>', h).group(1).replace(" ", "")
 r = req(a, "/account/totp/confirm", {"csrf": c, "code": totp_now(sec)}); ok("aktiverad" in html(r), "2FA aktiveras via QR-nyckel")
+ok(req(a, "/account/totp/start", {"csrf": c})[0] == 400 and req(a, "/account/totp/confirm", {"csrf": c, "code": "123456"})[0] == 400,
+   "aktiv 2FA kan inte bytas utan att först stängas av")
+r = req(client(), "/login", {"username": "testadmin", "password": NEW, "code": "１２３４５６"})
+ok(r[0] == 401, "TOTP-kod med helbreddssiffror → 401, inte 500")
+ok(req(a, "/m/guests/new", {"csrf": "å", "name": "x"})[0] == 403, "CSRF-token med icke-ASCII → 403, inte 500")
 hd = req(client(), "/login")[1]
 ok("'unsafe-inline'" not in hd["Content-Security-Policy"], "CSP utan unsafe-inline")
 # ---------------------------------------------------------------- "Kommer" utan antal
@@ -239,6 +252,8 @@ ok(q("SELECT attending FROM guests WHERE name='Familjen Ek'")[0][0] == 4, "Komme
 ek = q("SELECT id FROM guests WHERE name='Familjen Ek'")[0][0]
 req(a, f"/m/guests/{ek}", {"csrf": c, "name": "Familjen Ek", "invited_count": 4, "rsvp": "yes", "attending": "3", "side": "Gemensam"})
 ok(q("SELECT attending FROM guests WHERE id=?", ek)[0][0] == 3, "angivet antal respekteras")
+r = req(a, f"/m/guests/{ek}", {"csrf": c, "name": "Familjen Ek", "invited_count": 4, "rsvp": "yes", "attending": "5", "side": "Gemensam"})
+ok(r[0] == 400 and q("SELECT attending FROM guests WHERE id=?", ek)[0][0] == 3, "fler som kommer än inbjudna nekas")
 req(a, f"/m/guests/{ek}", {"csrf": c, "name": "Familjen Ek", "invited_count": 4, "rsvp": "no", "attending": "3", "side": "Gemensam"})
 ok(q("SELECT attending FROM guests WHERE id=?", ek)[0][0] == 0, "Kommer inte → 0")
 
@@ -280,6 +295,9 @@ ok(z.read([n for n in names if n.startswith("png/")][0])[:8] == b"\x89PNG\r\n\x1
 ok(fmt.upper() in z.read("gaster.csv").decode("utf-8-sig"), "CSV för koppling innehåller koden")
 r = req(a, f"/m/guests/{g['id']}/qr.png"); ok(r[0] == 200 and r[1]["Content-Type"] == "image/png", "QR per gäst som PNG")
 ok(req(a, f"/m/guests/{g['id']}/qr.exe")[0] == 404, "okänt format 404")
+gL = add_guest("Łukasz & Zoë")
+r = req(a, f"/m/guests/{gL[0]}/qr.svg")
+ok(r[0] == 200 and "Lukasz_Zoe" in r[1]["Content-Disposition"], "QR-filnamn för namn utanför latin-1")
 ok("OSA-kod" in req(a, "/m/guests/export.csv")[2].decode("utf-8-sig"), "CSV-export har OSA-kod")
 ok(fmt.upper() in html(req(a, f"/m/guests/{g['id']}")), "gästsidan visar kod och QR")
 ok(req(client(), "/m/guests/qr", follow=False)[0] == 303 and req(client(), "/m/guests/qr.zip", follow=False)[0] == 303, "OSA-kort kräver inloggning")

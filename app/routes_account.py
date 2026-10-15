@@ -82,14 +82,27 @@ async def account(request: Request):
     return render(request, "account.html", user, active="account")
 
 
+def _current_pw_ok(user: dict, pw_hash: str, password: str) -> bool:
+    """Kontroll av nuvarande lösenord i inloggat läge – räknas mot samma gräns som inloggningen,
+    så en kapad session inte kan gissa lösenordet obegränsat."""
+    ukey = "u:" + user["username"].lower()
+    if LOGIN_USER.blocked(ukey):
+        return False
+    if not verify_pw(pw_hash, password):
+        LOGIN_USER.hit(ukey)
+        log.warning("current_pw_failed user=%s", user["username"])
+        return False
+    return True
+
+
 async def account_password(request: Request):
     user = auth(request)
     form = await csrf_form(request, user)
     current, new, new2 = (str(form.get(k, ""))[:256] for k in ("current", "new", "new2"))
     with dbm.db() as c:
         u = c.execute("SELECT * FROM users WHERE id = ?", (user["user_id"],)).fetchone()
-        if not verify_pw(u["pw_hash"], current):
-            err = "Nuvarande lösenord är fel."
+        if not _current_pw_ok(user, u["pw_hash"], current):
+            err = "Nuvarande lösenord är fel, eller för många försök – vänta 15 minuter."
         elif new != new2:
             err = "De nya lösenorden matchar inte."
         elif new == current:
@@ -106,6 +119,8 @@ async def account_password(request: Request):
 
 async def totp_start(request: Request):
     user = auth(request)
+    if user["has_totp"]:  # byte kräver att den stängs av först, med lösenord
+        raise HTTPException(400, "Tvåstegsverifiering är redan aktiverad.")
     await csrf_form(request, user)
     secret = new_totp_secret()
     with dbm.db() as c:
@@ -118,6 +133,8 @@ async def totp_start(request: Request):
 
 async def totp_confirm(request: Request):
     user = auth(request)
+    if user["has_totp"]:  # byte kräver att den stängs av först, med lösenord
+        raise HTTPException(400, "Tvåstegsverifiering är redan aktiverad.")
     form = await csrf_form(request, user)
     secret = user.get("totp_pending")
     step = verify_totp(secret, str(form.get("code", "")), None) if secret else None
@@ -127,6 +144,7 @@ async def totp_confirm(request: Request):
     with dbm.db() as c:
         c.execute("UPDATE users SET totp_secret = ?, totp_last_step = ? WHERE id = ?", (secret, step, user["user_id"]))
         c.execute("UPDATE sessions SET totp_pending = NULL WHERE token_hash = ?", (user["token_hash"],))
+        c.execute("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", (user["user_id"], user["token_hash"]))
     log.info("totp_enabled user=%s", user["username"])
     return render(request, "account.html", auth(request), active="account", totp_ok="Tvåstegsverifiering är aktiverad.")
 
@@ -136,8 +154,9 @@ async def totp_disable(request: Request):
     form = await csrf_form(request, user)
     with dbm.db() as c:
         u = c.execute("SELECT pw_hash FROM users WHERE id = ?", (user["user_id"],)).fetchone()
-        if not verify_pw(u["pw_hash"], str(form.get("password", ""))[:256]):
-            return render(request, "account.html", user, status=400, active="account", totp_error="Fel lösenord.")
+        if not _current_pw_ok(user, u["pw_hash"], str(form.get("password", ""))[:256]):
+            return render(request, "account.html", user, status=400, active="account",
+                          totp_error="Fel lösenord, eller för många försök – vänta 15 minuter.")
         c.execute("UPDATE users SET totp_secret = NULL, totp_last_step = NULL WHERE id = ?", (user["user_id"],))
     log.info("totp_disabled user=%s", user["username"])
     return render(request, "account.html", auth(request), active="account", totp_ok="Tvåstegsverifiering är avstängd.")
@@ -236,5 +255,5 @@ routes = [
     Route("/account/totp/disable", totp_disable, methods=["POST"]),
     Route("/account/ics", ics_token, methods=["POST"]),
     Route("/users", users_view, methods=["GET", "POST"]),
-    Route("/users/{user_id:int}/delete", user_delete, methods=["POST"]),
+    Route("/users/{user_id:id}/delete", user_delete, methods=["POST"]),
 ]

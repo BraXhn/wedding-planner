@@ -1,4 +1,6 @@
 """Gästportalen. Allt nås via gästens personliga, ogissbara token – inga konton för gäster."""
+import re
+
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
@@ -10,7 +12,7 @@ from .core import (
     sync_speech_from_guest, today,
 )
 from .security import RateLimiter, normalize_code
-from .routes_photos import handle_upload, serve_photo, visible_photos
+from .routes_photos import handle_upload, saved_count, serve_photo, visible_photos
 
 
 def guest_by_token(request: Request):
@@ -143,10 +145,10 @@ async def gifts(request: Request):
     error = None
     if request.method == "POST":
         form = await read_form(request)
-        try:
-            gift_id = int(form.get("gift_id", ""))
-        except ValueError:
+        raw_id = form.get("gift_id", "")
+        if not re.fullmatch(r"[0-9]{1,9}", raw_id):
             raise HTTPException(400)
+        gift_id = int(raw_id)
         action = form.get("action")
         with dbm.db() as c:
             c.execute("BEGIN IMMEDIATE")  # lås så två gäster inte kan ta sista exemplaret samtidigt
@@ -184,8 +186,7 @@ async def photos(request: Request):
         saved, errors = await handle_upload(request, guest=g)
         if saved and not errors:
             return RedirectResponse(f"/r/{g['rsvp_token']}/photos?ok={saved}", 303)
-    ok = request.query_params.get("ok", "")
-    return render(request, "photos_public.html", saved=saved or (int(ok) if ok.isdigit() else 0), errors=errors,
+    return render(request, "photos_public.html", saved=saved or saved_count(request), errors=errors,
                   photos=visible_photos() if flag(ctx["settings"], "gallery_public") else [], max_mb=MAX_UPLOAD_MB, **ctx)
 
 

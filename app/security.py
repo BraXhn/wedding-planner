@@ -122,7 +122,7 @@ def verify_totp(secret: str, code: str, last_step: int | None) -> int | None:
     """Returnerar tidssteget om koden är giltig (±30 s) och inte redan använd, annars None.
     Att spara steget förhindrar att samma kod återanvänds (replay)."""
     code = re.sub(r"\s", "", code or "")
-    if not re.fullmatch(r"\d{6}", code):
+    if not re.fullmatch(r"[0-9]{6}", code):  # \d matchar även ١٢٣ → TypeError i compare_digest
         return None
     now_step = int(time.time() // 30)
     for step in (now_step - 1, now_step, now_step + 1):

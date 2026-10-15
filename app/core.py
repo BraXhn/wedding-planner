@@ -11,12 +11,27 @@ from pathlib import Path
 
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
+from starlette.convertors import Convertor, register_url_convertor
 from starlette.responses import Response
 from starlette.templating import Jinja2Templates
 
 from . import db as dbm
 from .entities import ENTITIES, SETTINGS_DEFAULTS
 from .security import RateLimiter, new_token, token_hash
+
+
+class IdConvertor(Convertor):
+    """Som {x:int} men max 18 siffror – större tal får SQLite att kasta OverflowError (500)."""
+    regex = "[0-9]{1,18}"
+
+    def convert(self, value: str) -> int:
+        return int(value)
+
+    def to_string(self, value: int) -> str:
+        return str(int(value))
+
+
+register_url_convertor("id", IdConvertor())  # måste ske innan routes_*-modulerna bygger sina Route
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("wedding")
@@ -224,14 +239,17 @@ def parse_form(fields: list, form, refs: dict | None = None) -> tuple[dict, list
                     raise ValueError(f"ska vara mellan {f.get('min', 0)} och {f.get('max', 100_000)}")
                 vals[name] = n
             elif t == "money":
-                n = round(float(raw.replace(" ", "").replace(" ", "").replace("kr", "").replace(",", ".")))
-                if not 0 <= n <= 1_000_000_000:
+                x = float(raw.replace(" ", "").replace(" ", "").replace("kr", "").replace(",", "."))
+                if not 0 <= x <= 1_000_000_000:  # stoppar även inf och nan
                     raise ValueError("orimligt belopp")
-                vals[name] = n
+                vals[name] = round(x)
             elif t == "date":
-                vals[name] = dt.date.fromisoformat(raw).isoformat()
+                d = dt.date.fromisoformat(raw)
+                if not 1900 <= d.year <= 2100:  # annars kraschar deadline-beräkningen (år 0 / 10000)
+                    raise ValueError("orimligt datum")
+                vals[name] = d.isoformat()
             elif t == "time":
-                if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", raw):
+                if not re.fullmatch(r"([01][0-9]|2[0-3]):[0-5][0-9]", raw):
                     raise ValueError("ange tid som HH:MM")
                 vals[name] = raw
             elif t == "select":
@@ -294,7 +312,7 @@ def _csrf_fail(request: Request, user: dict):
 
 async def csrf_form(request: Request, user: dict, form=None):
     form = form if form is not None else await read_form(request)
-    if not hmac.compare_digest(str(form.get("csrf", "")), user["csrf"]):
+    if not hmac.compare_digest(str(form.get("csrf", "")).encode(), user["csrf"].encode()):
         _csrf_fail(request, user)
     return form
 
@@ -303,7 +321,7 @@ def csrf_header(request: Request, user: dict) -> None:
     """För fetch()-anrop: token i header + krav på JSON (kan inte skickas av ett vanligt formulär)."""
     if not request.headers.get("content-type", "").startswith("application/json"):
         raise HTTPException(415)
-    if not hmac.compare_digest(request.headers.get("x-csrf-token", ""), user["csrf"]):
+    if not hmac.compare_digest(request.headers.get("x-csrf-token", "").encode(), user["csrf"].encode()):
         _csrf_fail(request, user)
 
 

@@ -152,6 +152,8 @@ async def item_form(request: Request):
     vals, errors = parse_form(spec["fields"], form, refs)
     if ent == "guests" and not errors:
         normalize_attending(vals)
+        if vals.get("rsvp") == "yes" and vals["attending"] > vals["invited_count"]:
+            errors.append("Antal som kommer kan inte vara fler än antal inbjudna.")
     if errors:
         return render(request, "form.html", user, status=400, vals=vals, errors=errors, can_write=True, **ctx)
     cols = list(vals)
@@ -285,9 +287,9 @@ routes = [
     Route("/m/{ent}", list_view),
     Route("/m/{ent}/export.csv", export_csv),
     Route("/m/{ent}/new", item_form, methods=["GET", "POST"]),
-    Route("/m/{ent}/{item_id:int}", item_form, methods=["GET", "POST"]),
-    Route("/m/{ent}/{item_id:int}/delete", item_delete, methods=["POST"]),
-    Route("/m/tasks/{item_id:int}/toggle", task_toggle, methods=["POST"]),
-    Route("/m/guests/{item_id:int}/newlink", guest_newlink, methods=["POST"]),
+    Route("/m/{ent}/{item_id:id}", item_form, methods=["GET", "POST"]),
+    Route("/m/{ent}/{item_id:id}/delete", item_delete, methods=["POST"]),
+    Route("/m/tasks/{item_id:id}/toggle", task_toggle, methods=["POST"]),
+    Route("/m/guests/{item_id:id}/newlink", guest_newlink, methods=["POST"]),
     Route("/settings", settings_view, methods=["GET", "POST"]),
 ]
