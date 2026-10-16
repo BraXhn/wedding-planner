@@ -4,6 +4,7 @@ Skickas i en bakgrundstråd (en körning i taget) med kort paus mellan mejlen s�
 spärrar kontot. Mallarna fylls i med enkel strängersättning – aldrig str.format – så att en mall inte
 kan läsa ut interna objekt."""
 import os
+import re
 import smtplib
 import ssl
 import threading
@@ -67,6 +68,39 @@ def build_message(to: str, subject: str, body: str) -> EmailMessage:
     msg["Message-ID"] = make_msgid(domain=SMTP["from"].split("@")[-1])
     msg.set_content(body)
     return msg
+
+
+EMAIL_RE = re.compile(r"[^@\s<>,;\"']+@[^@\s<>,;\"']+\.[^@\s<>,;\"']+")
+
+
+def parse_addresses(raw: str) -> tuple[list[str], str | None]:
+    """"a@x.se, b@y.se" → lista. Returnerar (adresser, felmeddelande)."""
+    addrs = [a for a in re.split(r"[,;\s]+", raw or "") if a]
+    if len(addrs) > 5:
+        return addrs, "högst 5 adresser"
+    bad = [a for a in addrs if len(a) > 200 or not EMAIL_RE.fullmatch(a)]
+    return addrs, (f"ogiltig adress: {bad[0][:60]}" if bad else None)
+
+
+def notify_couple(subject: str, body: str) -> None:
+    """Mejlar adresserna i inställningen notify_email i en bakgrundstråd. Fel loggas, stoppar aldrig gästens svar."""
+    addrs, err = parse_addresses(get_settings().get("notify_email", ""))
+    if not configured() or not addrs or err:
+        return
+
+    def run():
+        for to in addrs:
+            try:
+                server = _connect()
+                server.send_message(build_message(to, subject, body))
+                server.quit()
+                ok, error = 1, None
+            except (smtplib.SMTPException, OSError, ValueError) as e:
+                ok, error = 0, type(e).__name__
+            with dbm.db() as c:
+                c.execute("INSERT INTO mail_log (recipient, kind, ok, error) VALUES (?, 'notify', ?, ?)", (to, ok, error))
+
+    threading.Thread(target=run, daemon=True).start()
 
 
 def _connect():

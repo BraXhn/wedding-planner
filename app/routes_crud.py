@@ -12,6 +12,7 @@ from .core import (
     public_base, render, set_settings, sync_speech_from_guest, today,
 )
 from .entities import ENTITIES, SETTINGS_FIELDS
+from .routes_mail import parse_addresses
 from .people import parse_people, people_for, save_people, trim_people
 from .security import format_code, new_code, new_token
 
@@ -298,6 +299,10 @@ async def settings_view(request: Request):
                       can_write=user["role"] != "viewer", active="settings")
     form = await csrf_form(request, user)
     vals, errors = parse_form(SETTINGS_FIELDS, form)
+    addrs, addr_err = parse_addresses(vals.get("notify_email") or "")
+    if addr_err:
+        errors.append(f"Mejla oss när någon svarar: {addr_err}.")
+    vals["notify_email"] = ", ".join(addrs)
     if len(vals.get("osa_card_footer") or "") > 300:
         errors.append("Text under koden på OSA-korten: högst 300 tecken.")
     if errors:

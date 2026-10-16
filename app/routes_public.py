@@ -8,10 +8,11 @@ from starlette.routing import Route
 
 from . import db as dbm
 from .core import (
-    MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_settings, log, parse_date, public_rate_limit, read_form, render,
+    MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_settings, log, parse_date, public_base, public_rate_limit, read_form, render,
     sync_speech_from_guest, today,
 )
 from .people import parse_people, people_for, save_people
+from .routes_mail import notify_couple
 from .security import RateLimiter, normalize_code
 from .routes_photos import handle_upload, saved_count, serve_photo, visible_photos
 
@@ -126,7 +127,25 @@ async def rsvp(request: Request):
             save_people(c, g["id"], new_people)
         sync_speech_from_guest(c, g["id"])
     log.info("rsvp guest_id=%s answer=%s count=%s", g["id"], answer, count)
+    _notify_rsvp(request, g, answer, count, new_people, speech, song, message)
     return RedirectResponse(f"/r/{g['rsvp_token']}?ok=1", 303)
+
+
+def _notify_rsvp(request: Request, g, answer: str, count: int, people, speech: int, song: str, message: str) -> None:
+    changed = g["rsvp"] != "pending"
+    what = f"kommer ({count} av {g['invited_count']})" if answer == "yes" else "kommer inte"
+    lines = [f"{g['name']} har {'ändrat sitt svar' if changed else 'svarat'}: {what}.", ""]
+    for p in people or []:
+        if p["attending"]:
+            lines.append(f"- {p['name']}" + (f" (allergi/specialkost: {p['allergies']})" if p["allergies"] else ""))
+    if speech:
+        lines.append("\nVill hålla tal.")
+    if song:
+        lines.append(f"\nLåtönskemål: {song}")
+    if message:
+        lines.append(f"\nHälsning:\n{message}")
+    lines.append(f"\nSe gästen: {public_base(request)}/m/guests/{g['id']}")
+    notify_couple(f"OSA: {g['name']} {what}" + (" (ändrat)" if changed else ""), "\n".join(lines))
 
 
 # ======================================================================= information

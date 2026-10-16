@@ -56,8 +56,11 @@ r = req(a, "/settings", {"csrf": c, "couple_names": "Anna & Erik", "wedding_date
      "info_text": "Välkomna!", "directions": "Buss 503", "accommodation": "Hotell X", "gift_info": "Swish 123",
      "photos_enabled": "on", "photo_quota_mb": "500",
      "invite_subject": "Inbjudan {brudpar} {__class__}", "invite_body": "Hej {namn}! {länk} {datum} {0.__class__}",
-     "reminder_subject": "Påminnelse", "reminder_body": "Svara {länk}"})
+     "reminder_subject": "Påminnelse", "reminder_body": "Svara {länk}", "notify_email": "louise@example.se; anton@example.se"})
 h = html(r); ok("Sparat" in h and "deadlines" in h, "inställningar sparas + deadlines fylls i")
+ok(q("SELECT value FROM settings WHERE key='notify_email'")[0][0] == "louise@example.se, anton@example.se", "aviseringsadresser normaliseras")
+r = req(a, "/settings", {"csrf": c, "notify_email": "louise@example.se, inte-en-adress"})
+ok(r[0] == 400 and "ogiltig adress" in html(r), "ogiltig aviseringsadress nekas")
 d = q("SELECT due_date FROM tasks WHERE title LIKE 'Begär hindersprövning%'")[0][0]
 ok(d == "2027-05-12", f"hindersprövning-deadline = 1 mån före ({d})")
 ok(q("SELECT due_date FROM tasks WHERE period='Efteråt' LIMIT 1")[0][0] == "2027-07-12", "efteråt-deadline")
@@ -106,6 +109,13 @@ r = req(p, f"/r/{gA[1]}", {**FAM, "speech": "on"})
 ok(q("SELECT COUNT(*) FROM speeches WHERE guest_id=? AND status='Anmäld'", gA[0])[0][0] == 1, "talanmälan via OSA → talarlistan")
 req(p, f"/r/{gA[1]}", FAM)
 ok(q("SELECT status FROM speeches WHERE guest_id=?", gA[0])[0][0] == "Struken", "ångrat tal → struket")
+for _ in range(30):
+    if "OSA: Familjen Andersson kommer (3 av 3)" in read_mail(): break
+    time.sleep(0.1)
+m = read_mail()
+ok("OSA: Familjen Andersson kommer (3 av 3)" in m and "- Anders (allergi/specialkost: N" in m and "- Albin" in m
+   and "Vill h" in m and f"/m/guests/{gA[0]}" in m, "brudparet får mejl när någon svarar på OSA")
+ok(q("SELECT COUNT(*) FROM mail_log WHERE kind='notify' AND ok=1")[0][0] >= 2, "aviseringen går till båda adresserna")
 pp = q("SELECT pos, name, attending, allergies FROM guest_people WHERE guest_id=? ORDER BY pos", gA[0])
 ok([tuple(x) for x in pp] == [(1, "Anders", 1, "Nötter"), (2, "Annika", 1, ""), (3, "Albin", 1, "")]
    and q("SELECT attending FROM guests WHERE id=?", gA[0])[0][0] == 3, "OSA sparar namn och allergi per person")
