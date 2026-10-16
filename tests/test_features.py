@@ -100,10 +100,22 @@ ok(q("SELECT table_id FROM guests WHERE id=?", gC[0])[0][0] is None, "flytta til
 p = client()
 r = req(p, f"/r/{gA[1]}"); h = html(r)
 ok(r[0] == 200 and "Information" in h and "/info" in h, "gästportal med flikar")
-r = req(p, f"/r/{gA[1]}", {"answer": "yes", "count": "3", "diet": "Nötter", "speech": "on"})
+FAM = {"answer": "yes", "name_1": "Anders", "coming_1": "on", "allergy_1": "Nötter", "name_2": "Annika", "coming_2": "on",
+       "name_3": "Albin", "coming_3": "on"}
+r = req(p, f"/r/{gA[1]}", {**FAM, "speech": "on"})
 ok(q("SELECT COUNT(*) FROM speeches WHERE guest_id=? AND status='Anmäld'", gA[0])[0][0] == 1, "talanmälan via OSA → talarlistan")
-req(p, f"/r/{gA[1]}", {"answer": "yes", "count": "3"})
+req(p, f"/r/{gA[1]}", FAM)
 ok(q("SELECT status FROM speeches WHERE guest_id=?", gA[0])[0][0] == "Struken", "ångrat tal → struket")
+pp = q("SELECT pos, name, attending, allergies FROM guest_people WHERE guest_id=? ORDER BY pos", gA[0])
+ok([tuple(x) for x in pp] == [(1, "Anders", 1, "Nötter"), (2, "Annika", 1, ""), (3, "Albin", 1, "")]
+   and q("SELECT attending FROM guests WHERE id=?", gA[0])[0][0] == 3, "OSA sparar namn och allergi per person")
+h = html(req(p, f"/r/{gA[1]}")); ok('value="Annika"' in h and 'value="Nötter"' in h, "OSA-formuläret visar sparade personer")
+r = req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, "name_1": "Anders", "coming_1": "on", "allergy_1": "Nötter",
+                                         "name_2": "Annika", "name_3": "Albin", "coming_3": "on"})
+ok(q("SELECT attending FROM guests WHERE id=?", gA[0])[0][0] == 2, "admin bockar ur en person → antal som kommer räknas om")
+ok(req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, "name_1": "Anders"})[0] == 400, "admin: minst en måste komma vid ”Kommer”")
+ok(req(a, f"/m/guests/{gA[0]}/people", {"name_1": "X", "coming_1": "on"})[0] == 403, "personer kräver CSRF")
+req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, **{k: v for k, v in FAM.items() if k != "answer"}})
 r = req(p, f"/r/{gA[1]}/info"); h = html(r)
 ok("Buss 503" in h and "Hotell X" in h, "informationssida")
 r = req(p, f"/r/{gA[1]}/brollop.ics"); body = r[2].decode()

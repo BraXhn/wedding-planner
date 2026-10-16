@@ -158,3 +158,15 @@ if (footerForm) {
   });
   render();
 }
+
+// OSA: dölj personraderna när gästen svarar "Tyvärr inte"
+const peopleBox = document.querySelector("[data-people]");
+if (peopleBox) {
+  const answers = document.querySelectorAll('input[name="answer"]');
+  const update = () => {
+    const no = document.querySelector('input[name="answer"][value="no"]');
+    peopleBox.toggleAttribute("data-hidden", Boolean(no && no.checked));
+  };
+  answers.forEach((r) => r.addEventListener("change", update));
+  update();
+}

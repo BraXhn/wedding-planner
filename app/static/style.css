@@ -381,3 +381,12 @@ details summary { cursor: pointer; color: var(--muted); margin: 8px 0; }
   .osa-deadline { font-size: 7pt; }
   body.printing main { padding: 0; }
 }
+
+/* ------------------------------------------------------------------ personer i hushållet (OSA + gästformulär) */
+.people { border: 0; padding: 0; margin: 0 0 12px; }
+.people legend { font-weight: 600; margin-bottom: 4px; }
+.person { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.person:first-of-type { border-top: 0; }
+.person .person-allergy { grid-column: 1 / -1; }
+.person .person-coming { align-self: end; }
+.people[data-hidden] { display: none; }

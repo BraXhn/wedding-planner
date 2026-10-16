@@ -19,12 +19,20 @@
       <label><input type="radio" name="answer" value="yes" {{ 'checked' if guest.rsvp == 'yes' }} required> Ja, gärna!</label>
       <label><input type="radio" name="answer" value="no" {{ 'checked' if guest.rsvp == 'no' }}> Tyvärr inte</label>
     </fieldset>
-    {% if max_count > 1 %}
-    <label class="field"><span>Hur många kommer?</span>
-      <select name="count">{% for n in range(1, max_count + 1) %}<option value="{{ n }}" {{ 'selected' if (guest.attending or max_count) == n }}>{{ n }}</option>{% endfor %}</select>
-    </label>
-    {% else %}<input type="hidden" name="count" value="1">{% endif %}
-    <label class="field"><span>Specialkost eller allergier</span><textarea name="diet" rows="2" maxlength="1000">{{ guest.diet or '' }}</textarea></label>
+    <fieldset class="people" data-people>
+      <legend>{{ 'Vem kommer?' if people|length > 1 else 'Ditt namn' }}</legend>
+      {% if people|length > 1 %}<p class="muted small">Skriv namnet på alla som kommer – det hamnar på bordskorten. Bocka ur den som inte kan.</p>{% endif %}
+      {% for p in people %}
+      <div class="person">
+        <label class="field"><span>{{ 'Person ' ~ p.pos if people|length > 1 else 'Namn' }}</span>
+          <input name="name_{{ p.pos }}" value="{{ p.name }}" maxlength="80" autocomplete="off"></label>
+        <label class="field checkbox person-coming"><span>Kommer</span>
+          <input type="checkbox" name="coming_{{ p.pos }}" {{ 'checked' if p.attending }}></label>
+        <label class="field person-allergy"><span>Allergier eller specialkost</span>
+          <input name="allergy_{{ p.pos }}" value="{{ p.allergies }}" maxlength="200" placeholder="t.ex. nötter, vegetarian"></label>
+      </div>
+      {% endfor %}
+    </fieldset>
     <label class="field checkbox"><span>Jag/vi vill hålla tal eller göra ett framträdande<small>Toastmaster hör av sig om tid och ordning.</small></span><input type="checkbox" name="speech" {{ 'checked' if guest.speech }}></label>
     <label class="field"><span>Låten som får dig upp på dansgolvet</span><input name="song" maxlength="200" value="{{ guest.song or '' }}"></label>
     <label class="field"><span>Hälsning till brudparet</span><textarea name="message" rows="3" maxlength="2000">{{ guest.message or '' }}</textarea></label>

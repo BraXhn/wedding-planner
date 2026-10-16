@@ -127,6 +127,14 @@ def init_db() -> None:
             c.execute("UPDATE guests SET rsvp_code = COALESCE(rsvp_code, ?), rsvp_token = COALESCE(rsvp_token, ?) WHERE id = ?",
                       (new_code(), new_token(24), g["id"]))
         c.execute("CREATE INDEX IF NOT EXISTS guests_table ON guests(table_id)")
+        c.execute("""CREATE TABLE IF NOT EXISTS guest_people (
+            id INTEGER PRIMARY KEY,
+            guest_id INTEGER NOT NULL REFERENCES guests(id) ON DELETE CASCADE,
+            pos INTEGER NOT NULL,
+            name TEXT,
+            attending INTEGER NOT NULL DEFAULT 1,
+            allergies TEXT,
+            UNIQUE (guest_id, pos))""")
 
         # migrering: gamla fritextfältet "Bord" → riktiga bord
         for row in c.execute("SELECT DISTINCT table_no FROM guests WHERE COALESCE(table_no,'') <> '' AND table_id IS NULL").fetchall():

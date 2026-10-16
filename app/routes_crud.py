@@ -12,6 +12,7 @@ from .core import (
     public_base, render, set_settings, sync_speech_from_guest, today,
 )
 from .entities import ENTITIES, SETTINGS_FIELDS
+from .people import parse_people, people_for, save_people, trim_people
 from .security import format_code, new_code, new_token
 
 
@@ -57,7 +58,9 @@ async def dashboard(request: Request):
                       COALESCE(SUM(CASE WHEN rsvp='yes' THEN attending END),0) AS coming,
                       COALESCE(SUM(CASE WHEN rsvp='no' THEN invited_count END),0) AS declined,
                       COALESCE(SUM(CASE WHEN rsvp='pending' THEN invited_count END),0) AS pending,
-                      COALESCE(SUM(rsvp='yes' AND COALESCE(diet,'') <> ''),0) AS diets,
+                      COALESCE(SUM(rsvp='yes' AND (COALESCE(diet,'') <> '' OR EXISTS (
+                          SELECT 1 FROM guest_people p WHERE p.guest_id = guests.id AND p.attending = 1
+                          AND COALESCE(p.allergies,'') <> ''))),0) AS diets,
                       COALESCE(SUM(rsvp<>'no' AND table_id IS NULL),0) AS unseated
                FROM guests"""
         ).fetchone()
@@ -144,6 +147,9 @@ async def item_form(request: Request):
                osa_host=public_base(request).split("://", 1)[-1],
                active="seating" if ent == "tables" else ent)
 
+    if ent == "guests" and row is not None:
+        with dbm.db() as c:
+            ctx["people"] = people_for(c, row)
     if request.method == "GET":
         vals = dict(row) if row else {f["name"]: f.get("default") for f in spec["fields"]}
         return render(request, "form.html", user, vals=vals, can_write=user["role"] != "viewer", **ctx)
@@ -170,6 +176,7 @@ async def item_form(request: Request):
                       [vals[k] for k in cols] + [item_id])
         if ent == "guests":
             sync_speech_from_guest(c, item_id)
+            trim_people(c, item_id, vals["invited_count"])
     if ent == "tasks" and not vals.get("due_date"):
         fill_task_deadlines()
     return RedirectResponse(_back(ent, spec), 303)
@@ -183,6 +190,7 @@ def delete_cleanup(c, ent: str, item_id: int) -> None:
                 c.execute(f"UPDATE {other} SET {f['name']} = NULL WHERE {f['name']} = ?", (item_id,))
     if ent == "guests":
         c.execute("DELETE FROM gift_reservations WHERE guest_id = ?", (item_id,))
+        c.execute("DELETE FROM guest_people WHERE guest_id = ?", (item_id,))
         c.execute("UPDATE photos SET guest_id = NULL WHERE guest_id = ?", (item_id,))
     if ent == "wishlist":
         c.execute("DELETE FROM gift_reservations WHERE gift_id = ?", (item_id,))
@@ -229,6 +237,26 @@ async def guest_newlink(request: Request):
         get_item(c, "guests", item_id)
         c.execute("UPDATE guests SET rsvp_token = ?, rsvp_code = ? WHERE id = ?", (new_token(24), new_code(), item_id))
     return RedirectResponse(f"/m/guests/{item_id}", 303)
+
+
+async def guest_people(request: Request):
+    """Personerna i ett hushåll (namn, kommer, allergier) – samma uppgifter som gästen fyller i vid OSA."""
+    user = auth(request, write=True)
+    form = await csrf_form(request, user)
+    item_id = request.path_params["item_id"]
+    with dbm.db() as c:
+        g = get_item(c, "guests", item_id)
+        people, errors = parse_people(form, g["invited_count"] or 1)
+        coming = sum(p["attending"] for p in people)
+        if g["rsvp"] == "yes" and not coming:
+            errors.append("Minst en person måste komma när hushållet svarat ”Kommer”.")
+        if errors:
+            raise HTTPException(400, " ".join(errors))
+        save_people(c, item_id, people)
+        if g["rsvp"] == "yes":
+            c.execute("UPDATE guests SET attending = ? WHERE id = ?", (coming, item_id))
+    log.info("guest_people guest=%s by=%s", item_id, user["username"])
+    return RedirectResponse(f"/m/guests/{item_id}#personer", 303)
 
 
 def csv_cell(v) -> str:
@@ -291,5 +319,6 @@ routes = [
     Route("/m/{ent}/{item_id:id}/delete", item_delete, methods=["POST"]),
     Route("/m/tasks/{item_id:id}/toggle", task_toggle, methods=["POST"]),
     Route("/m/guests/{item_id:id}/newlink", guest_newlink, methods=["POST"]),
+    Route("/m/guests/{item_id:id}/people", guest_people, methods=["POST"]),
     Route("/settings", settings_view, methods=["GET", "POST"]),
 ]
