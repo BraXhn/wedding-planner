@@ -1,12 +1,20 @@
 {# Ett kort. Alla designers ornament finns i markupen; CSS visar det som hör till vald design (så att
-   förhandsvisningen kan byta design utan att ladda om). Texterna är redan ifyllda och autoescapas. #}
+   förhandsvisningen kan byta design utan att ladda om). Texterna är redan ifyllda och autoescapas.
+   p-* = papper: på färgat papper skrivs ingen bakgrund eller fyllning ut. #}
 {% macro pcard(c, t, qr=none, preview=false) %}
-<article class="pcard d-{{ c.design }} c-{{ c.color }} s-{{ c.size }}" {% if preview %}data-card-preview{% endif %}>
+<article class="pcard d-{{ c.design }} c-{{ c.color }} p-{{ c.paper or 'vit' }} s-{{ c.size }}" {% if preview %}data-card-preview{% endif %}>
+  <div class="pcard-bg" aria-hidden="true"></div>
+  <span class="deco-corner tl" aria-hidden="true"></span><span class="deco-corner tr" aria-hidden="true"></span>
+  <span class="deco-corner bl" aria-hidden="true"></span><span class="deco-corner br" aria-hidden="true"></span>
   <div class="pcard-inner">
     <svg class="orn orn-top" viewBox="0 0 200 40" aria-hidden="true"><path d="M100 30 C80 30 60 22 40 24 C55 14 75 12 100 30 Z M100 30 C120 30 140 22 160 24 C145 14 125 12 100 30 Z M100 30 C92 22 92 12 100 4 C108 12 108 22 100 30 Z M40 24 C28 26 16 22 6 26 M160 24 C172 26 184 22 194 26" fill="currentColor" stroke="currentColor" stroke-width=".8"/></svg>
+    <div class="pc-crest" aria-hidden="true">
+      <svg class="wreath" viewBox="0 0 120 120"><g fill="currentColor"><circle cx="60" cy="60" r="46" fill="none" stroke="currentColor" stroke-width=".7"/>{% for i in range(24) %}<ellipse cx="60" cy="14" rx="2" ry="5.6" transform="rotate({{ i * 15 + 7 }} 60 60) rotate(58 60 14) translate(0 -3.5)" opacity=".9"/><ellipse cx="60" cy="14" rx="1.8" ry="5" transform="rotate({{ i * 15 }} 60 60) rotate(122 60 14) translate(0 -3.5)" opacity=".65"/>{% endfor %}</g></svg>
+      <span class="pc-mono">{{ t.mono }}</span>
+    </div>
     <p class="pc-eyebrow" data-f="eyebrow">{{ t.eyebrow }}</p>
     <h2 class="pc-heading" data-f="heading">{{ t.heading }}</h2>
-    <p class="pc-divider" aria-hidden="true">❦</p>
+    <p class="pc-divider" aria-hidden="true"><span class="div-romantisk">❦</span><span class="div-rustik">✦</span><span class="div-deco">◆</span><span class="div-line"></span></p>
     <p class="pc-body" data-f="body">{{ t.body }}</p>
     <div class="pc-qr" data-qr {% if not c.show_qr or not qr %}hidden{% endif %}>{{ qr if qr }}</div>
     <p class="pc-footer" data-f="footer">{{ t.footer }}</p>

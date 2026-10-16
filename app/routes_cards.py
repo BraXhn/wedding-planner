@@ -25,7 +25,7 @@ def _get(c, card_id: int):
 
 
 def _texts(card, values: dict) -> dict:
-    return {k: fill(card[k] or "", values) for k in TEXTS}
+    return {**{k: fill(card[k] or "", values) for k in TEXTS}, "mono": values.get("initialer", "")}
 
 
 def _sample(c, request: Request) -> tuple[dict, Markup]:
@@ -66,8 +66,9 @@ def _parse(form) -> tuple[dict, list[str]]:
     vals["title"] = " ".join(str(form.get("title", "")).split())[:80]
     if not vals["title"]:
         errors.append("Ge trycksaken ett namn.")
-    for name, options in (("design", cm.DESIGNS), ("color", cm.COLORS), ("size", cm.SIZES), ("audience", cm.AUDIENCES)):
-        vals[name] = str(form.get(name, ""))
+    for name, options in (("design", cm.DESIGNS), ("color", cm.COLORS), ("paper", cm.PAPERS), ("size", cm.SIZES),
+                          ("audience", cm.AUDIENCES)):
+        vals[name] = str(form.get(name, "") or ("vit" if name == "paper" else ""))
         if vals[name] not in dict(options):
             errors.append("Ogiltigt val.")
     vals["show_qr"] = 1 if form.get("show_qr") == "on" else 0
@@ -86,7 +87,7 @@ async def card_edit(request: Request):
     card_id = request.path_params["card_id"]
     errors = []
     with dbm.db() as c:
-        card = _get(c, card_id)
+        card = dict(_get(c, card_id))
         values, qr = _sample(c, request)
     if write:
         form = await csrf_form(request, user)
@@ -97,10 +98,10 @@ async def card_edit(request: Request):
                           [*vals.values(), card_id])
             log.info("card_saved id=%s by=%s", card_id, user["username"])
             return RedirectResponse(f"/kort/{card_id}?sparat=1", 303)
-        card = {**dict(card), **vals}
+        card = {**card, **vals}
     return render(request, "card_edit.html", user, status=400 if errors else 200, card=card,
                   texts=_texts(card, values), values=values, qr=qr, errors=errors, saved=request.query_params.get("sparat") == "1",
-                  designs=cm.DESIGNS, colors=cm.COLORS, sizes=cm.SIZES, audiences=cm.AUDIENCES,
+                  designs=cm.DESIGNS, colors=cm.COLORS, papers=cm.PAPERS, sizes=cm.SIZES, audiences=cm.AUDIENCES,
                   placeholders=cm.PLACEHOLDERS, limits=cm.LIMITS, can_write=user["role"] != "viewer", active="cards")
 
 

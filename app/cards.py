@@ -4,47 +4,56 @@ Varje trycksak har en design, en färg, ett format och fyra textfält med platsh
 ({namn}, {datum} …). Personliga trycksaker blir ett kort per hushåll (alla, de som inte svarat
 eller de som kommer), övriga skrivs ut i valfritt antal. Texterna fylls i med enkel
 strängersättning (routes_mail.fill) – aldrig str.format."""
+import re
+
 from .core import sv_date
 from .entities import TIMELINE_ORDER
 from .security import format_code
 
-DESIGNS = [("klassisk", "Klassisk"), ("botanisk", "Botanisk"), ("modern", "Modern"), ("romantisk", "Romantisk")]
-COLORS = [("skog", "Skogsgrön"), ("guld", "Guld"), ("rosa", "Dammrosa"), ("bla", "Marinblå"), ("svart", "Svart")]
+DESIGNS = [("klassisk", "Klassisk"), ("botanisk", "Botanisk"), ("modern", "Modern"), ("romantisk", "Romantisk"),
+           ("minimal", "Minimal"), ("monogram", "Monogram"), ("artdeco", "Art déco"), ("akvarell", "Akvarell"),
+           ("krans", "Krans"), ("bage", "Båge"), ("rustik", "Rustik")]
+COLORS = [("skog", "Skogsgrön"), ("salvia", "Salvia"), ("guld", "Guld"), ("terrakotta", "Terrakotta"), ("rosa", "Dammrosa"),
+          ("lavendel", "Lavendel"), ("bla", "Marinblå"), ("svart", "Svart")]
+# Färgat papper: då skrivs ingen bakgrund eller fyllning ut – bara text och linjer. Färgen används i förhandsvisningen.
+PAPERS = [("vit", "Vitt papper – designen skrivs ut med bakgrund"), ("kram", "Färgat papper: kräm"),
+          ("kraft", "Färgat papper: kraft"), ("salvia", "Färgat papper: salvia"), ("rosa", "Färgat papper: dammrosa"),
+          ("bla", "Färgat papper: ljusblå"), ("gra", "Färgat papper: grå"), ("annan", "Färgat papper: annan färg")]
 SIZES = [("a6", "A6 stående"), ("a6l", "A6 liggande"), ("a5", "A5 stående"), ("a4", "A4")]
 AUDIENCES = [("none", "Ingen särskild"), ("all", "Alla hushåll"), ("pending", "Hushåll som inte svarat"),
              ("coming", "Hushåll som kommer")]
 KINDS = [("save", "Save the date"), ("invite", "Inbjudan"), ("thanks", "Tackkort"), ("menu", "Meny"),
          ("program", "Program"), ("sign", "Skylt")]
 
-PLACEHOLDERS = ["namn", "brudpar", "datum", "tid", "plats", "adress", "klädkod", "osa_senast", "kod", "osa_adress",
+PLACEHOLDERS = ["namn", "brudpar", "initialer", "datum", "tid", "plats", "adress", "klädkod", "osa_senast", "kod", "osa_adress",
                 "present", "program"]
 LIMITS = {"eyebrow": 120, "heading": 120, "body": 1500, "footer": 300}
 
 SEED = [
     {"kind": "save", "title": "Save the date", "design": "botanisk", "color": "skog", "size": "a6l", "audience": "all",
-     "show_qr": 0, "eyebrow": "Save the date", "heading": "{brudpar}",
+     "paper": "vit", "show_qr": 0, "eyebrow": "Save the date", "heading": "{brudpar}",
      "body": "gifter sig\n{datum}\n{plats}", "footer": "Inbjudan kommer senare"},
     {"kind": "invite", "title": "Inbjudan", "design": "klassisk", "color": "skog", "size": "a5", "audience": "all",
-     "show_qr": 1, "eyebrow": "Välkommen på bröllop", "heading": "{brudpar}",
+     "paper": "vit", "show_qr": 1, "eyebrow": "Välkommen på bröllop", "heading": "{brudpar}",
      "body": "Kära {namn}!\n\nVi gifter oss och vill så gärna fira dagen tillsammans med er.\n\n"
              "{datum} kl. {tid}\n{plats}\n{adress}",
      "footer": "Svara senast {osa_senast}: skanna koden eller gå till {osa_adress} och skriv in {kod}"},
     {"kind": "thanks", "title": "Tackkort", "design": "romantisk", "color": "rosa", "size": "a6l", "audience": "coming",
-     "show_qr": 0, "eyebrow": "Tack", "heading": "Kära {namn}",
+     "paper": "vit", "show_qr": 0, "eyebrow": "Tack", "heading": "Kära {namn}",
      "body": "Tack för att ni firade vår dag med oss – och för {present}. Det betyder mer än vi kan säga.",
      "footer": "Varma hälsningar, {brudpar}"},
     {"kind": "menu", "title": "Meny", "design": "klassisk", "color": "guld", "size": "a4", "audience": "none",
-     "show_qr": 0, "eyebrow": "{datum}", "heading": "Meny",
+     "paper": "vit", "show_qr": 0, "eyebrow": "{datum}", "heading": "Meny",
      "body": "Förrätt\nSkriv förrätten här\n\nVarmrätt\nSkriv varmrätten här\n\nDessert\nSkriv desserten här\n\n"
              "Bröllopstårta och kaffe",
      "footer": "{brudpar}"},
     {"kind": "program", "title": "Program", "design": "botanisk", "color": "skog", "size": "a5", "audience": "none",
-     "show_qr": 0, "eyebrow": "Dagens program", "heading": "{brudpar}", "body": "{program}", "footer": "{plats}"},
+     "paper": "vit", "show_qr": 0, "eyebrow": "Dagens program", "heading": "{brudpar}", "body": "{program}", "footer": "{plats}"},
     {"kind": "sign", "title": "Välkomstskylt", "design": "modern", "color": "skog", "size": "a4", "audience": "none",
-     "show_qr": 0, "eyebrow": "Välkommen till", "heading": "{brudpar}s bröllop", "body": "{datum}",
+     "paper": "vit", "show_qr": 0, "eyebrow": "Välkommen till", "heading": "{brudpar}s bröllop", "body": "{datum}",
      "footer": "Dela era bilder – skanna QR-koden på borden"},
 ]
-FIELDS = ["kind", "title", "design", "color", "size", "audience", "show_qr", "eyebrow", "heading", "body", "footer"]
+FIELDS = ["kind", "title", "design", "color", "paper", "size", "audience", "show_qr", "eyebrow", "heading", "body", "footer"]
 
 
 def seed_cards(c) -> None:
@@ -66,9 +75,16 @@ def programme_text(c) -> str:
     return "\n".join(f"{r['time']}  {r['title']}" for r in rows) or "Lägg till punkter i Körschema och markera Visa för gäster"
 
 
+def initials(couple: str) -> str:
+    """"Louise & Anton" → "L & A", "Anna och Erik Svensson" → "A & E"."""
+    parts = [p.strip() for p in re.split(r"\s*(?:&|\+|,|\boch\b|\band\b)\s*", couple or "") if p.strip()]
+    return " & ".join(p[0].upper() for p in parts[:2]) if parts else ""
+
+
 def common_values(s: dict, base: str, programme: str) -> dict:
     return {
         "brudpar": s.get("couple_names") or "",
+        "initialer": initials(s.get("couple_names") or ""),
         "datum": sv_date(s.get("wedding_date")) or "",
         "tid": s.get("wedding_time") or "",
         "plats": s.get("venue") or "",

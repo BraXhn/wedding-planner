@@ -476,6 +476,13 @@ ok(req(a, "/kort/ny", {"csrf": c, "kind": "hack"})[0] == 400, "trycksaker: okän
 req(a, f"/kort/{new_id}/delete", {"csrf": c})
 ok(not q("SELECT 1 FROM cards WHERE id=?", new_id), "trycksaker: ta bort")
 ok(req(client(), "/kort", follow=False)[0] == 303, "trycksaker kräver inloggning")
+h = html(req(a, f"/kort/{inv}"))
+ok(h.count("data-pick-design=") == 11 and "Färgat papper: kraft" in h, "trycksaker: designväljare med 11 designer och pappersval")
+req(a, f"/kort/{inv}", {**CARD, "design": "krans", "paper": "kraft"})
+ok(tuple(q("SELECT design, paper FROM cards WHERE id=?", inv)[0]) == ("krans", "kraft"), "trycksaker: färgat papper sparas")
+h = html(req(a, f"/kort/{inv}/skriv-ut"))
+ok('p-kraft' in h and 'd-krans' in h and "A &amp; E" in h, "trycksaker: utskrift med färgat papper och initialer i kransen")
+ok(req(a, f"/kort/{inv}", {**CARD, "paper": "neon"})[0] == 400, "trycksaker: okänt papper nekas")
 
 # ---------------------------------------------------------------- cache-busting av statiska filer
 import hashlib as _hl

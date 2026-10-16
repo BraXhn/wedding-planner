@@ -1,6 +1,9 @@
 # Ändringslogg
 
 ## Ej släppt
+- **Trycksaker: sju nya designer** – minimal, monogram (initialerna i en cirkel), art déco, akvarell, krans (initialerna i en lagerkrans), båge och rustik – och tre nya färger (salvia, terrakotta, lavendel). Designen väljs genom att klicka på små förhandsvisningar.
+- **Färgat papper:** välj papperets färg (kräm, kraft, salvia, dammrosa, ljusblå, grå eller annan). Då skrivs ingen bakgrund eller fyllning ut – bara text, linjer och ornament – och förhandsvisningen visar kortet på det papperet.
+- Lång text krymps automatiskt så att den får plats på kortet, och redigeringen varnar när det händer. Ny platshållare `{initialer}`.
 - **Trycksaker:** förslag på save the date, inbjudan, tackkort, meny, program och välkomstskylt som redigeras i appen med förhandsvisning medan man skriver. Fyra designer, fem färger och formaten A6 (stående/liggande), A5 och A4. Personliga trycksaker skrivs ut ett per hushåll (alla, de som inte svarat eller de som kommer) med namn och egen OSA-QR; {program} fylls med körschemat och {present} med presenten från Tackkort. Läsare ser förhandsvisningen men kan inte skriva ut kort med gästernas koder.
 - **Personer per hushåll.** Gästen skriver i OSA-svaret namn och allergier för var och en som kommer och bockar ur den som inte kan. ”Antal som kommer” räknas fram från personerna. Samma uppgifter går att redigera under Gäster → Personer. Det gamla fältet för specialkost finns kvar som ”Specialkost – övrigt”.
 - **Postadress** per hushåll (gatuadress, postnummer, ort), med i CSV:n för dokumentkoppling på OSA-korten.

@@ -13,6 +13,14 @@
 <div class="card-editor">
   <div class="card-stage" data-vars='{{ values|tojson }}'>
     {{ pcard(card, texts, qr, preview=true) }}
+    {% if can_write %}
+    <div class="design-picker" data-design-picker aria-label="Välj design">
+      {% for k, lab in designs %}
+      <button type="button" data-pick-design="{{ k }}" aria-pressed="{{ 'true' if card.design == k else 'false' }}">{{ pcard(dict(card, design=k), texts) }}<span>{{ lab }}</span></button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <p class="alert warn-note small" data-fit-note hidden>Texten är lång för formatet och har krympts för att få plats. Korta texten eller välj ett större format.</p>
     <p class="muted small">Förhandsvisning med en påhittad gäst. Utskriften får riktiga namn{% if can_write %} och koder{% endif %}.</p>
   </div>
 
@@ -22,6 +30,8 @@
     <div class="form-grid tight">
       <label class="field"><span>Design</span><select name="design" data-class-prefix="d-" {{ 'disabled' if not can_write }}>{% for k, lab in designs %}<option value="{{ k }}" {{ 'selected' if card.design == k }}>{{ lab }}</option>{% endfor %}</select></label>
       <label class="field"><span>Färg</span><select name="color" data-class-prefix="c-" {{ 'disabled' if not can_write }}>{% for k, lab in colors %}<option value="{{ k }}" {{ 'selected' if card.color == k }}>{{ lab }}</option>{% endfor %}</select></label>
+      <label class="field wide"><span>Papper</span><select name="paper" data-class-prefix="p-" {{ 'disabled' if not can_write }}>{% for k, lab in papers %}<option value="{{ k }}" {{ 'selected' if (card.paper or 'vit') == k }}>{{ lab }}</option>{% endfor %}</select>
+        <small>Skriver ni ut på färgat papper skrivs ingen bakgrund ut – bara text, linjer och ornament. Förhandsvisningen visar papperets färg.</small></label>
       <label class="field"><span>Format</span><select name="size" data-class-prefix="s-" {{ 'disabled' if not can_write }}>{% for k, lab in sizes %}<option value="{{ k }}" {{ 'selected' if card.size == k }}>{{ lab }}</option>{% endfor %}</select></label>
       <label class="field"><span>Vem får kortet?</span><select name="audience" {{ 'disabled' if not can_write }}>{% for k, lab in audiences %}<option value="{{ k }}" {{ 'selected' if card.audience == k }}>{{ lab }}</option>{% endfor %}</select></label>
     </div>

@@ -82,5 +82,15 @@ with dbm.db() as c:
 ok(n0 == len(SEED) and n1 == len(SEED) - 1, "förslagen läggs in en gång och kommer inte tillbaka när de tagits bort")
 ok([_mid_sentence(x) for x in ("Vas från Svenskt Tenn", "IKEA-kort", "x")] == ["vas från Svenskt Tenn", "IKEA-kort", "x"],
    "presenten skrivs med liten bokstav mitt i meningen")
+
+from app.cards import initials  # noqa: E402
+ok([initials(x) for x in ("Louise & Anton", "anna och erik svensson", "Kim", "")] == ["L & A", "A & E", "K", ""],
+   "initialer till monogram och krans")
+with dbm.db() as c:
+    c.execute("ALTER TABLE cards DROP COLUMN paper")  # som en databas från förra versionen
+dbm.init_db()
+with dbm.db() as c:
+    papers = {r[0] for r in c.execute("SELECT paper FROM cards")}
+ok(papers == {"vit"}, "migrering: befintliga trycksaker får vitt papper")
 print(f"\n{len(fails)} fel")
 sys.exit(1 if fails else 0)
