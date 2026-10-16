@@ -73,7 +73,7 @@
     <thead><tr><th>Tid (UTC)</th><th>Typ</th><th>Mottagare</th><th>Status</th></tr></thead>
     <tbody>
     {% for m in mlog %}
-      <tr><td class="primary" data-label="Tid (UTC)">{{ m.created_at }}</td><td data-label="Typ">{{ {'invite': 'Inbjudan', 'reminder': 'Påminnelse', 'test': 'Test'}.get(m.kind, m.kind) }}</td>
+      <tr><td class="primary" data-label="Tid (UTC)">{{ m.created_at }}</td><td data-label="Typ">{{ {'invite': 'Inbjudan', 'reminder': 'Påminnelse', 'test': 'Test', 'notify': 'OSA-avisering'}.get(m.kind, m.kind) }}</td>
         <td data-label="Mottagare">{{ m.name or m.recipient or '–' }}</td>
         <td data-label="Status">{% if m.ok %}<span class="pill yes">Skickat</span>{% else %}<span class="pill no">Fel</span> <small class="muted">{{ m.error }}</small>{% endif %}</td></tr>
     {% endfor %}

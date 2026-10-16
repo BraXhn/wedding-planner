@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Säkerhetskopior · {{ super() }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/users">← Användare</a></p>
+<div class="pagehead">
+  <h1>Säkerhetskopior</h1>
+  <div class="actions"><a class="btn primary" href="/backup/now.db">Ladda ner kopia nu</a></div>
+</div>
+<p class="hint">
+  Appen tar en kopia av databasen varje dygn och sparar de senaste {{ keep }} i <code>appdata/wedding-planner/backups</code>.
+  Kopian innehåller allt utom bilderna: gäster, svar, budget, användare och inställningar. Förvara nedladdade kopior säkert.
+  Bilderna ligger som filer i <code>photos/</code> – ta med hela appdata-mappen i Unraids backup för att få med dem.
+</p>
+<section class="card">
+  <h2>Automatiska kopior</h2>
+  {% if backups %}
+  <ul class="plain">
+    {% for b in backups %}<li><a href="/backup/files/{{ b.name }}">{{ sv_date(b.date) }}</a> <span class="muted small">{{ (b.bytes / 1024)|round(0)|int }} kB</span></li>{% endfor %}
+  </ul>
+  {% else %}<p class="muted">Inga kopior än – den första tas inom en timme efter start.</p>{% endif %}
+</section>
+<section class="card">
+  <h2>Återställa</h2>
+  <p class="small">Stoppa containern, ersätt <code>wedding.db</code> i appdata-mappen med kopian (döp om den till <code>wedding.db</code>)
+  och ta bort eventuella <code>wedding.db-wal</code> och <code>wedding.db-shm</code>. Starta sedan containern igen.</p>
+</section>
+{% endblock %}

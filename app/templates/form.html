@@ -6,7 +6,7 @@
 
 {% if errors %}<div class="alert error"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 
-{% if ent == 'guests' and item %}
+{% if ent == 'guests' and item and can_write %}
 <section class="card linkbox">
   {% if qr %}
   <div class="osa-qr">
@@ -38,6 +38,8 @@
 </section>
 {% endif %}
 
+{% if budget_item %}<p class="hint">Kopplad till budgetposten <a href="/m/budget/{{ budget_item.id }}">{{ budget_item.item }}</a> – priset uppdaterar det budgeterade beloppet.</p>{% endif %}
+
 <form method="post" class="card form-grid">
   <input type="hidden" name="csrf" value="{{ user.csrf }}">
   {% for f in spec.fields %}{{ field(f, vals.get(f.name), not can_write, refs) }}{% endfor %}
@@ -48,6 +50,27 @@
   </div>
   {% endif %}
 </form>
+
+{% if people %}
+<section class="card" id="personer">
+  <h2>Personer</h2>
+  <p class="muted small">Namn och allergier per person. Gästen fyller i samma sak i sitt OSA-svar. Namnen används på bordskorten
+  och allergierna i rapporten till cateringen.{% if item.rsvp == 'yes' %} ”Antal som kommer” räknas om när du sparar här.{% endif %}</p>
+  <form method="post" action="/m/guests/{{ item.id }}/people">
+    <input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <fieldset class="people">
+      {% for p in people %}
+      <div class="person">
+        <label class="field"><span>Person {{ p.pos }}</span><input name="name_{{ p.pos }}" value="{{ p.name }}" maxlength="80" {{ 'disabled' if not can_write }}></label>
+        <label class="field checkbox person-coming"><span>Kommer</span><input type="checkbox" name="coming_{{ p.pos }}" {{ 'checked' if p.attending }} {{ 'disabled' if not can_write }}></label>
+        <label class="field person-allergy"><span>Allergier/specialkost</span><input name="allergy_{{ p.pos }}" value="{{ p.allergies }}" maxlength="200" {{ 'disabled' if not can_write }}></label>
+      </div>
+      {% endfor %}
+    </fieldset>
+    {% if can_write %}<button class="btn primary">Spara personer</button>{% endif %}
+  </form>
+</section>
+{% endif %}
 
 {% if item and can_write %}
 <form method="post" action="/m/{{ ent }}/{{ item.id }}/delete" class="danger-zone" data-confirm="Ta bort permanent?">

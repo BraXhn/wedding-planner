@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Bordskort · {{ super() }}{% endblock %}
+{% block bodyclass %}printing{% endblock %}
+{% block content %}
+<div class="noprint">
+  <p class="crumb"><a href="/seating">← Placering</a></p>
+  <div class="pagehead">
+    <h1>Bordskort <small class="muted">{{ people|length }}</small></h1>
+    <div class="actions"><a class="btn" href="/seating/lista">Placeringslista</a><a class="btn primary" href="#" data-print>Skriv ut</a></div>
+  </div>
+  <p class="hint">Ett kort per person som kommer och har fått ett bord, 8 per A4. Vik på mitten så står kortet själv.
+  {% if unnamed %}<strong class="warn">{{ unnamed }} kort saknar personnamn</strong> och visar hushållets namn – fyll i namnen under Gäster → Personer.{% endif %}</p>
+  {% if not people %}<div class="card empty"><p class="muted">Inga gäster med bord än. Placera gästerna under <a href="/seating">Placering</a>.</p></div>{% endif %}
+</div>
+<div class="place-cards">
+  {% for p in people %}
+  <div class="place-card">
+    <div class="place-fold" aria-hidden="true"></div>
+    <div class="place-front">
+      <p class="script">{{ p.name }}</p>
+      <p class="eyebrow">{{ p.table_name }}</p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

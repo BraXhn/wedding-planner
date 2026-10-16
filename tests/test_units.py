@@ -53,5 +53,22 @@ _, errs = parse_form([{"name": "t", "label": "Tid", "type": "time"}], {"t": "1٢
 ok(len(errs) == 1, "tid med arabiska siffror ger valideringsfel")
 ok(verify_totp("JBSWY3DPEHPK3PXP", "１２３４５６", None) is None, "TOTP med helbreddssiffror avvisas utan krasch")
 ok(_safe_filename(7, "Łukasz & Zoë") == "007_Lukasz_Zoe" and _safe_filename(1, "Åsa") == "001_Asa", "QR-filnamn blir ASCII")
+
+# --- säkerhetskopior
+import datetime as _dt  # noqa: E402
+from app import backup  # noqa: E402
+d0 = _dt.date(2027, 1, 1)
+made = [backup.daily_backup(d0 + _dt.timedelta(days=i)) for i in range(backup.KEEP + 3)]
+ok(all(made) and backup.daily_backup(d0 + _dt.timedelta(days=backup.KEEP + 2)) is None, "en kopia per dag, tas inte om samma dag")
+kept = [b["name"] for b in backup.list_backups()]
+ok(len(kept) == backup.KEEP and kept[0] == made[-1] and made[0] not in kept, f"bara de {backup.KEEP} senaste behålls")
+
+# --- Swish
+from app.core import SWISH_MSG_RE, normalize_swish, swish_payload  # noqa: E402
+ok([normalize_swish(x) for x in ("070-123 45 67", "+46701234567", "1231234567", "0812345678", "070123")]
+   == ["0701234567", "0701234567", "1231234567", None, None], "Swish-nummer normaliseras och kontrolleras")
+ok(swish_payload("0701234567", "Bröllopsgåva") == "C0701234567;;Bröllopsgåva;6", "Swish-QR: låst mottagare, fritt belopp och meddelande")
+ok(SWISH_MSG_RE.fullmatch("Till resan!") and not SWISH_MSG_RE.fullmatch("a;b") and not SWISH_MSG_RE.fullmatch("x" * 51),
+   "Swish-meddelande: tillåtna tecken och längd")
 print(f"\n{len(fails)} fel")
 sys.exit(1 if fails else 0)

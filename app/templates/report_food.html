@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Mat · {{ super() }}{% endblock %}
+{% block content %}
+<p class="crumb noprint"><a href="/m/guests">← Gäster</a></p>
+<div class="pagehead">
+  <h1>Till cateringen</h1>
+  <div class="actions noprint">
+    <a class="btn" href="/rapport/mat.csv">Exportera CSV</a>
+    <a class="btn primary" href="#" data-print>Skriv ut</a>
+  </div>
+</div>
+<p class="printonly muted">{{ settings.couple_names }} · {{ sv_date(settings.wedding_date) }} · utskrivet {{ sv_date(today) }}</p>
+
+<div class="stats">
+  <section class="card"><p class="eyebrow">Gäster som kommer</p><p class="bignum">{{ total }}</p>
+    {% if pending %}<p class="muted small">+ upp till {{ pending }} som inte svarat än</p>{% endif %}</section>
+  <section class="card"><p class="eyebrow">Allergier/specialkost</p><p class="bignum">{{ with_allergy|length }} <small>personer</small></p></section>
+</div>
+
+{% if summary %}
+<section class="card">
+  <h2>Sammanställning</h2>
+  <ul class="report-list columns">{% for what, n in summary %}<li><strong>{{ n }}</strong> × {{ what }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>Per bord</h2>
+  {% for g in groups %}
+  <div class="report-table">
+    <h3>{{ g.name }} <small class="muted">{{ g.people|length }} pers.</small></h3>
+    {% set allergic = g.people|selectattr('allergies')|list %}
+    {% if allergic %}
+    <ul class="report-list">{% for p in allergic %}<li><strong>{{ p.name }}</strong>{% if p.name != p.household %} <span class="muted">({{ p.household }})</span>{% endif %}: {{ p.allergies }}</li>{% endfor %}</ul>
+    {% else %}<p class="muted small">Inga allergier.</p>{% endif %}
+  </div>
+  {% else %}<p class="muted">Ingen har svarat ”Kommer” än.</p>{% endfor %}
+</section>
+
+{% if households %}
+<section class="card">
+  <h2>Övrigt om maten (per hushåll)</h2>
+  <ul class="report-list">{% for h in households %}<li><strong>{{ h.name }}</strong>: <span class="prewrap">{{ h.diet }}</span></li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}

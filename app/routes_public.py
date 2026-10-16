@@ -1,16 +1,21 @@
 """Gästportalen. Allt nås via gästens personliga, ogissbara token – inga konton för gäster."""
 import re
 
+from markupsafe import Markup
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette.routing import Route
 
 from . import db as dbm
+from .entities import TIMELINE_ORDER
 from .core import (
-    MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_settings, log, parse_date, public_rate_limit, read_form, render,
-    sync_speech_from_guest, today,
+    MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_settings, log, normalize_swish, parse_date, public_base, public_rate_limit, read_form, render,
+    swish_payload, sync_speech_from_guest, today,
 )
+from .qr import qr_svg
+from .people import parse_people, people_for, save_people
+from .routes_mail import notify_couple
 from .security import RateLimiter, normalize_code
 from .routes_photos import handle_upload, saved_count, serve_photo, visible_photos
 
@@ -78,8 +83,9 @@ async def osa_code_link(request: Request):
 def _portal_ctx(g, tab: str) -> dict:
     s = get_settings()
     with dbm.db() as c:
-        has_gifts = bool(c.execute("SELECT 1 FROM wishlist LIMIT 1").fetchone()) or bool(s.get("gift_info"))
-        programme = c.execute("SELECT time, title, location FROM timeline WHERE public = 1 ORDER BY time").fetchall()
+        has_gifts = (bool(c.execute("SELECT 1 FROM wishlist LIMIT 1").fetchone()) or bool(s.get("gift_info"))
+                     or bool(s.get("swish_number")))
+        programme = c.execute(f"SELECT time, title, location FROM timeline WHERE public = 1 ORDER BY {TIMELINE_ORDER}").fetchall()
     deadline = parse_date(s.get("rsvp_deadline"))
     return dict(settings=s, guest=g, tab=tab, base=f"/r/{g['rsvp_token']}", has_gifts=has_gifts,
                 has_photos=flag(s, "photos_enabled"), programme=programme,
@@ -91,36 +97,59 @@ def _portal_ctx(g, tab: str) -> dict:
 async def rsvp(request: Request):
     g = guest_by_token(request)
     ctx = _portal_ctx(g, "rsvp")
+    with dbm.db() as c:
+        people = people_for(c, g)
+    if len(people) == 1 and not people[0]["name"]:
+        people[0]["name"] = g["name"]  # ensamhushåll: förifyll med namnet på inbjudan
     if request.method == "GET":
-        return render(request, "rsvp.html", saved=request.query_params.get("ok") == "1", **ctx)
+        return render(request, "rsvp.html", saved=request.query_params.get("ok") == "1", people=people, **ctx)
     if ctx["closed"]:
-        return render(request, "rsvp.html", status=403, error="Sista dag för OSA har passerat. Kontakta brudparet.", **ctx)
+        return render(request, "rsvp.html", status=403, error="Sista dag för OSA har passerat. Kontakta brudparet.",
+                      people=people, **ctx)
 
     form = await read_form(request)
     answer = form.get("answer")
     errors = []
     if answer not in ("yes", "no"):
         errors.append("Välj om ni kommer eller inte.")
-    count = 0
+    new_people, count = None, 0
     if answer == "yes":
-        try:
-            count = int(form.get("count", "0"))
-        except ValueError:
-            count = 0
-        if not 1 <= count <= ctx["max_count"]:
-            errors.append(f"Antal ska vara mellan 1 och {ctx['max_count']}.")
-    diet = str(form.get("diet", "")).strip()[:1000]
+        new_people, perr = parse_people(form, ctx["max_count"])
+        errors += perr
+        count = sum(p["attending"] for p in new_people)
+        if not count:
+            errors.append("Kryssa i vem eller vilka som kommer.")
     song = str(form.get("song", "")).strip().replace("\n", " ").replace("\r", " ")[:200]
     message = str(form.get("message", "")).strip()[:2000]
     speech = 1 if form.get("speech") == "on" and answer == "yes" else 0
     if errors:
-        return render(request, "rsvp.html", status=400, errors=errors, **ctx)
+        return render(request, "rsvp.html", status=400, errors=errors, people=new_people or people, **ctx)
     with dbm.db() as c:
-        c.execute("UPDATE guests SET rsvp=?, attending=?, diet=?, song=?, message=?, speech=?, rsvp_at=datetime('now') "
-                  "WHERE id = ?", (answer, count, diet, song, message, speech, g["id"]))
+        c.execute("UPDATE guests SET rsvp=?, attending=?, song=?, message=?, speech=?, rsvp_at=datetime('now') "
+                  "WHERE id = ?", (answer, count, song, message, speech, g["id"]))
+        if new_people is not None:
+            save_people(c, g["id"], new_people)
         sync_speech_from_guest(c, g["id"])
     log.info("rsvp guest_id=%s answer=%s count=%s", g["id"], answer, count)
+    _notify_rsvp(request, g, answer, count, new_people, speech, song, message)
     return RedirectResponse(f"/r/{g['rsvp_token']}?ok=1", 303)
+
+
+def _notify_rsvp(request: Request, g, answer: str, count: int, people, speech: int, song: str, message: str) -> None:
+    changed = g["rsvp"] != "pending"
+    what = f"kommer ({count} av {g['invited_count']})" if answer == "yes" else "kommer inte"
+    lines = [f"{g['name']} har {'ändrat sitt svar' if changed else 'svarat'}: {what}.", ""]
+    for p in people or []:
+        if p["attending"]:
+            lines.append(f"- {p['name']}" + (f" (allergi/specialkost: {p['allergies']})" if p["allergies"] else ""))
+    if speech:
+        lines.append("\nVill hålla tal.")
+    if song:
+        lines.append(f"\nLåtönskemål: {song}")
+    if message:
+        lines.append(f"\nHälsning:\n{message}")
+    lines.append(f"\nSe gästen: {public_base(request)}/m/guests/{g['id']}")
+    notify_couple(f"OSA: {g['name']} {what}" + (" (ändrat)" if changed else ""), "\n".join(lines))
 
 
 # ======================================================================= information
@@ -172,7 +201,14 @@ async def gifts(request: Request):
                 raise HTTPException(400)
         if not error:
             return RedirectResponse(f"/r/{g['rsvp_token']}/gifts#g{gift_id}", 303)
-    return render(request, "portal_gifts.html", status=409 if error else 200, gifts=_gifts(g["id"]), error=error, **ctx)
+    swish = None
+    number = normalize_swish(ctx["settings"].get("swish_number", ""))
+    if number:
+        msg = ctx["settings"].get("swish_message") or ""
+        swish = {"number": f"{number[:3]}-{number[3:6]} {number[6:8]} {number[8:]}", "message": msg,
+                 "qr": Markup(qr_svg(swish_payload(number, msg), "M"))}  # SVG som vi själva genererat
+    return render(request, "portal_gifts.html", status=409 if error else 200, gifts=_gifts(g["id"]), error=error,
+                  swish=swish, **ctx)
 
 
 # ======================================================================= bilder

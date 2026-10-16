@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set active = 'users' %}
 {% block content %}
-<h1>Användare</h1>
+<div class="pagehead"><h1>Användare</h1><div class="actions"><a class="btn" href="/backup">Säkerhetskopior</a></div></div>
 {% if error %}<p class="alert error">{{ error }}</p>{% endif %}
 {% if ok %}<p class="alert ok">{{ ok }}</p>{% endif %}
 <div class="table-wrap card flush">

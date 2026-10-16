@@ -381,3 +381,75 @@ details summary { cursor: pointer; color: var(--muted); margin: 8px 0; }
   .osa-deadline { font-size: 7pt; }
   body.printing main { padding: 0; }
 }
+
+/* ------------------------------------------------------------------ personer i hushållet (OSA + gästformulär) */
+.people { border: 0; padding: 0; margin: 0 0 12px; }
+.people legend { font-weight: 600; margin-bottom: 4px; }
+.person { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.person:first-of-type { border-top: 0; }
+.person .person-allergy { grid-column: 1 / -1; }
+.person .person-coming { align-self: end; }
+.people[data-hidden] { display: none; }
+
+/* ------------------------------------------------------------------ rapporter: mat, bordskort, placeringslista */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 16px; }
+.columns { columns: 2 220px; }
+.report-table { padding: 10px 0; border-top: 1px solid var(--line); break-inside: avoid; }
+.report-table:first-of-type { border-top: 0; }
+.report-table h3 { margin: 0 0 4px; font-size: 1rem; }
+.place-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 16px; }
+.place-card { background: #fff; border: 1px dashed var(--line); border-radius: 12px; display: grid; grid-template-rows: 1fr 1fr; min-height: 150px; text-align: center; }
+.place-fold { border-bottom: 1px dotted var(--line); }
+.place-front { display: flex; flex-direction: column; justify-content: center; padding: 8px 12px; }
+.place-front .script { font-family: var(--serif); font-style: italic; color: var(--accent); font-size: 1.5rem; margin: 0; overflow-wrap: anywhere; }
+.place-front .eyebrow { margin: 4px 0 0; }
+.seat-list { list-style: none; padding: 0; margin: 0; columns: 2 300px; column-gap: 32px; }
+.seat-list li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); break-inside: avoid; }
+@media print {
+  .place-cards { grid-template-columns: 105mm 105mm; gap: 0; }
+  .place-card { width: 105mm; height: 74.25mm; border: 0; outline: 1px dashed #ccc; outline-offset: -1px; border-radius: 0; break-inside: avoid; }
+  .place-front .script { font-size: 20pt; }
+  .seat-list { font-size: 11pt; }
+}
+
+/* ------------------------------------------------------------------ bröllopsdagen (toastmaster) */
+.day-now { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; }
+.day-now .now { border-color: var(--accent); }
+.day-now .next { margin: 6px 0; }
+.day-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 16px; }
+.day-list { list-style: none; padding: 0; margin: 0 0 8px; }
+.day-list li { display: grid; grid-template-columns: 4.5em 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.day-list li small { display: block; }
+.day-list li.past { color: var(--muted); }
+.day-list li.current { background: var(--soft); border-radius: 8px; padding-left: 6px; font-weight: 600; }
+.day-part { font-size: 1rem; margin: 14px 0 4px; }
+
+/* ------------------------------------------------------------------ bildspel */
+body.slideshow { background: #000; overflow: hidden; }
+body.slideshow main { max-width: none; padding: 0; }
+.show { position: fixed; inset: 0; cursor: pointer; }
+.show-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 1.2s ease; }
+.show-img.on { opacity: 1; }
+.show-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #ddd; font-family: var(--serif); font-size: clamp(1.5rem, 4vw, 3rem); margin: 0; text-align: center; padding: 0 16px; }
+.show-upload { position: absolute; right: 2vw; bottom: 2vw; background: #fff; border-radius: 12px; padding: 10px; text-align: center; width: clamp(110px, 12vw, 200px); }
+.show-upload p { margin: 4px 0 0; font-size: .85rem; color: var(--ink); }
+.show-qr svg { display: block; width: 100%; height: auto; }
+.show-help { position: absolute; left: 2vw; bottom: 2vw; margin: 0; color: #888; font-size: .85rem; transition: opacity .5s; }
+.show-help a { color: #aaa; }
+.show:fullscreen .show-help { opacity: 0; }
+
+/* ------------------------------------------------------------------ tackkort */
+.thanks { list-style: none; padding: 0; margin: 0; }
+.thanks-row { display: grid; grid-template-columns: minmax(180px, 1fr) 2fr; gap: 8px 16px; align-items: center; padding: 14px 18px; margin-bottom: 10px; }
+.thanks-row h3 { margin: 0; font-size: 1rem; }
+.thanks-row p { margin: 2px 0 0; }
+.thanks-row.done { opacity: .7; }
+.thanks-form { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; }
+.thanks-form .field { margin: 0; }
+@media (max-width: 700px) { .thanks-row, .thanks-form { grid-template-columns: 1fr; } }
+.swish { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.swish h2 { margin-bottom: .3em; }
+.swish p { margin: 4px 0; }
+.report-list { list-style: none; margin: 0; padding: 0; }
+.report-list li { padding: 5px 0; break-inside: avoid; }
+.show-empty[hidden] { display: none; }

@@ -58,8 +58,10 @@ s,_,h=req(a,"/users",{"csrf":c,"username":"toast","password":"Toastmaster-2027!"
 tok=link.split("/r/")[1]
 p,_=client()
 s,_,h=req(p,f"/r/{tok}"); ok(s==200 and "Ulriksdals" in h and "&lt;script&gt;" in h,"OSA-sida publik, info escapas")
-s,_,h=req(p,f"/r/{tok}",{"answer":"yes","count":"5"}); ok(s==400,"för många gäster nekas")
-s,_,h=req(p,f"/r/{tok}",{"answer":"yes","count":"2","diet":"Vegan","speech":"on","song":"Dancing Queen"}); ok("Tack!" in h,"OSA sparad")
+s,_,h=req(p,f"/r/{tok}",{"answer":"yes","coming_1":"on","name_1":""}); ok(s==400 and "namnet" in h,"den som kommer måste ha namn")
+s,_,h=req(p,f"/r/{tok}",{"answer":"yes","name_1":"Anna"}); ok(s==400 and "Kryssa i" in h,"minst en måste komma")
+s,_,h=req(p,f"/r/{tok}",{"answer":"yes","name_1":"Anna","coming_1":"on","allergy_1":"Vegan","name_2":"Erik","coming_2":"on",
+    "name_5":"Extra","coming_5":"on","speech":"on","song":"Dancing Queen"}); ok("Tack!" in h,"OSA sparad (fler än inbjudna ignoreras)")
 s,_,h=req(p,"/r/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"); ok(s==404,"fel token 404")
 s,_,h=req(p,"/m/guests"); ok("Logga in" in h,"publik kommer inte åt admin")
 s,_,h=req(a,"/"); ok("2 <small>av 2 kommer" in h and "1 med specialkost" in h,"dashboard räknar OSA")

@@ -9,6 +9,7 @@ from starlette.routing import Route
 
 from . import db as dbm
 from .core import TOKEN_RE, get_settings, log, parse_date, public_rate_limit
+from .entities import NIGHT_CUTOFF, TIMELINE_ORDER
 from .security import token_hash
 
 
@@ -77,9 +78,10 @@ def wedding_event(s: dict, public_only: bool) -> list[list[str]]:
     evs = [event(_uid("wedding", wd), f"Bröllop: {couple}", wd, s.get("wedding_time") or None, 600, loc, desc,
                  alarm_days=7)]
     with dbm.db() as c:
-        q = "SELECT * FROM timeline" + (" WHERE public = 1" if public_only else "") + " ORDER BY time"
+        q = "SELECT * FROM timeline" + (" WHERE public = 1" if public_only else "") + f" ORDER BY {TIMELINE_ORDER}"
         for t in c.execute(q):
-            evs.append(event(_uid("tl", t["id"]), t["title"], wd, t["time"], 30, t["location"] or loc,
+            day = wd + dt.timedelta(days=1) if t["time"] < NIGHT_CUTOFF else wd  # 01:00 = natten efter
+            evs.append(event(_uid("tl", t["id"]), t["title"], day, t["time"], 30, t["location"] or loc,
                              "" if public_only else t["notes"] or ""))
     return evs
 

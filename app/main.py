@@ -1,5 +1,7 @@
+import os
 import re
 import tempfile
+import time
 from contextlib import asynccontextmanager
 
 from starlette.applications import Starlette
@@ -10,9 +12,10 @@ from starlette.responses import PlainTextResponse, RedirectResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
+from . import backup
 from . import db as dbm
-from . import routes_account, routes_api, routes_invites, routes_calendar, routes_crud, routes_mail, routes_photos, routes_public, routes_seating
-from .core import APP_VERSION, BASE, COOKIE_MODE, MAX_BODY, MAX_UPLOAD_BODY, Redirect, get_session, log, render
+from . import routes_account, routes_backup, routes_api, routes_invites, routes_calendar, routes_crud, routes_day, routes_mail, routes_photos, routes_public, routes_reports, routes_seating, routes_thanks
+from .core import APP_VERSION, BASE, COOKIE_MODE, MAX_BODY, MAX_UPLOAD_BODY, Redirect, get_session, log, render, today
 from .routes_mail import configured as smtp_configured
 
 UPLOAD_PATH = re.compile(r"^/(p/[A-Za-z0-9_-]+|r/[A-Za-z0-9_-]+/photos)$")
@@ -119,17 +122,26 @@ async def lifespan(app):
     dbm.init_db()
     tempfile.tempdir = dbm.TMP_DIR  # uppladdningar spoolas till disk, inte till RAM-/tmp
     routes_account.bootstrap_admin()
+    backup.start_scheduler(today, log)
     log.info("Bröllopsplaneraren %s startar (COOKIE_SECURE=%s)", APP_VERSION, COOKIE_MODE)
     if COOKIE_MODE == "false":
         log.warning("COOKIE_SECURE=false – använd bara så här på ett betrott LAN, aldrig mot internet.")
+    tz = os.environ.get("TZ", "")
+    if tz and not os.path.exists(os.path.join("/usr/share/zoneinfo", tz.lstrip(":"))):
+        log.warning("Tidszonen TZ=%s finns inte i containern – appen räknar i UTC.", tz)
+    log.info("Tidszon: %s (%s)", time.tzname[0], time.strftime("%Y-%m-%d %H:%M"))
     log.info("smtp %s", "konfigurerat" if smtp_configured() else "inte konfigurerat – e-postutskick avstängt")
     yield
 
 
 routes = [
     *routes_account.routes,
+    *routes_backup.routes,
     *routes_invites.routes,    # före routes_crud så /m/guests/qr inte tolkas som en post
     *routes_crud.routes,
+    *routes_reports.routes,
+    *routes_day.routes,
+    *routes_thanks.routes,
     *routes_seating.routes,
     *routes_calendar.routes,   # före routes_public så /r/{token}/brollop.ics matchar
     *routes_public.routes,

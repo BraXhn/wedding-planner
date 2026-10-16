@@ -19,7 +19,10 @@ async def seating(request: Request):
     with dbm.db() as c:
         tables = [dict(t) for t in c.execute("SELECT * FROM tables ORDER BY sort_no, name COLLATE NOCASE")]
         guests = [dict(g) for g in c.execute(
-            "SELECT id, name, rsvp, attending, invited_count, table_id, diet, group_name FROM guests "
+            "SELECT id, name, rsvp, attending, invited_count, table_id, group_name, "
+            "TRIM(COALESCE(diet,'') || ' ' || COALESCE((SELECT group_concat(p.name || ': ' || p.allergies, '; ') "
+            "FROM guest_people p WHERE p.guest_id = guests.id AND p.attending = 1 AND COALESCE(p.allergies,'') <> ''),'')) "
+            "AS diet FROM guests "
             "WHERE rsvp <> 'no' ORDER BY group_name COLLATE NOCASE, name COLLATE NOCASE")]
     for g in guests:
         g["need"] = seat_need(g)

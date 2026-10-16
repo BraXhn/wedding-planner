@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Bildspel · {{ super() }}{% endblock %}
+{% block bodyclass %}slideshow{% endblock %}
+{% block content %}
+<div class="show" data-slideshow data-interval="8">
+  <img class="show-img" alt="">
+  <img class="show-img" alt="">
+  <p class="show-empty" data-show-empty>Inga bilder än – bli först att dela en!</p>
+  <aside class="show-upload">
+    <div class="show-qr">{{ qr }}</div>
+    <p>Dela era bilder!</p>
+  </aside>
+  <p class="show-help" data-show-help>Klicka för helskärm · <a href="/photos">tillbaka</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Dagen · {{ super() }}{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <h1>Bröllopsdagen</h1>
+  <div class="actions noprint"><a class="btn" href="#" data-print>Skriv ut</a></div>
+</div>
+{% if live %}
+  <p class="hint" {% if not preview %}data-autorefresh="60"{% endif %}>
+    {% if preview %}Förhandsvisning kl. {{ preview }} · <a href="/dagen">visa nu</a>{% else %}Uppdateras varje minut · kl. {{ now.strftime('%H:%M') }}{% endif %}</p>
+  <div class="day-now">
+    <section class="card now">
+      <p class="eyebrow">Nu</p>
+      {% if current %}<p class="bignum">{{ current.title }}</p>
+        <p class="muted">sedan {{ current.time }}{% if current.location %} · {{ current.location }}{% endif %}{% if current.responsible %} · {{ current.responsible }}{% endif %}</p>
+      {% else %}<p class="bignum">Snart börjar det!</p>{% endif %}
+    </section>
+    <section class="card">
+      <p class="eyebrow">Härnäst</p>
+      {% for t in upcoming %}
+      <p class="next"><strong>{{ t.time }}</strong> {{ t.title }} <span class="muted small">om {% if t.in_min >= 60 %}{{ t.in_min // 60 }} h {{ t.in_min % 60 }} min{% else %}{{ t.in_min }} min{% endif %}</span></p>
+      {% else %}<p class="muted">Inget mer i körschemat.</p>{% endfor %}
+    </section>
+  </div>
+{% elif wedding_date %}
+  <p class="hint">Den här sidan visar vad som händer nu och härnäst på {{ sv_date(wedding_date) }}. Fram till dess ser du hela körschemat och talarlistan.
+  Förhandsvisa: <a href="/dagen?tid=15:00">kl. 15</a> · <a href="/dagen?tid=19:30">kl. 19.30</a></p>
+{% else %}
+  <p class="hint">Ange bröllopsdatum under <a href="/settings">Inställningar</a>.</p>
+{% endif %}
+
+<div class="day-cols">
+  <section class="card">
+    <h2>Körschema</h2>
+    {% if schedule %}
+    <ol class="day-list">
+      {% for t in schedule %}<li class="{{ 'past' if t.past }} {{ 'current' if current and t.id == current.id }}"><b>{{ t.time }}</b><span>{{ t.title }}{% if t.location or t.responsible %}<small class="muted">{{ t.location or '' }}{% if t.location and t.responsible %} · {% endif %}{{ t.responsible or '' }}</small>{% endif %}</span></li>{% endfor %}
+    </ol>
+    {% else %}<p class="muted">Körschemat är tomt. <a href="/m/timeline">Lägg till programpunkter</a>.</p>{% endif %}
+  </section>
+  <section class="card">
+    <h2>Tal <small class="muted">{{ total_minutes }} min</small></h2>
+    {% for p in parts %}
+    <h3 class="day-part">{{ p.part }} <small class="muted">{{ p.minutes }} min</small></h3>
+    <ol class="day-list">
+      {% for sp in p.speeches %}<li><b>{{ sp.minutes }} min</b><span>{{ sp.speaker }}{% if sp.topic %} <small class="muted">{{ sp.topic }}</small>{% endif %}{% if sp.notes %}<small class="muted">{{ sp.notes }}</small>{% endif %}{% if sp.status == 'Anmäld' %} <span class="pill pending">ej bekräftat</span>{% endif %}</span></li>{% endfor %}
+    </ol>
+    {% else %}<p class="muted">Inga tal anmälda.</p>{% endfor %}
+  </section>
+</div>
+{% endblock %}

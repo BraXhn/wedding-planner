@@ -37,6 +37,11 @@ SPEECH_PARTS = ["Under förrätten", "Under varmrätten", "Under efterrätten", 
 RSVP_OPTIONS = [("pending", "Väntar"), ("yes", "Kommer"), ("no", "Kommer inte")]
 
 
+# Programpunkter före 06:00 hör till natten efter bröllopsdagen (t.ex. 01:00 Nattmat) och sorteras sist.
+NIGHT_CUTOFF = "06:00"
+TIMELINE_ORDER = f"time < '{NIGHT_CUTOFF}', time"
+
+
 def _case(col, values):
     return f"CASE {col} " + " ".join(f"WHEN '{v}' THEN {i}" for i, v in enumerate(values)) + " ELSE 99 END"
 
@@ -49,21 +54,27 @@ ENTITIES = {
             F("name", "Namn", required=True, help="Ett hushåll/sällskap per rad, t.ex. ”Anna & Erik Svensson”"),
             F("email", "E-post", "email", help="Behövs för e-postutskick"),
             F("phone", "Telefon"),
+            F("street", "Gatuadress", help="För inbjudan med posten, t.ex. ”Storgatan 1” eller ”c/o Svensson, Storgatan 1”"),
+            F("postcode", "Postnummer"),
+            F("city", "Ort"),
             F("side", "Sida", "select", options=opts(["Gemensam", "Partner A", "Partner B"]), default="Gemensam"),
             F("group_name", "Grupp", help="t.ex. Familj, Vänner, Kollegor"),
             F("invited_count", "Antal inbjudna", "int", default=1, min=1, max=20),
             F("rsvp", "OSA", "select", options=RSVP_OPTIONS, default="pending"),
             F("attending", "Antal som kommer", "int", default=0, min=0, max=20,
               help="Lämnas tomt vid ”Kommer” → alla inbjudna räknas"),
-            F("diet", "Specialkost/allergier", "textarea"),
+            F("diet", "Specialkost – övrigt", "textarea",
+              help="Allergier anges per person under Personer (eller av gästen i OSA-svaret)"),
             F("speech", "Vill hålla tal", "bool"),
             F("song", "Låtönskemål"),
             F("table_id", "Bord", "ref", ref="tables", help="Enklast via Placering"),
             F("message", "Meddelande från gäst", "textarea"),
             F("notes", "Egna anteckningar", "textarea"),
+            F("gift_received", "Present från dem", help="Fylls i efter bröllopet – se Tackkort"),
+            F("thanks_sent", "Tackkort skickat", "bool"),
         ],
         "list": ["name", "group_name", "invited_count", "rsvp", "attending", "diet", "table_id"],
-        "search": ["name", "email", "group_name", "diet"],
+        "search": ["name", "email", "group_name", "diet", "street", "city"],
         "sum": ["invited_count", "attending"],
         "filters": [("", "Alla"), ("pending", "Väntar"), ("yes", "Kommer"), ("no", "Kommer inte")],
         "extra_columns": {"rsvp_token": "TEXT", "rsvp_code": "TEXT", "rsvp_at": "TEXT", "invite_sent_at": "TEXT",
@@ -111,6 +122,7 @@ ENTITIES = {
             F("actual", "Faktiskt (kr)", "money"),
             F("paid", "Betald", "bool"),
             F("due_date", "Förfallodatum", "date"),
+            F("vendor_id", "Leverantör", "ref", ref="vendors", help="Sätts automatiskt när en leverantör med pris bokas"),
             F("notes", "Anteckningar", "textarea"),
         ],
         "list": ["item", "category", "estimated", "actual", "paid", "due_date"],
@@ -129,7 +141,7 @@ ENTITIES = {
             F("phone", "Telefon"),
             F("email", "E-post", "email"),
             F("website", "Webbplats", "url"),
-            F("price", "Pris (kr)", "money"),
+            F("price", "Pris (kr)", "money", help="När status är Bokad läggs priset in som budgeterat belopp i Budget"),
             F("notes", "Anteckningar", "textarea"),
         ],
         "list": ["name", "category", "status", "contact", "phone", "price"],
@@ -139,9 +151,9 @@ ENTITIES = {
     },
     "timeline": {
         "title": "Körschema", "singular": "programpunkt",
-        "order": "time",
+        "order": TIMELINE_ORDER,
         "fields": [
-            F("time", "Tid", "time", required=True),
+            F("time", "Tid", "time", required=True, help="Tider före 06:00 räknas som natten efter bröllopsdagen"),
             F("title", "Vad", required=True),
             F("location", "Plats"),
             F("responsible", "Ansvarig"),
@@ -212,6 +224,7 @@ SETTINGS_DEFAULTS = {
     "photo_moderation": "0",
     "photo_quota_mb": "5000",
     "osa_card_footer": "Svara senast {osa_senast}",
+    "swish_message": "Bröllopsgåva",
 }
 
 SETTINGS_FIELDS = [
@@ -228,7 +241,9 @@ SETTINGS_FIELDS = [
     F("info_text", "Välkomsttext", "textarea", help="Visas överst för gästerna"),
     F("directions", "Hitta hit", "textarea", help="Vägbeskrivning, parkering, kollektivtrafik"),
     F("accommodation", "Boende", "textarea", help="Hotell, rabattkoder, sovplatser"),
-    F("gift_info", "Presenter", "textarea", help="t.ex. Swish-nummer till bröllopsresan. Visas ovanför önskelistan."),
+    F("gift_info", "Presenter", "textarea", help="t.ex. bidrag till bröllopsresan. Visas ovanför önskelistan."),
+    F("swish_number", "Swish-nummer", help="Mobilnummer eller Swish-nummer. Gästerna får en QR-kod att skanna med Swish under Önskelista."),
+    F("swish_message", "Meddelande i Swish", help="Förifyllt i Swish, t.ex. ”Bröllopsgåva”. Högst 50 tecken, gästen kan ändra det."),
     S("Bilder"),
     F("photos_enabled", "Låt gäster ladda upp bilder", "bool"),
     F("gallery_public", "Gäster får se alla uppladdade bilder", "bool"),
@@ -237,6 +252,9 @@ SETTINGS_FIELDS = [
     S("OSA-kort"),
     F("osa_card_footer", "Text under koden på OSA-korten", "textarea",
       help="Platshållare: {osa_senast} {namn} {antal} {datum} {brudpar} {plats}. Redigera gärna direkt på sidan OSA-kort med förhandsvisning."),
+    S("Aviseringar"),
+    F("notify_email", "Mejla oss när någon svarar på OSA",
+      help="En eller flera e-postadresser, separerade med komma. Lämna tomt för inga mejl. Kräver SMTP."),
     S("E-postmallar"),
     F("invite_subject", "Ämne – inbjudan"),
     F("invite_body", "Text – inbjudan", "textarea", help="Platshållare: {namn} {länk} {kod} {osa_adress} {brudpar} {datum} {plats} {osa_senast}"),
