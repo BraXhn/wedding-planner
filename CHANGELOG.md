@@ -1,6 +1,21 @@
 # Ändringslogg
 
 ## Ej släppt
+- **Personer per hushåll.** Gästen skriver i OSA-svaret namn och allergier för var och en som kommer och bockar ur den som inte kan. ”Antal som kommer” räknas fram från personerna. Samma uppgifter går att redigera under Gäster → Personer. Det gamla fältet för specialkost finns kvar som ”Specialkost – övrigt”.
+- **Postadress** per hushåll (gatuadress, postnummer, ort), med i CSV:n för dokumentkoppling på OSA-korten.
+- **Till cateringen:** antal som kommer, allergier per person och bord och en sammanställning. Utskrift och CSV.
+- **Bordskort med namn** (ett per person, 8 per A4) och **placeringslista** i bokstavsordning, under Placering.
+- **Dagen:** sida för toastmaster och brudpar med vad som händer nu och härnäst, körschemat och talen per del av middagen. Uppdateras varje minut; före bröllopet kan man förhandsvisa en viss tid.
+- **Bildspel** för projektor under Bilder: helskärm, nya bilder visas direkt, QR-kod för uppladdning i hörnet.
+- **Tackkort:** present och avbockning per hushåll, med adress.
+- **Swish-QR** i gästportalens önskelista när ett Swish-nummer är angivet under Inställningar.
+- **Mejl till er** när någon svarar på OSA (Inställningar → Aviseringar, en eller flera adresser).
+- **Bokade leverantörer** läggs in i budgeten automatiskt med priset som budgeterat belopp.
+- **Säkerhetskopior:** en kopia av databasen varje dygn (de senaste 14 sparas) och nedladdning för administratörer under Användare → Säkerhetskopior.
+- Nytt bröllopsdatum flyttar de deadlines som räknats ut från det gamla; egna datum lämnas.
+- Programpunkter före 06:00 räknas som natten efter bröllopsdagen: de sorteras sist och får rätt datum i kalendern.
+- Läsare (t.ex. toastmaster) ser inte längre gästernas OSA-länkar, koder eller QR-koder, varken på gästsidan, i CSV-exporten eller på OSA-korten.
+- Tidszonen är `Europe/Stockholm` som standard i imagen, CI kontrollerar att den gäller och appen varnar i loggen om den saknas.
 - **Säkerhet:** en aktiv tvåstegsverifiering kan inte längre bytas ut utan att först stängas av med lösenord. Andra inloggade sessioner loggas ut när den aktiveras. Kontroll av nuvarande lösenord (byte av lösenord, avstängning av 2FA) räknas mot samma spärr som inloggningen.
 - Rättat: flera fall som gav "Internt fel" (500) i stället för ett begripligt svar: TOTP-kod eller formulärtoken med icke-ASCII-tecken, belopp som `inf` eller `1e400`, datum som år 1, orimligt stora id i adresser, placering och önskelista, konstiga värden i `?ok=` på bildsidorna, och nedladdning av QR-kod för gäster med namn som Łukasz.
 - Rättat: "Antal som kommer" kan inte längre vara större än "Antal inbjudna".

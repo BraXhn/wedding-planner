@@ -10,26 +10,30 @@ En självhostad bröllopsplanerare för Unraid. Den är liten (fem Python-beroen
 | Del | Vad den gör |
 |---|---|
 | **Översikt** | Nedräkning, OSA-status, budget, försenade uppgifter, obetalda räkningar, tal, önskelista och bilder |
-| **Gäster** | Ett hushåll per rad: antal, grupp/sida, bord, specialkost, låtönskemål, e-post |
-| **Placering** | Bord med antal platser. Dra hushåll till ett bord, eller tryck på hushållet och sedan på bordet i mobilen. Fulla bord markeras i rött och det finns en utskriftsvy. |
-| **Att göra** | Förifylld svensk checklista med 38 punkter. **Deadlines räknas ut automatiskt** från bröllopsdatumet, till exempel hindersprövning en månad före. |
+| **Gäster** | Ett hushåll per rad: antal, grupp/sida, bord, e-post, postadress och låtönskemål. Under **Personer** står namn, om personen kommer och allergier per person. |
+| **Till cateringen** | Antal som kommer, allergier per person och per bord och en sammanställning (t.ex. ”2 × nötter”). Kan skrivas ut eller exporteras som CSV. |
+| **Placering** | Bord med antal platser. Dra hushåll till ett bord, eller tryck på hushållet och sedan på bordet i mobilen. Fulla bord markeras i rött och det finns en utskriftsvy. **Bordskort** med namn (ett per person, 8 per A4) och en **placeringslista** i bokstavsordning till entrén. |
+| **Att göra** | Förifylld svensk checklista med 38 punkter. **Deadlines räknas ut automatiskt** från bröllopsdatumet, till exempel hindersprövning en månad före. Ändras datumet flyttas de uträknade deadlines med; egna datum rörs inte. |
 | **Budget** | Budgeterat mot faktiskt, betalt, förfallodatum och summering |
-| **Leverantörer** | Status från förfrågan till bokad, kontaktuppgifter och pris |
-| **Körschema** | Dagen minut för minut. Punkter markerade *Visa för gäster* syns i gästportalen. |
+| **Leverantörer** | Status från förfrågan till bokad, kontaktuppgifter och pris. En bokad leverantör läggs in i budgeten med priset som budgeterat belopp. |
+| **Körschema** | Dagen minut för minut. Punkter markerade *Visa för gäster* syns i gästportalen. Tider före 06:00 räknas som natten efter. |
+| **Dagen** | För toastmaster och brudpar i mobilen på bröllopsdagen: vad som händer nu och härnäst, hela körschemat och talen per del av middagen. |
 | **Tal** | Talarlista för toastmaster. Gäster som anmäler tal i OSA-formuläret hamnar här automatiskt. Visar total talartid. |
 | **Önskelista** | Gästerna reserverar presenter. Ni ser hur många som är reserverade, men inte av vem. |
-| **Bilder** | Gästernas bilder i ett galleri, med valfri granskning innan de visas, nedladdning som zip och utskrivbara **bordskort med QR-kod** |
+| **Bilder** | Gästernas bilder i ett galleri, med valfri granskning innan de visas, nedladdning som zip, utskrivbara **bordskort med QR-kod** och ett **bildspel** för projektor som visar nya bilder direkt |
 | **OSA-kort med QR** | För inbjudningar som skickas med posten: en QR-kod och en kort kod per hushåll, utskriftsark (8 kort per A4) och zip med PNG/SVG + CSV för dokumentkoppling i Word, InDesign eller Canva |
-| **Utskick** | E-post med personlig länk till varje hushåll, påminnelser till dem som inte svarat, redigerbara mallar och testutskick |
+| **Utskick** | E-post med personlig länk till varje hushåll, påminnelser till dem som inte svarat, redigerbara mallar och testutskick. Ni kan också få ett mejl varje gång någon svarar på OSA (Inställningar → Aviseringar). |
+| **Tackkort** | Efter bröllopet: vilken present varje hushåll gav, adress för kuvertet och avbockning när tackkortet är skickat |
 | **Kalender** | Personlig prenumerationslänk (.ics) med bröllopet, körschemat, deadlines och räkningar |
 | **API** | Nedräkningen (och valfri statistik) som JSON för t.ex. **Hemmahub** |
-| **Roller** | Administratör, Redigerare och Läsare. Läsare passar t.ex. toastmaster. |
+| **Roller** | Administratör, Redigerare och Läsare. Läsare passar t.ex. toastmaster – de ser allt men inte gästernas OSA-länkar och koder. |
+| **Backup** | En kopia av databasen varje dygn (de senaste 14 sparas) och nedladdning för administratörer |
 | **CSV-export** | Alla listor kan exporteras till Excel |
 
 ### För gästerna (personlig länk, inget konto)
-- **OSA**: kommer eller inte, antal, allergier, talanmälan, låtönskemål och hälsning. Svaret kan ändras fram till OSA-deadline.
+- **OSA**: kommer eller inte, namn och allergier för var och en som kommer, talanmälan, låtönskemål och hälsning. Svaret kan ändras fram till OSA-deadline.
 - **Information**: när och var, program, hitta hit, boende och knappen *Lägg till i kalendern*.
-- **Önskelista** med reservation.
+- **Önskelista** med reservation, och en **Swish-QR** för penninggåvor om ni angett ett Swish-nummer.
 - **Bilder**: uppladdning och galleri, om ni har slagit på det.
 
 ## Installation på Unraid

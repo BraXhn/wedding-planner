@@ -14,6 +14,8 @@ Starlette (inte FastAPI) + Jinja2 + SQLite. Kryptot (scrypt, TOTP, tokens) bygge
 - `app/entities.py` – datamodellen. Tabeller, formulär, listvyer och CSV genereras från `ENTITIES`; inställningar från `SETTINGS_FIELDS`/`SETTINGS_DEFAULTS`.
 - `app/db.py` – schema och migreringar. Nya fält i `ENTITIES` läggs till som kolumner automatiskt vid start; datamigreringar skrivs i `init_db()` och måste tåla att köras vid varje start.
 - `app/core.py` – sessioner, behörighet, validering (`parse_form`), mallhjälpare (`render`, `asset`, `sv_date`).
+- `app/people.py` – personer i ett hushåll (`guest_people`: namn, kommer, allergier); `coming_people()` ger en rad per person som kommer och används av matrapport, bordskort och placeringslista.
+- `app/backup.py` – daglig SQLite-kopia i `DATA_DIR/backups` (bakgrundstråd som startas i `lifespan`).
 - `app/routes_*.py` – en modul per område; registreras i `app/main.py` (ordningen spelar roll där specifika sökvägar krockar med `/m/{ent}/...`).
 - `app/templates/`, `app/static/app.js`, `app/static/style.css` – all JS och CSS ligger i filerna (CSP tillåter inget inline).
 
@@ -21,7 +23,7 @@ Starlette (inte FastAPI) + Jinja2 + SQLite. Kryptot (scrypt, TOTP, tokens) bygge
 
 Appen ligger ute på internet; varje ändring håller dessa:
 
-- Inloggade vyer anropar `auth(request, write=…, admin=…)`; roller: admin, editor, viewer.
+- Inloggade vyer anropar `auth(request, write=…, admin=…)`; roller: admin, editor, viewer. Läsare får aldrig se gästernas OSA-länkar, koder eller QR (de ger skrivrätt till gästens svar).
 - Varje POST verifierar CSRF: `csrf_form()` för formulär, `csrf_header()` för `fetch()`-anrop med JSON.
 - Publika token-sidor (`/r/`, `/p/`, `/o/`, `/osa`, `/cal/`, `/api/`) anropar `public_rate_limit()` eller en egen `RateLimiter`, validerar token/nyckel mot ett strikt mönster (`TOKEN_RE`, `KEY_RE`, `normalize_code`) och svarar 404/401 utan att avslöja om den finns.
 - SQL är parametriserad; tabell- och kolumnnamn kommer bara från `ENTITIES` (vitlista).
