@@ -60,7 +60,7 @@ def footer_values(s: dict) -> dict:
 async def qr_sheet(request: Request):
     """Utskriftsark: ett A7-kort per hushåll (8 per A4). POST sparar texten under koden."""
     write = request.method == "POST"
-    user = auth(request, write=write)
+    user = auth(request, write=True)  # läsare får inte se gästernas OSA-koder
     scope = request.query_params.get("scope", "all")
     scope = scope if scope in ("all", "pending") else "all"
     saved, error = False, None
@@ -88,7 +88,7 @@ async def qr_sheet(request: Request):
 
 async def qr_zip(request: Request):
     """QR-koder som PNG + SVG och en CSV för koppling (Word, InDesign, Canva Bulk Create)."""
-    user = auth(request)
+    user = auth(request, write=True)
     scope = request.query_params.get("scope", "all")
     guests = [g for g in _guests(scope if scope in ("all", "pending") else "all") if g["rsvp_code"]]
     host = short_host(request)
@@ -118,7 +118,7 @@ async def qr_zip(request: Request):
 
 
 async def qr_single(request: Request):
-    auth(request)
+    auth(request, write=True)
     fmt = request.path_params["fmt"]
     with dbm.db() as c:
         g = c.execute("SELECT name, rsvp_code FROM guests WHERE id = ?", (request.path_params["item_id"],)).fetchone()

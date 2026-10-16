@@ -6,7 +6,7 @@
 
 {% if errors %}<div class="alert error"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 
-{% if ent == 'guests' and item %}
+{% if ent == 'guests' and item and can_write %}
 <section class="card linkbox">
   {% if qr %}
   <div class="osa-qr">

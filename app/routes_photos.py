@@ -21,6 +21,7 @@ from starlette.responses import FileResponse, RedirectResponse
 from starlette.routing import Route
 
 from . import db as dbm
+from .entities import TIMELINE_ORDER
 from .core import (
     MAX_UPLOAD_MB, TOKEN_RE, UPLOAD_IP, auth, client_ip, csrf_form, flag, get_settings, log, parse_date, public_base,
     public_rate_limit, render, set_settings, today,
@@ -149,7 +150,7 @@ def photo_token() -> str:
 
 def _public_programme():
     with dbm.db() as c:
-        return c.execute("SELECT time, title, location FROM timeline WHERE public = 1 ORDER BY time").fetchall()
+        return c.execute(f"SELECT time, title, location FROM timeline WHERE public = 1 ORDER BY {TIMELINE_ORDER}").fetchall()
 
 
 # ======================================================================= publik sida (QR på borden)

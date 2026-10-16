@@ -8,7 +8,7 @@ from starlette.routing import Route
 
 from . import db as dbm
 from .core import (
-    auth, csrf_form, display, fill_task_deadlines, get_settings, load_refs, log, parse_date, parse_form,
+    auth, csrf_form, display, fill_task_deadlines, get_settings, load_refs, log, move_task_deadlines, parse_date, parse_form,
     public_base, render, set_settings, sync_speech_from_guest, today,
 )
 from .entities import ENTITIES, SETTINGS_FIELDS
@@ -153,7 +153,9 @@ async def item_form(request: Request):
         if ent == "guests":
             link = rsvp_link(request, row["rsvp_token"])
     qr = code = None
-    if ent == "guests" and row is not None and row["rsvp_code"]:
+    if user["role"] == "viewer":
+        link = ""  # läsare (t.ex. toastmaster) ska inte kunna svara i gästernas namn
+    elif ent == "guests" and row is not None and row["rsvp_code"]:
         from markupsafe import Markup
         from .qr import qr_svg
         qr = Markup(qr_svg(f"{public_base(request)}/o/{row['rsvp_code']}"))  # SVG genererad av oss själva
@@ -295,13 +297,14 @@ async def export_csv(request: Request):
         rows = c.execute(f"SELECT *{extra} FROM {ent} ORDER BY {spec['order']}").fetchall()
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";")
+    with_links = ent == "guests" and user["role"] != "viewer"  # läsare får inte gästernas OSA-länkar
     w.writerow([f["label"] for f in spec["fields"]] + [lab for _, lab, _ in spec["computed"]]
-               + (["OSA-länk", "OSA-kod", "QR-länk"] if ent == "guests" else []))
+               + (["OSA-länk", "OSA-kod", "QR-länk"] if with_links else []))
     for r in rows:
         line = [csv_cell(display(f, r[f["name"]], refs) if f["type"] in ("select", "bool", "ref") else r[f["name"]])
                 for f in spec["fields"]]
         line += [csv_cell(r[name]) for name, _, _ in spec["computed"]]
-        if ent == "guests":
+        if with_links:
             line += [rsvp_link(request, r["rsvp_token"]), format_code(r["rsvp_code"]),
                      f"{public_base(request)}/o/{r['rsvp_code']}" if r["rsvp_code"] else ""]
         w.writerow(line)
@@ -328,10 +331,13 @@ async def settings_view(request: Request):
     if errors:
         return render(request, "settings.html", user, status=400, fields=SETTINGS_FIELDS, vals=vals,
                       errors=errors, can_write=True, active="settings")
+    old_wd = parse_date(get_settings().get("wedding_date"))
     set_settings(vals)
+    new_wd = parse_date(vals.get("wedding_date"))
+    moved = move_task_deadlines(old_wd, new_wd) if old_wd and new_wd and old_wd != new_wd else 0
     filled = fill_task_deadlines()
     return render(request, "settings.html", user, fields=SETTINGS_FIELDS, vals=get_settings(),
-                  can_write=True, saved=True, filled=filled, active="settings")
+                  can_write=True, saved=True, filled=filled, moved=moved, active="settings")
 
 
 routes = [

@@ -1,5 +1,7 @@
+import os
 import re
 import tempfile
+import time
 from contextlib import asynccontextmanager
 
 from starlette.applications import Starlette
@@ -124,6 +126,10 @@ async def lifespan(app):
     log.info("Bröllopsplaneraren %s startar (COOKIE_SECURE=%s)", APP_VERSION, COOKIE_MODE)
     if COOKIE_MODE == "false":
         log.warning("COOKIE_SECURE=false – använd bara så här på ett betrott LAN, aldrig mot internet.")
+    tz = os.environ.get("TZ", "")
+    if tz and not os.path.exists(os.path.join("/usr/share/zoneinfo", tz.lstrip(":"))):
+        log.warning("Tidszonen TZ=%s finns inte i containern – appen räknar i UTC.", tz)
+    log.info("Tidszon: %s (%s)", time.tzname[0], time.strftime("%Y-%m-%d %H:%M"))
     log.info("smtp %s", "konfigurerat" if smtp_configured() else "inte konfigurerat – e-postutskick avstängt")
     yield
 

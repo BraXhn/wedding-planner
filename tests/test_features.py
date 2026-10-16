@@ -51,12 +51,13 @@ r = req(a, "/account/password", {"csrf": c, "current": PW, "new": NEW, "new2": N
 r = req(a, "/"); ok(r[0] == 200 and "Gästbilder" in html(r), "översikt med nya kort")
 
 # ---------------------------------------------------------------- inställningar + automatiska deadlines
-r = req(a, "/settings", {"csrf": c, "couple_names": "Anna & Erik", "wedding_date": "2027-06-12", "wedding_time": "14:00",
+SET = {"csrf": c, "couple_names": "Anna & Erik", "wedding_date": "2027-06-12", "wedding_time": "14:00",
      "venue": "Ulriksdals slott", "address": "Slottsvägen 1", "rsvp_deadline": "2027-04-01", "total_budget": "250000",
      "info_text": "Välkomna!", "directions": "Buss 503", "accommodation": "Hotell X", "gift_info": "Swish 123",
      "photos_enabled": "on", "photo_quota_mb": "500",
      "invite_subject": "Inbjudan {brudpar} {__class__}", "invite_body": "Hej {namn}! {länk} {datum} {0.__class__}",
-     "reminder_subject": "Påminnelse", "reminder_body": "Svara {länk}", "notify_email": "louise@example.se; anton@example.se"})
+     "reminder_subject": "Påminnelse", "reminder_body": "Svara {länk}", "notify_email": "louise@example.se; anton@example.se"}
+r = req(a, "/settings", SET)
 h = html(r); ok("Sparat" in h and "deadlines" in h, "inställningar sparas + deadlines fylls i")
 ok(q("SELECT value FROM settings WHERE key='notify_email'")[0][0] == "louise@example.se, anton@example.se", "aviseringsadresser normaliseras")
 r = req(a, "/settings", {"csrf": c, "notify_email": "louise@example.se, inte-en-adress"})
@@ -65,6 +66,14 @@ d = q("SELECT due_date FROM tasks WHERE title LIKE 'Begär hindersprövning%'")[
 ok(d == "2027-05-12", f"hindersprövning-deadline = 1 mån före ({d})")
 ok(q("SELECT due_date FROM tasks WHERE period='Efteråt' LIMIT 1")[0][0] == "2027-07-12", "efteråt-deadline")
 ok(q("SELECT COUNT(*) FROM tasks WHERE COALESCE(due_date,'')=''")[0][0] == 0, "alla uppgifter fick deadline")
+own = q("SELECT id FROM tasks WHERE title LIKE 'Boka fotograf%'")[0][0]
+DB.execute("UPDATE tasks SET due_date = '2026-12-24' WHERE id = ?", (own,)); DB.commit()
+h = html(req(a, "/settings", {**SET, "wedding_date": "2027-08-14"}))
+ok(q("SELECT due_date FROM tasks WHERE title LIKE 'Begär hindersprövning%'")[0][0] == "2027-07-14" and "flyttades" in h,
+   "nytt bröllopsdatum flyttar uträknade deadlines")
+ok(q("SELECT due_date FROM tasks WHERE id=?", own)[0][0] == "2026-12-24", "egna deadlines rörs inte vid nytt datum")
+req(a, "/settings", SET)
+ok(q("SELECT due_date FROM tasks WHERE title LIKE 'Begär hindersprövning%'")[0][0] == "2027-05-12", "och tillbaka igen")
 
 # ---------------------------------------------------------------- bord & placering
 for name, seats in (("Bord 1", 4), ("Bord 2", 8)):
@@ -144,8 +153,15 @@ ok(req(client(), "/rapport/mat", follow=False)[0] == 303 and req(client(), "/sea
 req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, **{k: v for k, v in FAM.items() if k != "answer"}})
 r = req(p, f"/r/{gA[1]}/info"); h = html(r)
 ok("Buss 503" in h and "Hotell X" in h, "informationssida")
+for t, title in (("15:00", "Vigsel i parken"), ("01:00", "Nattmat"), ("18:00", "Middag")):
+    req(a, "/m/timeline/new", {"csrf": c, "time": t, "title": title, "public": "on"})
 r = req(p, f"/r/{gA[1]}/brollop.ics"); body = r[2].decode()
 ok(r[0] == 200 and "BEGIN:VEVENT" in body and "DTSTART:20270612T140000" in body and "\r\n" in body, "gästens .ics")
+ok("DTSTART:20270613T010000" in body and "DTSTART:20270612T150000" in body, "programpunkt efter midnatt hamnar på dagen efter i .ics")
+h = html(req(p, f"/r/{gA[1]}/info"))
+ok(h.index("Vigsel i parken") < h.index("Middag") < h.index("Nattmat"), "programmet sorterar nattens punkter sist")
+h = html(req(a, "/m/timeline"))
+ok(h.index("Vigsel i parken") < h.index("Middag") < h.index("Nattmat"), "körschemat sorterar nattens punkter sist")
 
 # ---------------------------------------------------------------- önskelista
 req(a, "/m/wishlist/new", {"csrf": c, "title": "Kaffemaskin", "quantity": 1, "price": "3000", "url": "https://shop.example/kaffe"})
@@ -272,6 +288,12 @@ ok(req(v, "/api-keys")[0] == 403 and req(v, "/mail/send", {"csrf": c2, "kind": "
 ok(req(v, "/seating/assign", raw=b"{}", headers={"Content-Type": "application/json", "X-CSRF-Token": c2})[0] == 403, "läsare kan inte flytta gäster")
 ok('draggable' not in html(req(v, "/seating")), "läsare ser placering utan dra-funktion")
 ok(req(v, f"/m/guests/{gA[0]}/people", {"csrf": c2, "name_1": "X", "coming_1": "on"})[0] == 403, "läsare kan inte ändra personer")
+h = html(req(v, f"/m/guests/{gA[0]}"))
+ok("rsvplink" not in h and gA[1] not in h and "Anders" in h, "läsare ser gästen men inte OSA-länken")
+ok(gA[1] not in req(v, "/m/guests/export.csv")[2].decode("utf-8-sig"), "läsare får inte OSA-länkar i CSV-exporten")
+ok(gA[1] in req(a, "/m/guests/export.csv")[2].decode("utf-8-sig"), "redigerare får OSA-länkar i CSV-exporten")
+ok(all(req(v, u)[0] == 403 for u in ("/m/guests/qr", "/m/guests/qr.zip", f"/m/guests/{gA[0]}/qr.svg")),
+   "läsare når inte OSA-kort och QR-koder")
 
 # ---------------------------------------------------------------- säkerhetskopior
 ok(req(v, "/backup")[0] == 403 and req(v, "/backup/now.db")[0] == 403, "läsare når inte säkerhetskopior")
@@ -337,7 +359,7 @@ ok("<script>x</script>" not in h and "&lt;script&gt;" in h, "text under koden es
 r = req(a, "/m/guests/qr", {"csrf": c, "osa_card_footer": "x" * 301}); ok(r[0] == 400 and "högst 300" in html(r), "för lång text nekas")
 ok(req(a, "/m/guests/qr", {"csrf": "fel", "osa_card_footer": "hack"})[0] == 403, "texten kräver CSRF-token")
 ok(req(v, "/m/guests/qr", {"csrf": c2, "osa_card_footer": "hack"})[0] == 403, "läsare kan inte ändra texten")
-ok(req(v, "/m/guests/qr")[0] == 200 and "footer-editor" not in html(req(v, "/m/guests/qr")), "läsare ser korten utan redigering")
+ok(req(v, "/m/guests/qr")[0] == 403, "läsare ser inte OSA-korten (koderna ger tillgång till gästernas svar)")
 req(a, "/m/guests/qr", {"csrf": c, "osa_card_footer": ""})
 ok(html(req(a, "/m/guests/qr")).count("osa-footer\" data-namn") == 0 or 'hidden>' in html(req(a, "/m/guests/qr")), "tom text → ingen rad på korten")
 ok(q("SELECT value FROM settings WHERE key='osa_card_footer'")[0][0] == "", "tom text sparas")

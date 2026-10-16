@@ -37,6 +37,11 @@ SPEECH_PARTS = ["Under förrätten", "Under varmrätten", "Under efterrätten", 
 RSVP_OPTIONS = [("pending", "Väntar"), ("yes", "Kommer"), ("no", "Kommer inte")]
 
 
+# Programpunkter före 06:00 hör till natten efter bröllopsdagen (t.ex. 01:00 Nattmat) och sorteras sist.
+NIGHT_CUTOFF = "06:00"
+TIMELINE_ORDER = f"time < '{NIGHT_CUTOFF}', time"
+
+
 def _case(col, values):
     return f"CASE {col} " + " ".join(f"WHEN '{v}' THEN {i}" for i, v in enumerate(values)) + " ELSE 99 END"
 
@@ -144,9 +149,9 @@ ENTITIES = {
     },
     "timeline": {
         "title": "Körschema", "singular": "programpunkt",
-        "order": "time",
+        "order": TIMELINE_ORDER,
         "fields": [
-            F("time", "Tid", "time", required=True),
+            F("time", "Tid", "time", required=True, help="Tider före 06:00 räknas som natten efter bröllopsdagen"),
             F("title", "Vad", required=True),
             F("location", "Plats"),
             F("responsible", "Ansvarig"),

@@ -239,7 +239,7 @@ rsync -a /mnt/user/appdata/wedding-planner/photos/ /mnt/user/backups/wedding-pho
 | `SMTP_DELAY_SECONDS` | `1.5` | Paus mellan mejl |
 | `API_CORS_ORIGINS` | – | Origins som får anropa API:t från en webbläsare |
 | `MAX_UPLOAD_MB` / `MAX_UPLOAD_REQUEST_MB` | `20` / `120` | Max storlek per bild respektive per uppladdning |
-| `TZ` | – | Tidszon, t.ex. `Europe/Stockholm`. Används för nedräkningen. |
+| `TZ` | `Europe/Stockholm` | Tidszon. Styr vad som är "idag": nedräkningen, försenade uppgifter, sista dag för OSA, säkerhetskopior och läget för toastmastern. |
 
 ## Utveckling
 

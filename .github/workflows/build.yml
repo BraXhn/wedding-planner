@@ -98,5 +98,8 @@ jobs:
           docker exec wp sh -c 'grep -qE "^Uid:\s+99\s" /proc/1/status && grep -qE "^CapEff:\s+0+$" /proc/1/status' \
             || { echo "Appen kör inte som 99 utan capabilities"; docker exec wp cat /proc/1/status; exit 1; }
           docker logs wp 2>&1 | grep -q "Engångslösenord"
+          # tidszonen ska gälla i containern (annars blir "idag" fel mellan 00 och 02)
+          docker exec wp python -c "import time; assert time.tzname[0] == 'CET', time.tzname" \
+            || { echo "TZ=Europe/Stockholm slår inte igenom – saknas tzdata?"; exit 1; }
           docker logs wp
           docker rm -f wp

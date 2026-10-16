@@ -15,7 +15,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     TMPDIR=/data/.tmp \
     PUID=99 \
     PGID=100 \
+    TZ=Europe/Stockholm \
     TRUSTED_PROXIES=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
+
+# tzdata: utan den ignoreras TZ och appen räknar i UTC – då blir "idag" fel mellan 00 och 02
+# (nedräkning, försenade uppgifter och sista dag för OSA).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tzdata \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY requirements.txt .

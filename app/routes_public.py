@@ -7,6 +7,7 @@ from starlette.responses import RedirectResponse
 from starlette.routing import Route
 
 from . import db as dbm
+from .entities import TIMELINE_ORDER
 from .core import (
     MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_settings, log, parse_date, public_base, public_rate_limit, read_form, render,
     sync_speech_from_guest, today,
@@ -81,7 +82,7 @@ def _portal_ctx(g, tab: str) -> dict:
     s = get_settings()
     with dbm.db() as c:
         has_gifts = bool(c.execute("SELECT 1 FROM wishlist LIMIT 1").fetchone()) or bool(s.get("gift_info"))
-        programme = c.execute("SELECT time, title, location FROM timeline WHERE public = 1 ORDER BY time").fetchall()
+        programme = c.execute(f"SELECT time, title, location FROM timeline WHERE public = 1 ORDER BY {TIMELINE_ORDER}").fetchall()
     deadline = parse_date(s.get("rsvp_deadline"))
     return dict(settings=s, guest=g, tab=tab, base=f"/r/{g['rsvp_token']}", has_gifts=has_gifts,
                 has_photos=flag(s, "photos_enabled"), programme=programme,

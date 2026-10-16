@@ -347,9 +347,14 @@ def public_rate_limit(request: Request) -> None:
 
 
 # ======================================================================= domänlogik som delas
+def period_deadline(wd: dt.date, period: str) -> dt.date:
+    from .entities import PERIOD_OFFSETS
+    months, days = PERIOD_OFFSETS.get(period, (0, 0))
+    return add_months(wd, months) + dt.timedelta(days=days)
+
+
 def fill_task_deadlines(only_empty: bool = True) -> int:
     """Sätter deadlines på uppgifter utifrån bröllopsdatum och tidsperiod."""
-    from .entities import PERIOD_OFFSETS
     wd = parse_date(get_settings().get("wedding_date"))
     if not wd:
         return 0
@@ -359,10 +364,20 @@ def fill_task_deadlines(only_empty: bool = True) -> int:
         for r in rows:
             if only_empty and r["due_date"]:
                 continue
-            months, days = PERIOD_OFFSETS.get(r["period"], (0, 0))
-            due = add_months(wd, months) + dt.timedelta(days=days)
-            c.execute("UPDATE tasks SET due_date = ? WHERE id = ?", (due.isoformat(), r["id"]))
+            c.execute("UPDATE tasks SET due_date = ? WHERE id = ?", (period_deadline(wd, r["period"]).isoformat(), r["id"]))
             n += 1
+    return n
+
+
+def move_task_deadlines(old: dt.date, new: dt.date) -> int:
+    """Nytt bröllopsdatum: flyttar deadlines som räknats fram från det gamla datumet.
+    Deadlines som någon satt själv (avviker från det uträknade) lämnas orörda."""
+    n = 0
+    with dbm.db() as c:
+        for r in c.execute("SELECT id, period, due_date FROM tasks WHERE COALESCE(due_date,'') <> ''").fetchall():
+            if r["due_date"] == period_deadline(old, r["period"]).isoformat():
+                c.execute("UPDATE tasks SET due_date = ? WHERE id = ?", (period_deadline(new, r["period"]).isoformat(), r["id"]))
+                n += 1
     return n
 
 
