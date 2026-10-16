@@ -33,7 +33,7 @@ def short_host(request: Request) -> str:
 def _guests(scope: str):
     where = {"pending": "WHERE rsvp = 'pending'", "all": ""}.get(scope, "")
     with dbm.db() as c:
-        return c.execute(f"SELECT id, name, invited_count, rsvp, rsvp_code, group_name FROM guests {where} "
+        return c.execute(f"SELECT id, name, invited_count, rsvp, rsvp_code, group_name, street, postcode, city FROM guests {where} "
                          "ORDER BY group_name COLLATE NOCASE, name COLLATE NOCASE").fetchall()
 
 
@@ -95,21 +95,22 @@ async def qr_zip(request: Request):
     buf = io.BytesIO()
     rows = io.StringIO()
     w = csv.writer(rows, delimiter=";")
-    w.writerow(["Namn", "Antal inbjudna", "Grupp", "OSA-kod", "OSA-länk", "Svara på", "QR-fil"])
+    w.writerow(["Namn", "Gatuadress", "Postnummer", "Ort", "Antal inbjudna", "Grupp", "OSA-kod", "OSA-länk", "Svara på", "QR-fil"])
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for i, g in enumerate(guests, 1):
             fn = _safe_filename(i, g["name"])
             url = code_url(request, g["rsvp_code"])
             z.writestr(f"png/{fn}.png", qr_png(url, "M"))
             z.writestr(f"svg/{fn}.svg", qr_svg(url, "M"))
-            w.writerow([csv_cell(g["name"]), g["invited_count"], csv_cell(g["group_name"]), format_code(g["rsvp_code"]), url,
+            w.writerow([csv_cell(g["name"]), csv_cell(g["street"]), csv_cell(g["postcode"]), csv_cell(g["city"]),
+                        g["invited_count"], csv_cell(g["group_name"]), format_code(g["rsvp_code"]), url,
                         f"{host}/osa", f"png/{fn}.png"])
         z.writestr("gaster.csv", "﻿" + rows.getvalue())
         z.writestr("LASMIG.txt",
                    "QR-koder för OSA\r\n\r\n"
                    "png/  – för Word, Canva m.fl. (300 dpi, minst 2 x 2 cm i tryck)\r\n"
                    "svg/  – vektorformat för tryckeri och InDesign\r\n"
-                   "gaster.csv – för koppling (dokumentkoppling): namn, kod, länk och filnamn per hushåll\r\n\r\n"
+                   "gaster.csv – för koppling (dokumentkoppling): namn, postadress, kod, länk och filnamn per hushåll\r\n\r\n"
                    f"Den som inte kan skanna går till {host}/osa och skriver in sin kod.\r\n")
     log.info("invite_qr_zip n=%s by=%s", len(guests), user["username"])
     return Response(buf.getvalue(), media_type="application/zip",

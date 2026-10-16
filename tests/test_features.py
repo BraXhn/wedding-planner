@@ -307,6 +307,11 @@ ok(z.read([n for n in names if n.startswith("png/")][0])[:8] == b"\x89PNG\r\n\x1
 ok(fmt.upper() in z.read("gaster.csv").decode("utf-8-sig"), "CSV för koppling innehåller koden")
 r = req(a, f"/m/guests/{g['id']}/qr.png"); ok(r[0] == 200 and r[1]["Content-Type"] == "image/png", "QR per gäst som PNG")
 ok(req(a, f"/m/guests/{g['id']}/qr.exe")[0] == 404, "okänt format 404")
+req(a, f"/m/guests/{g['id']}", {"csrf": c, "name": "Bertil", "invited_count": 1, "rsvp": "pending", "side": "Gemensam",
+     "email": "b@example.se", "street": "=Storgatan 1", "postcode": "123 45", "city": "Ort"})
+z = _zf.ZipFile(io.BytesIO(req(a, "/m/guests/qr.zip")[2]))
+gcsv = z.read("gaster.csv").decode("utf-8-sig")
+ok("Gatuadress;Postnummer;Ort" in gcsv and "'=Storgatan 1;123 45;Ort" in gcsv, "postadress i CSV för dokumentkoppling (formelskyddad)")
 gL = add_guest("Łukasz & Zoë")
 r = req(a, f"/m/guests/{gL[0]}/qr.svg")
 ok(r[0] == 200 and "Lukasz_Zoe" in r[1]["Content-Disposition"], "QR-filnamn för namn utanför latin-1")
