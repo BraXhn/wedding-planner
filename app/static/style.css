@@ -455,27 +455,41 @@ body.slideshow main { max-width: none; padding: 0; }
 .show-empty[hidden] { display: none; }
 
 /* ------------------------------------------------------------------ trycksaker
-   Måtten i cqw (procent av kortets bredd) gör att förhandsvisning och utskrift ser likadana ut. */
-.pcard { --c: #2f4a3e; --tint: #f3f6f4; container-type: inline-size; position: relative; overflow: hidden; background: #fff; color: #2b2b2b;
-         box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06); width: 100%; font-family: var(--serif); }
+   Måtten i cqw (procent av kortets bredd) gör att förhandsvisning och utskrift ser likadana ut.
+   Lager: .pcard (papperet) → .pcard-bg (designens bakgrund/fyllning) → ornament → .pcard-inner (text). */
+.pcard { --c: #2f4a3e; --tint: #f1f5f2; --paper: #fff; container-type: inline-size; position: relative; overflow: hidden;
+         background: var(--paper); color: #2b2b2b; box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06);
+         width: 100%; font-family: var(--serif); }
 .pcard.s-a6 { aspect-ratio: 105 / 148; } .pcard.s-a6l { aspect-ratio: 148 / 105; }
 .pcard.s-a5 { aspect-ratio: 148 / 210; } .pcard.s-a4 { aspect-ratio: 210 / 297; }
-.c-skog { --c: #2f4a3e; --tint: #f1f5f2; } .c-guld { --c: #9a7437; --tint: #faf5ec; } .c-rosa { --c: #a46e69; --tint: #fbf3f1; }
-.c-bla { --c: #2c3e5c; --tint: #f1f4f8; } .c-svart { --c: #1f1f1f; --tint: #f5f5f5; }
+.c-skog { --c: #2f4a3e; --tint: #eef3ef; } .c-salvia { --c: #5f7356; --tint: #f0f3ec; } .c-guld { --c: #9a7437; --tint: #faf5ec; }
+.c-terrakotta { --c: #a4553a; --tint: #fbf0ea; } .c-rosa { --c: #a46e69; --tint: #fbf1ef; } .c-lavendel { --c: #6c5f8d; --tint: #f4f1f8; }
+.c-bla { --c: #2c3e5c; --tint: #eef2f7; } .c-svart { --c: #1f1f1f; --tint: #f4f4f4; }
+/* papper: färgen syns bara i förhandsvisningen – utskriften lämnar papperet orört */
+.p-kram { --paper: #f4ecdc; } .p-kraft { --paper: #c9a67c; } .p-salvia { --paper: #cdd6c2; } .p-rosa { --paper: #ecd4cd; }
+.p-bla { --paper: #d5e0ea; } .p-gra { --paper: #d8d7d3; } .p-annan { --paper: #e6e0d4; }
+.pcard-bg { position: absolute; inset: 0; }
+.pcard:not(.p-vit) .pcard-bg { display: none; }
 .pcard-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
                padding: 10cqw 9cqw; gap: 1.6cqw; }
 .pcard p, .pcard h2 { margin: 0; }
+.pcard-inner > * { zoom: var(--fit, 1); }  /* app.js krymper innehållet när en lång text annars inte får plats */
 .pc-eyebrow { font-family: var(--sans); text-transform: uppercase; letter-spacing: .25em; font-size: 3cqw; color: var(--c); font-weight: 600; }
 .pc-heading { font-size: 9cqw; line-height: 1.1; color: var(--c); font-weight: 400; font-style: italic; overflow-wrap: anywhere; }
 .pc-body { font-size: 4.3cqw; line-height: 1.45; white-space: pre-line; overflow-wrap: anywhere; }
 .pc-footer { font-family: var(--sans); font-size: 2.8cqw; color: #6b6b6b; line-height: 1.4; }
+.pcard:not(.p-vit) .pc-footer { color: #4d4d4d; }
 .pc-qr { width: 22cqw; margin: 1cqw 0; } .pc-qr svg { display: block; width: 100%; height: auto; } .pc-qr[hidden] { display: none; }
 .pcard [data-f]:empty { display: none; }
-.pc-divider, .orn { display: none; color: var(--c); }
+.pc-divider, .pc-divider > span, .orn, .pc-crest, .deco-corner { display: none; color: var(--c); }
+.pc-divider { font-size: 4.5cqw; line-height: 1; }
+.pc-crest { position: relative; width: 30cqw; aspect-ratio: 1; align-items: center; justify-content: center; margin-bottom: 1cqw; }
+.pc-crest .wreath { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+.pc-mono { font-family: var(--serif); font-style: italic; font-size: 7.5cqw; color: var(--c); white-space: nowrap; }
 /* liggande och stora format: mindre text i förhållande till bredden */
 .s-a6l .pcard-inner { padding: 7cqw 9cqw; gap: 1.1cqw; }
 .s-a6l .pc-heading { font-size: 6.4cqw; } .s-a6l .pc-body { font-size: 3cqw; } .s-a6l .pc-eyebrow { font-size: 2.1cqw; }
-.s-a6l .pc-footer { font-size: 2cqw; } .s-a6l .pc-qr { width: 15cqw; }
+.s-a6l .pc-footer { font-size: 2cqw; } .s-a6l .pc-qr { width: 15cqw; } .s-a6l .pc-crest { width: 19cqw; } .s-a6l .pc-mono { font-size: 5cqw; }
 .s-a4 .pc-heading { font-size: 10cqw; } .s-a4 .pc-body { font-size: 4.2cqw; }
 
 /* Klassisk: dubbel ram */
@@ -488,13 +502,63 @@ body.slideshow main { max-width: none; padding: 0; }
 .d-modern .pcard-inner { align-items: flex-start; text-align: left; border-left: 3.5cqw solid var(--c); padding-left: 10cqw; }
 .d-modern .pcard-inner, .d-modern .pc-body { font-family: var(--sans); }
 .d-modern .pc-heading { font-family: var(--sans); font-style: normal; font-weight: 700; letter-spacing: -.02em; }
-/* Romantisk: tonad bakgrund, tunn ram och ornament */
-.d-romantisk { background: var(--tint); }
+/* Romantisk: tonad bakgrund, tunn rundad ram och ornament */
+.d-romantisk .pcard-bg { background: var(--tint); }
 .d-romantisk .pcard-inner { inset: 3cqw; border: .3cqw solid var(--c); border-radius: 3cqw; }
-.d-romantisk .pc-divider { display: block; font-size: 5cqw; line-height: 1; }
+.d-romantisk .pc-divider, .d-romantisk .div-romantisk { display: block; }
 .d-romantisk .pc-body { font-style: italic; }
+/* Minimal: mycket luft, tunn linje, versaler */
+.d-minimal .pcard-inner { padding: 14cqw 12cqw; gap: 2.6cqw; }
+.d-minimal .pc-heading { font-family: var(--sans); font-style: normal; font-weight: 300; text-transform: uppercase; letter-spacing: .14em; font-size: 6.4cqw; }
+.d-minimal .pc-eyebrow { font-weight: 400; letter-spacing: .4em; color: #777; }
+.d-minimal .pc-body { font-family: var(--sans); font-weight: 300; }
+.d-minimal .pc-divider, .d-minimal .div-line, .d-modern .div-line { display: block; }
+.div-line { width: 12cqw; height: 0; border-top: .25cqw solid var(--c); margin: 1cqw auto; }
+.d-minimal.s-a6l .pc-heading { font-size: 4.6cqw; }
+/* Monogram: initialerna i en cirkel */
+.d-monogram .pc-crest { display: flex; border: .4cqw solid var(--c); border-radius: 50%; }
+.d-monogram .pc-crest::after { content: ""; position: absolute; inset: 1.2cqw; border: .15cqw solid var(--c); border-radius: 50%; }
+.d-monogram .pc-heading { font-style: normal; text-transform: uppercase; letter-spacing: .16em; font-size: 5.6cqw; }
+.d-monogram.s-a6l .pc-heading { font-size: 4cqw; }
+/* Art déco: dubbla raka ramar, hörn och versaler */
+.d-artdeco .pcard-inner { inset: 4cqw; border: .45cqw solid var(--c); }
+.d-artdeco .pcard-inner::before { content: ""; position: absolute; inset: 1.6cqw; border: .2cqw solid var(--c); pointer-events: none; }
+.d-artdeco .deco-corner { display: block; position: absolute; width: 2.6cqw; height: 2.6cqw; background: var(--c); transform: rotate(45deg); }
+.d-artdeco .deco-corner.tl { top: 2.7cqw; left: 2.7cqw; } .d-artdeco .deco-corner.tr { top: 2.7cqw; right: 2.7cqw; }
+.d-artdeco .deco-corner.bl { bottom: 2.7cqw; left: 2.7cqw; } .d-artdeco .deco-corner.br { bottom: 2.7cqw; right: 2.7cqw; }
+.d-artdeco .pc-heading { font-style: normal; text-transform: uppercase; letter-spacing: .12em; font-size: 7cqw; }
+.d-artdeco .pc-divider, .d-artdeco .div-deco { display: block; } .d-artdeco .pc-divider { font-size: 3cqw; letter-spacing: 1em; }
+.d-artdeco.s-a6l .pc-heading { font-size: 5cqw; }
+/* Akvarell: mjuka färgfläckar i hörnen */
+.d-akvarell .pcard-bg { background:
+    radial-gradient(42% 32% at 8% 6%, color-mix(in srgb, var(--c) 30%, transparent), transparent 70%),
+    radial-gradient(30% 22% at 22% 0%, color-mix(in srgb, var(--c) 18%, transparent), transparent 70%),
+    radial-gradient(45% 34% at 96% 98%, color-mix(in srgb, var(--c) 28%, transparent), transparent 70%),
+    radial-gradient(28% 22% at 78% 100%, color-mix(in srgb, var(--c) 16%, transparent), transparent 70%), #fff; }
+.d-akvarell .pc-body { font-style: italic; }
+/* Krans: initialerna i en bladkrans */
+.d-krans .pc-crest { display: flex; width: 36cqw; } .d-krans .pc-crest .wreath { display: block; }
+.d-krans .pc-mono { font-size: 6.5cqw; }
+.d-krans.s-a6l .pc-crest { width: 22cqw; } .d-krans.s-a6l .pc-mono { font-size: 4cqw; }
+/* Båge: valvformad ram */
+.d-bage .pcard-inner { inset: 7cqw; border: .35cqw solid var(--c); border-radius: 50cqw 50cqw 1cqw 1cqw; padding-top: 20cqw; }
+.d-bage.s-a6l .pcard-inner { inset: 5cqw 25cqw; border-radius: 30cqw 30cqw 1cqw 1cqw; padding: 10cqw 4cqw 5cqw; }
+.d-bage .pc-heading { font-style: normal; }
+/* Rustik: streckad ram, skrivmaskinsdetaljer */
+.d-rustik .pcard-inner { inset: 4cqw; border: .45cqw dashed var(--c); border-radius: 1.5cqw; }
+.d-rustik .pc-eyebrow, .d-rustik .pc-footer { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .08em; }
+.d-rustik .pc-eyebrow { text-transform: none; font-weight: 400; font-size: 3.4cqw; }
+.d-rustik .pc-divider, .d-rustik .div-rustik { display: block; }
+.s-a6l.d-rustik .pc-eyebrow { font-size: 2.3cqw; }
 
 .card-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 24px 20px; align-items: end; margin-bottom: 24px; }
+.design-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 12px 10px; margin-top: 16px; }
+.design-picker button { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 4px; font-size: .78rem; text-align: center; color: var(--muted); }
+.design-picker button .pcard { box-shadow: 0 1px 2px rgba(0,0,0,.12); outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .15s; }
+.design-picker button:hover .pcard { outline-color: var(--line); }
+.design-picker button[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
+.design-picker button[aria-pressed="true"] .pcard { outline-color: var(--accent); }
+.design-picker button:focus-visible .pcard { outline-color: var(--gold); }
 .card-thumb { display: block; text-decoration: none; color: var(--ink); }
 .card-thumb .pcard { pointer-events: none; transition: transform .15s; }
 .card-thumb:hover .pcard { transform: translateY(-3px); }
@@ -519,6 +583,7 @@ button.chip { font: inherit; font-size: .8rem; cursor: pointer; margin: 2px 0; }
   .print-sheet { gap: 0; justify-content: start; }
   .print-sheet .pcard { box-shadow: none; outline: 1px dashed #ccc; outline-offset: -1px; break-inside: avoid; aspect-ratio: auto;
                         -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-sheet .pcard:not(.p-vit) { background: none; }  /* färgat papper: ingen bakgrund alls */
   .print-sheet.s-a6 { page: card-a6; grid-template-columns: 105mm 105mm; } .s-a6 .pcard { width: 105mm; height: 148.5mm; }
   .print-sheet.s-a6l { page: card-a6l; grid-template-columns: 148.5mm 148.5mm; } .s-a6l .pcard { width: 148.5mm; height: 105mm; }
   .print-sheet.s-a5 { page: card-a5; grid-template-columns: 148.5mm 148.5mm; } .s-a5 .pcard { width: 148.5mm; height: 210mm; }
@@ -529,3 +594,5 @@ button.chip { font: inherit; font-size: .8rem; cursor: pointer; margin: 2px 0; }
   .top nav { gap: 2px; margin-left: -7px; }
   .top nav a, .top nav .linklike { padding: 5px 7px; font-size: .88rem; }
 }
+.warn-note { background: var(--warn-bg); color: var(--warn); padding: 8px 12px; border-radius: 10px; }
+.warn-note[hidden] { display: none; }

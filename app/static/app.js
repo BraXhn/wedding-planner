@@ -218,15 +218,28 @@ if (cardEditor && cardPreview) {
   let vars = {};
   try { vars = JSON.parse(cardPreview.closest("[data-vars]").dataset.vars || "{}"); } catch { vars = {}; }
   const fill = (tpl) => tpl.replace(/\{([a-zåäö_]+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+  const picker = document.querySelector("[data-design-picker]");
+  const thumbs = picker ? [...picker.querySelectorAll(".pcard")] : [];
+  const setClass = (el, prefix, value) => {
+    [...el.classList].filter((c) => c.startsWith(prefix)).forEach((c) => el.classList.remove(c));
+    el.classList.add(prefix + value);
+  };
   const update = () => {
     cardEditor.querySelectorAll("[data-text]").forEach((inp) => {
-      const out = cardPreview.querySelector(`[data-f="${inp.dataset.text}"]`);
-      if (out) out.textContent = fill(inp.value).trim();
+      const text = fill(inp.value).trim();
+      [cardPreview, ...thumbs].forEach((card) => {
+        const out = card.querySelector(`[data-f="${inp.dataset.text}"]`);
+        if (out) out.textContent = text;
+      });
     });
     cardEditor.querySelectorAll("select[data-class-prefix]").forEach((sel) => {
       const prefix = sel.dataset.classPrefix;
-      [...cardPreview.classList].filter((c) => c.startsWith(prefix)).forEach((c) => cardPreview.classList.remove(c));
-      cardPreview.classList.add(prefix + sel.value);
+      setClass(cardPreview, prefix, sel.value);
+      if (prefix !== "d-") thumbs.forEach((t) => setClass(t, prefix, sel.value));  // miniatyrerna behåller sin design
+      if (prefix === "d-" && picker) {
+        picker.querySelectorAll("[data-pick-design]").forEach((b) =>
+          b.setAttribute("aria-pressed", String(b.dataset.pickDesign === sel.value)));
+      }
     });
     const qrBox = cardPreview.querySelector("[data-qr]");
     const qrToggle = cardEditor.querySelector("[data-qr-toggle]");
@@ -234,6 +247,13 @@ if (cardEditor && cardPreview) {
   };
   cardEditor.addEventListener("input", update);
   cardEditor.addEventListener("change", update);
+  picker?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-pick-design]");
+    const sel = cardEditor.querySelector('select[name="design"]');
+    if (!btn || !sel) return;
+    sel.value = btn.dataset.pickDesign;
+    update();
+  });
 
   // Platshållarknappar infogar i det textfält som senast hade fokus
   let lastField = cardEditor.querySelector('[data-text="body"]');
@@ -246,4 +266,36 @@ if (cardEditor && cardPreview) {
     lastField.focus(); lastField.setSelectionRange(s + t.length, s + t.length);
     update();
   });
+}
+
+// Trycksaker: krymp innehållet stegvis om texten inte ryms på kortet (samma proportioner på skärm och papper)
+const fitCard = (card) => {
+  const inner = card.querySelector(".pcard-inner");
+  if (!inner || !inner.clientHeight) return 1;
+  const cs = getComputedStyle(inner);
+  const overflows = () => {
+    const box = inner.getBoundingClientRect();
+    const top = box.top + parseFloat(cs.paddingTop) + parseFloat(cs.borderTopWidth) - 1;
+    const bottom = box.bottom - parseFloat(cs.paddingBottom) - parseFloat(cs.borderBottomWidth) + 1;
+    const kids = [...inner.children].filter((k) => k.getClientRects().length);
+    if (!kids.length) return false;
+    return kids[0].getBoundingClientRect().top < top || kids[kids.length - 1].getBoundingClientRect().bottom > bottom;
+  };
+  let fit = 1;
+  card.style.setProperty("--fit", "1");
+  while (overflows() && fit > 0.45) { fit -= 0.04; card.style.setProperty("--fit", fit.toFixed(2)); }
+  return fit;
+};
+const fitAll = () => {
+  document.querySelectorAll(".pcard").forEach(fitCard);
+  const note = document.querySelector("[data-fit-note]");
+  const preview = document.querySelector("[data-card-preview]");
+  if (note && preview) note.hidden = parseFloat(preview.style.getPropertyValue("--fit") || "1") >= 0.85;
+};
+if (document.querySelector(".pcard")) {
+  window.addEventListener("load", fitAll);
+  window.addEventListener("resize", () => { clearTimeout(window.__fitT); window.__fitT = setTimeout(fitAll, 150); });
+  document.addEventListener("input", (e) => { if (e.target.closest("[data-card-editor]")) requestAnimationFrame(fitAll); });
+  document.addEventListener("change", (e) => { if (e.target.closest("[data-card-editor]")) requestAnimationFrame(fitAll); });
+  document.addEventListener("click", (e) => { if (e.target.closest("[data-pick-design], [data-insert]")) requestAnimationFrame(fitAll); });
 }
