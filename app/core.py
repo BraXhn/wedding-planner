@@ -347,6 +347,24 @@ def public_rate_limit(request: Request) -> None:
 
 
 # ======================================================================= domänlogik som delas
+SWISH_MSG_RE = re.compile(r"[0-9A-Za-zÅÄÖåäö!?(),.:\"@ -]{0,50}")  # Swish tillåtna tecken, utan ;
+
+
+def normalize_swish(raw: str) -> str | None:
+    """"070-123 45 67", "+46701234567" → "0701234567"; Swish-nummer 123xxxxxxx. None om ogiltigt."""
+    n = re.sub(r"[\s-]", "", raw or "")
+    if n.startswith("+46"):
+        n = "0" + n[3:]
+    return n if re.fullmatch(r"07[0-9]{8}|(123|900)[0-9]{7}", n) else None
+
+
+def swish_payload(number: str, message: str) -> str:
+    """Innehållet i en förifylld Swish-QR: C<mottagare>;<belopp>;<meddelande>;<redigerbart>.
+    Sista fältet är en bitmask för vad betalaren får ändra (1 mottagare, 2 belopp, 4 meddelande):
+    6 = mottagaren är låst, belopp och meddelande går att ändra. Beloppet lämnas tomt."""
+    return f"C{number};;{message};6"
+
+
 def period_deadline(wd: dt.date, period: str) -> dt.date:
     from .entities import PERIOD_OFFSETS
     months, days = PERIOD_OFFSETS.get(period, (0, 0))

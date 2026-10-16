@@ -56,12 +56,16 @@ SET = {"csrf": c, "couple_names": "Anna & Erik", "wedding_date": "2027-06-12", "
      "info_text": "Välkomna!", "directions": "Buss 503", "accommodation": "Hotell X", "gift_info": "Swish 123",
      "photos_enabled": "on", "photo_quota_mb": "500",
      "invite_subject": "Inbjudan {brudpar} {__class__}", "invite_body": "Hej {namn}! {länk} {datum} {0.__class__}",
-     "reminder_subject": "Påminnelse", "reminder_body": "Svara {länk}", "notify_email": "louise@example.se; anton@example.se"}
+     "reminder_subject": "Påminnelse", "reminder_body": "Svara {länk}", "notify_email": "louise@example.se; anton@example.se",
+       "swish_number": "+46 70-123 45 67", "swish_message": "Bröllopsgåva"}
 r = req(a, "/settings", SET)
 h = html(r); ok("Sparat" in h and "deadlines" in h, "inställningar sparas + deadlines fylls i")
 ok(q("SELECT value FROM settings WHERE key='notify_email'")[0][0] == "louise@example.se, anton@example.se", "aviseringsadresser normaliseras")
 r = req(a, "/settings", {"csrf": c, "notify_email": "louise@example.se, inte-en-adress"})
 ok(r[0] == 400 and "ogiltig adress" in html(r), "ogiltig aviseringsadress nekas")
+ok(q("SELECT value FROM settings WHERE key='swish_number'")[0][0] == "0701234567", "Swish-nummer normaliseras")
+r = req(a, "/settings", {**SET, "swish_number": "12345"}); ok(r[0] == 400 and "Swish-nummer" in html(r), "ogiltigt Swish-nummer nekas")
+r = req(a, "/settings", {**SET, "swish_message": "a;b"}); ok(r[0] == 400 and "Meddelande i Swish" in html(r), "semikolon i Swish-meddelandet nekas")
 d = q("SELECT due_date FROM tasks WHERE title LIKE 'Begär hindersprövning%'")[0][0]
 ok(d == "2027-05-12", f"hindersprövning-deadline = 1 mån före ({d})")
 ok(q("SELECT due_date FROM tasks WHERE period='Efteråt' LIMIT 1")[0][0] == "2027-07-12", "efteråt-deadline")
@@ -185,6 +189,8 @@ req(p, f"/r/{gA[1]}/gifts", {"gift_id": gift, "action": "release"})
 ok(q("SELECT COUNT(*) FROM gift_reservations")[0][0] == 0, "gäst A ångrar")
 ok(req(client(), f"/r/{gB[1]}/gifts", {"gift_id": "9" * 25, "action": "reserve"})[0] == 400, "orimligt stort present-id → 400")
 ok('rel="noopener noreferrer nofollow"' in html(req(p, f"/r/{gA[1]}/gifts")), "externa länkar med noopener")
+h = html(req(p, f"/r/{gA[1]}/gifts"))
+ok("Swisha en gåva" in h and 'value="070-123 45 67"' in h and h.count("<svg") >= 1, "Swish-QR och nummer i gästportalen")
 
 # ---------------------------------------------------------------- kalenderprenumeration
 r = req(a, "/account/ics", {"csrf": c, "action": "create"}); feed = re.search(r'id="icsurl" value="[^"]+(/cal/[^"]+)"', html(r)).group(1)

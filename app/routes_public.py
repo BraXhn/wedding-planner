@@ -1,6 +1,7 @@
 """Gästportalen. Allt nås via gästens personliga, ogissbara token – inga konton för gäster."""
 import re
 
+from markupsafe import Markup
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
@@ -9,9 +10,10 @@ from starlette.routing import Route
 from . import db as dbm
 from .entities import TIMELINE_ORDER
 from .core import (
-    MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_settings, log, parse_date, public_base, public_rate_limit, read_form, render,
-    sync_speech_from_guest, today,
+    MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_settings, log, normalize_swish, parse_date, public_base, public_rate_limit, read_form, render,
+    swish_payload, sync_speech_from_guest, today,
 )
+from .qr import qr_svg
 from .people import parse_people, people_for, save_people
 from .routes_mail import notify_couple
 from .security import RateLimiter, normalize_code
@@ -81,7 +83,8 @@ async def osa_code_link(request: Request):
 def _portal_ctx(g, tab: str) -> dict:
     s = get_settings()
     with dbm.db() as c:
-        has_gifts = bool(c.execute("SELECT 1 FROM wishlist LIMIT 1").fetchone()) or bool(s.get("gift_info"))
+        has_gifts = (bool(c.execute("SELECT 1 FROM wishlist LIMIT 1").fetchone()) or bool(s.get("gift_info"))
+                     or bool(s.get("swish_number")))
         programme = c.execute(f"SELECT time, title, location FROM timeline WHERE public = 1 ORDER BY {TIMELINE_ORDER}").fetchall()
     deadline = parse_date(s.get("rsvp_deadline"))
     return dict(settings=s, guest=g, tab=tab, base=f"/r/{g['rsvp_token']}", has_gifts=has_gifts,
@@ -198,7 +201,14 @@ async def gifts(request: Request):
                 raise HTTPException(400)
         if not error:
             return RedirectResponse(f"/r/{g['rsvp_token']}/gifts#g{gift_id}", 303)
-    return render(request, "portal_gifts.html", status=409 if error else 200, gifts=_gifts(g["id"]), error=error, **ctx)
+    swish = None
+    number = normalize_swish(ctx["settings"].get("swish_number", ""))
+    if number:
+        msg = ctx["settings"].get("swish_message") or ""
+        swish = {"number": f"{number[:3]}-{number[3:6]} {number[6:8]} {number[8:]}", "message": msg,
+                 "qr": Markup(qr_svg(swish_payload(number, msg), "M"))}  # SVG som vi själva genererat
+    return render(request, "portal_gifts.html", status=409 if error else 200, gifts=_gifts(g["id"]), error=error,
+                  swish=swish, **ctx)
 
 
 # ======================================================================= bilder

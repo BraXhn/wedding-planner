@@ -447,3 +447,6 @@ body.slideshow main { max-width: none; padding: 0; }
 .thanks-form { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; }
 .thanks-form .field { margin: 0; }
 @media (max-width: 700px) { .thanks-row, .thanks-form { grid-template-columns: 1fr; } }
+.swish { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.swish h2 { margin-bottom: .3em; }
+.swish p { margin: 4px 0; }

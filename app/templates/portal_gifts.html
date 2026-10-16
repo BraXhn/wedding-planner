@@ -2,6 +2,17 @@
 {% block portal %}
 <div class="narrow-col">
   {% if settings.gift_info %}<section class="card"><h2>Presenter</h2><p class="prewrap">{{ settings.gift_info }}</p></section>{% endif %}
+  {% if swish %}
+  <section class="card swish">
+    <div class="qrbox small">{{ swish.qr }}</div>
+    <div>
+      <h2>Swisha en gåva</h2>
+      <p>Skanna QR-koden i Swish-appen, eller swisha till</p>
+      <div class="copyrow"><input id="swishnr" value="{{ swish.number }}" readonly aria-label="Swish-nummer"><button type="button" class="btn" data-copy="swishnr">Kopiera</button></div>
+      {% if swish.message %}<p class="muted small">Meddelande: {{ swish.message }}</p>{% endif %}
+    </div>
+  </section>
+  {% endif %}
   {% if error %}<p class="alert error">{{ error }}</p>{% endif %}
   {% if gifts %}
   <p class="muted small">Reservera det ni tänker köpa så att ingen annan köper samma sak. Brudparet ser inte vem som reserverat vad.</p>

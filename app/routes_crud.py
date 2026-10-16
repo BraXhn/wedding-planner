@@ -8,7 +8,7 @@ from starlette.routing import Route
 
 from . import db as dbm
 from .core import (
-    auth, csrf_form, display, fill_task_deadlines, get_settings, load_refs, log, move_task_deadlines, parse_date, parse_form,
+    SWISH_MSG_RE, auth, csrf_form, display, fill_task_deadlines, normalize_swish, get_settings, load_refs, log, move_task_deadlines, parse_date, parse_form,
     public_base, render, set_settings, sync_speech_from_guest, today,
 )
 from .entities import ENTITIES, SETTINGS_FIELDS
@@ -326,6 +326,12 @@ async def settings_view(request: Request):
     if addr_err:
         errors.append(f"Mejla oss när någon svarar: {addr_err}.")
     vals["notify_email"] = ", ".join(addrs)
+    if vals.get("swish_number"):
+        vals["swish_number"] = normalize_swish(vals["swish_number"]) or vals["swish_number"]
+        if not normalize_swish(vals["swish_number"]):
+            errors.append("Swish-nummer: ange ett mobilnummer (07…) eller ett Swish-nummer (123…).")
+    if not SWISH_MSG_RE.fullmatch(vals.get("swish_message") or ""):
+        errors.append("Meddelande i Swish: högst 50 tecken – bokstäver, siffror och ! ? ( ) , . : \" @ -")
     if len(vals.get("osa_card_footer") or "") > 300:
         errors.append("Text under koden på OSA-korten: högst 300 tecken.")
     if errors:

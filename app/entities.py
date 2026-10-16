@@ -224,6 +224,7 @@ SETTINGS_DEFAULTS = {
     "photo_moderation": "0",
     "photo_quota_mb": "5000",
     "osa_card_footer": "Svara senast {osa_senast}",
+    "swish_message": "Bröllopsgåva",
 }
 
 SETTINGS_FIELDS = [
@@ -240,7 +241,9 @@ SETTINGS_FIELDS = [
     F("info_text", "Välkomsttext", "textarea", help="Visas överst för gästerna"),
     F("directions", "Hitta hit", "textarea", help="Vägbeskrivning, parkering, kollektivtrafik"),
     F("accommodation", "Boende", "textarea", help="Hotell, rabattkoder, sovplatser"),
-    F("gift_info", "Presenter", "textarea", help="t.ex. Swish-nummer till bröllopsresan. Visas ovanför önskelistan."),
+    F("gift_info", "Presenter", "textarea", help="t.ex. bidrag till bröllopsresan. Visas ovanför önskelistan."),
+    F("swish_number", "Swish-nummer", help="Mobilnummer eller Swish-nummer. Gästerna får en QR-kod att skanna med Swish under Önskelista."),
+    F("swish_message", "Meddelande i Swish", help="Förifyllt i Swish, t.ex. ”Bröllopsgåva”. Högst 50 tecken, gästen kan ändra det."),
     S("Bilder"),
     F("photos_enabled", "Låt gäster ladda upp bilder", "bool"),
     F("gallery_public", "Gäster får se alla uppladdade bilder", "bool"),
