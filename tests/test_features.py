@@ -245,6 +245,23 @@ ok(req(v, "/m/speeches")[0] == 200, "läsare (toastmaster) ser talarlistan")
 ok(req(v, "/api-keys")[0] == 403 and req(v, "/mail/send", {"csrf": c2, "kind": "invite", "confirm": "on"})[0] == 403, "läsare når inte API-nycklar/utskick")
 ok(req(v, "/seating/assign", raw=b"{}", headers={"Content-Type": "application/json", "X-CSRF-Token": c2})[0] == 403, "läsare kan inte flytta gäster")
 ok('draggable' not in html(req(v, "/seating")), "läsare ser placering utan dra-funktion")
+ok(req(v, f"/m/guests/{gA[0]}/people", {"csrf": c2, "name_1": "X", "coming_1": "on"})[0] == 403, "läsare kan inte ändra personer")
+
+# ---------------------------------------------------------------- säkerhetskopior
+ok(req(v, "/backup")[0] == 403 and req(v, "/backup/now.db")[0] == 403, "läsare når inte säkerhetskopior")
+h = html(req(a, "/backup")); m = re.search(r'href="/backup/files/(wedding-[0-9-]+\.db)"', h)
+ok(m is not None, "daglig kopia skapas automatiskt vid start")
+r = req(a, f"/backup/files/{m.group(1)}") if m else (0, {}, b"")
+ok(r[0] == 200 and r[2][:16] == b"SQLite format 3\x00", "automatisk kopia går att ladda ner")
+r = req(a, "/backup/now.db")
+ok(r[0] == 200 and r[2][:16] == b"SQLite format 3\x00", "färsk kopia laddas ner")
+import tempfile as _tf
+_bk = _tf.NamedTemporaryFile(suffix=".db", delete=False); _bk.write(r[2]); _bk.close()
+_bc = sqlite3.connect(_bk.name)
+ok(_bc.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 0 and _bc.execute("SELECT COUNT(*) FROM guests").fetchone()[0] > 0,
+   "kopian innehåller data men inga inloggningssessioner")
+_bc.close()
+ok(req(a, "/backup/files/..%2Fwedding.db")[0] == 404 and req(a, "/backup/files/wedding.db")[0] == 404, "bara backupfiler kan hämtas")
 
 # ---------------------------------------------------------------- 2FA med QR + headers
 r = req(a, "/account/totp/start", {"csrf": c}); h = html(r)

@@ -217,6 +217,8 @@ Varje bild avkodas och sparas om som en ny JPEG på högst 2560 px. Det tar bort
 - Databas och bilder skapas med rättigheterna `0600`/`0700`. Alla beroenden är versionslåsta.
 
 ## Backup
+Appen tar själv en kopia av databasen varje dygn och sparar de senaste 14 i `backups/` i appdata-mappen (antalet ändras med `BACKUP_KEEP`). Under *Backup* (bara administratörer) kan du ladda ner kopiorna eller en färsk kopia, och där står hur man återställer. Bilderna ingår inte i de kopiorna.
+
 All data ligger i `/mnt/user/appdata/wedding-planner/`: databasen `wedding.db` och mappen `photos/`. Pluginen *Appdata Backup* tar med allt. Manuell backup medan appen kör:
 ```bash
 sqlite3 /mnt/user/appdata/wedding-planner/wedding.db ".backup '/mnt/user/backups/wedding-$(date +%F).db'"
