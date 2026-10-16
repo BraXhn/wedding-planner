@@ -16,7 +16,7 @@ from .core import auth, log, render, today
 
 async def backup_view(request: Request):
     user = auth(request, admin=True)
-    return render(request, "backup.html", user, backups=backup.list_backups(), keep=backup.KEEP, active="backup")
+    return render(request, "backup.html", user, backups=backup.list_backups(), keep=backup.KEEP, active="users")
 
 
 def _remove(path: str) -> None:

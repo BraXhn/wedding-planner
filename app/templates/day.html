@@ -34,7 +34,7 @@
     <h2>Körschema</h2>
     {% if schedule %}
     <ol class="day-list">
-      {% for t in schedule %}<li class="{{ 'past' if t.past }} {{ 'current' if current and t.id == current.id }}"><b>{{ t.time }}</b><span>{{ t.title }}{% if t.location or t.responsible %}<small class="muted">{{ t.location }}{% if t.location and t.responsible %} · {% endif %}{{ t.responsible }}</small>{% endif %}</span></li>{% endfor %}
+      {% for t in schedule %}<li class="{{ 'past' if t.past }} {{ 'current' if current and t.id == current.id }}"><b>{{ t.time }}</b><span>{{ t.title }}{% if t.location or t.responsible %}<small class="muted">{{ t.location or '' }}{% if t.location and t.responsible %} · {% endif %}{{ t.responsible or '' }}</small>{% endif %}</span></li>{% endfor %}
     </ol>
     {% else %}<p class="muted">Körschemat är tomt. <a href="/m/timeline">Lägg till programpunkter</a>.</p>{% endif %}
   </section>

@@ -20,7 +20,7 @@
 {% if summary %}
 <section class="card">
   <h2>Sammanställning</h2>
-  <ul class="plain columns">{% for what, n in summary %}<li><strong>{{ n }}</strong> × {{ what }}</li>{% endfor %}</ul>
+  <ul class="report-list columns">{% for what, n in summary %}<li><strong>{{ n }}</strong> × {{ what }}</li>{% endfor %}</ul>
 </section>
 {% endif %}
 
@@ -31,7 +31,7 @@
     <h3>{{ g.name }} <small class="muted">{{ g.people|length }} pers.</small></h3>
     {% set allergic = g.people|selectattr('allergies')|list %}
     {% if allergic %}
-    <ul class="plain">{% for p in allergic %}<li><strong>{{ p.name }}</strong>{% if p.name != p.household %} <span class="muted">({{ p.household }})</span>{% endif %}: {{ p.allergies }}</li>{% endfor %}</ul>
+    <ul class="report-list">{% for p in allergic %}<li><strong>{{ p.name }}</strong>{% if p.name != p.household %} <span class="muted">({{ p.household }})</span>{% endif %}: {{ p.allergies }}</li>{% endfor %}</ul>
     {% else %}<p class="muted small">Inga allergier.</p>{% endif %}
   </div>
   {% else %}<p class="muted">Ingen har svarat ”Kommer” än.</p>{% endfor %}
@@ -40,7 +40,7 @@
 {% if households %}
 <section class="card">
   <h2>Övrigt om maten (per hushåll)</h2>
-  <ul class="plain">{% for h in households %}<li><strong>{{ h.name }}</strong>: <span class="prewrap">{{ h.diet }}</span></li>{% endfor %}</ul>
+  <ul class="report-list">{% for h in households %}<li><strong>{{ h.name }}</strong>: <span class="prewrap">{{ h.diet }}</span></li>{% endfor %}</ul>
 </section>
 {% endif %}
 {% endblock %}
