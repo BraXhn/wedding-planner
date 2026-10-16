@@ -366,6 +366,23 @@ ok(req(client(), f"/o/{g['rsvp_code']}", follow=False)[0] == 404, "ny länk → 
 for i in range(16): r = req(pub, "/osa", {"code": "BBBBB-BBBBC"})
 ok(r[0] == 429 and "många" in html(r), "gissning av koder stoppas (rate limit)")
 
+# ---------------------------------------------------------------- leverantör → budget
+VEND = {"csrf": c, "name": "Blomsterbutiken", "category": "Blommor & dekor", "status": "Förfrågan", "price": "8 000"}
+req(a, "/m/vendors/new", VEND)
+vid = q("SELECT id FROM vendors WHERE name='Blomsterbutiken'")[0][0]
+ok(q("SELECT COUNT(*) FROM budget WHERE vendor_id=?", vid)[0][0] == 0, "leverantör som inte är bokad ger ingen budgetpost")
+req(a, f"/m/vendors/{vid}", {**VEND, "status": "Bokad"})
+b = q("SELECT item, category, estimated FROM budget WHERE vendor_id=?", vid)
+ok(len(b) == 1 and tuple(b[0]) == ("Blomsterbutiken", "Blommor & dekor", 8000), "bokad leverantör → budgetpost med priset")
+bid = q("SELECT id FROM budget WHERE vendor_id=?", vid)[0][0]
+DB.execute("UPDATE budget SET actual = 7500, paid = 1 WHERE id = ?", (bid,)); DB.commit()
+req(a, f"/m/vendors/{vid}", {**VEND, "status": "Bokad", "price": "9500"})
+b = q("SELECT estimated, actual, paid FROM budget WHERE vendor_id=?", vid)
+ok(len(b) == 1 and tuple(b[0]) == (9500, 7500, 1), "nytt pris uppdaterar budgeterat men rör inte faktiskt/betalt")
+ok(f'href="/m/budget/{bid}"' in html(req(a, f"/m/vendors/{vid}")), "leverantören länkar till budgetposten")
+req(a, f"/m/vendors/{vid}/delete", {"csrf": c})
+ok(q("SELECT vendor_id FROM budget WHERE id=?", bid)[0][0] is None, "borttagen leverantör → budgetposten finns kvar utan koppling")
+
 # ---------------------------------------------------------------- cache-busting av statiska filer
 import hashlib as _hl
 from pathlib import Path as _P

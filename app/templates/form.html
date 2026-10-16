@@ -38,6 +38,8 @@
 </section>
 {% endif %}
 
+{% if budget_item %}<p class="hint">Kopplad till budgetposten <a href="/m/budget/{{ budget_item.id }}">{{ budget_item.item }}</a> – priset uppdaterar det budgeterade beloppet.</p>{% endif %}
+
 <form method="post" class="card form-grid">
   <input type="hidden" name="csrf" value="{{ user.csrf }}">
   {% for f in spec.fields %}{{ field(f, vals.get(f.name), not can_write, refs) }}{% endfor %}

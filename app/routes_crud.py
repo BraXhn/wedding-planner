@@ -39,6 +39,20 @@ def normalize_attending(vals: dict) -> None:
         vals["attending"] = 0
 
 
+def sync_budget_from_vendor(c, vendor_id: int) -> None:
+    """Bokad leverantör med pris → budgetpost med priset som budgeterat belopp (skapas eller uppdateras).
+    Faktiskt belopp, betalning och förfallodatum ändras aldrig härifrån."""
+    v = c.execute("SELECT id, name, category, status, price FROM vendors WHERE id = ?", (vendor_id,)).fetchone()
+    if not v or v["status"] != "Bokad" or v["price"] is None:
+        return
+    b = c.execute("SELECT id FROM budget WHERE vendor_id = ? ORDER BY id LIMIT 1", (vendor_id,)).fetchone()
+    if b:
+        c.execute("UPDATE budget SET estimated = ? WHERE id = ?", (v["price"], b["id"]))
+    else:
+        c.execute("INSERT INTO budget (item, category, estimated, paid, vendor_id) VALUES (?, ?, ?, 0, ?)",
+                  (v["name"], v["category"], v["price"], v["id"]))
+
+
 def rsvp_link(request: Request, token: str | None) -> str:
     return f"{public_base(request)}/r/{token}" if token else ""
 
@@ -151,6 +165,10 @@ async def item_form(request: Request):
     if ent == "guests" and row is not None:
         with dbm.db() as c:
             ctx["people"] = people_for(c, row)
+    if ent == "vendors" and row is not None:
+        with dbm.db() as c:
+            ctx["budget_item"] = c.execute("SELECT id, item FROM budget WHERE vendor_id = ? ORDER BY id LIMIT 1",
+                                           (row["id"],)).fetchone()
     if request.method == "GET":
         vals = dict(row) if row else {f["name"]: f.get("default") for f in spec["fields"]}
         return render(request, "form.html", user, vals=vals, can_write=user["role"] != "viewer", **ctx)
@@ -178,6 +196,8 @@ async def item_form(request: Request):
         if ent == "guests":
             sync_speech_from_guest(c, item_id)
             trim_people(c, item_id, vals["invited_count"])
+        if ent == "vendors":
+            sync_budget_from_vendor(c, item_id)
     if ent == "tasks" and not vals.get("due_date"):
         fill_task_deadlines()
     return RedirectResponse(_back(ent, spec), 303)
