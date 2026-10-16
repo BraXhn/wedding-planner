@@ -411,3 +411,15 @@ details summary { cursor: pointer; color: var(--muted); margin: 8px 0; }
   .place-front .script { font-size: 20pt; }
   .seat-list { font-size: 11pt; }
 }
+
+/* ------------------------------------------------------------------ bröllopsdagen (toastmaster) */
+.day-now { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; }
+.day-now .now { border-color: var(--accent); }
+.day-now .next { margin: 6px 0; }
+.day-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 16px; }
+.day-list { list-style: none; padding: 0; margin: 0 0 8px; }
+.day-list li { display: grid; grid-template-columns: 4.5em 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.day-list li small { display: block; }
+.day-list li.past { color: var(--muted); }
+.day-list li.current { background: var(--soft); border-radius: 8px; padding-left: 6px; font-weight: 600; }
+.day-part { font-size: 1rem; margin: 14px 0 4px; }

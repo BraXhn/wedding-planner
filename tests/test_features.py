@@ -162,6 +162,15 @@ h = html(req(p, f"/r/{gA[1]}/info"))
 ok(h.index("Vigsel i parken") < h.index("Middag") < h.index("Nattmat"), "programmet sorterar nattens punkter sist")
 h = html(req(a, "/m/timeline"))
 ok(h.index("Vigsel i parken") < h.index("Middag") < h.index("Nattmat"), "körschemat sorterar nattens punkter sist")
+h = html(req(a, "/dagen"))
+ok("Förhandsvisa" in h and h.index("Vigsel i parken") < h.index("Nattmat"), "dagen: hela körschemat före bröllopet")
+h = html(req(a, "/dagen?tid=19:30"))
+now_box = h.split('class="card now"')[1].split("</section>")[0]
+ok("Middag" in now_box and "Nattmat" in h.split("Härnäst")[1].split("</section>")[0], "dagen: nu = senast startade punkt, härnäst = nästa")
+ok("om 5 h 30 min" in h, "dagen: tid kvar till nästa punkt räknas över midnatt")
+h = html(req(a, "/dagen?tid=02:00"))
+ok("Nattmat" in h.split('class="card now"')[1].split("</section>")[0], "dagen: efter midnatt är nattens punkt aktuell")
+ok(req(a, "/dagen?tid=25:99")[0] == 200 and "Förhandsvisa" in html(req(a, "/dagen?tid=25:99")), "dagen: ogiltig tid ignoreras")
 
 # ---------------------------------------------------------------- önskelista
 req(a, "/m/wishlist/new", {"csrf": c, "title": "Kaffemaskin", "quantity": 1, "price": "3000", "url": "https://shop.example/kaffe"})
@@ -284,6 +293,7 @@ req(a, "/users", {"csrf": c, "username": "toast", "password": "Toastmaster-2027!
 v = client(); r = req(v, "/login", {"username": "toast", "password": "Toastmaster-2027!"}); c2 = csrf(html(r))
 req(v, "/account/password", {"csrf": c2, "current": "Toastmaster-2027!", "new": "En-helt-annan-fras-99", "new2": "En-helt-annan-fras-99"})
 ok(req(v, "/m/speeches")[0] == 200, "läsare (toastmaster) ser talarlistan")
+ok(req(v, "/dagen")[0] == 200 and req(client(), "/dagen", follow=False)[0] == 303, "läsare ser dagen, utloggad gör det inte")
 ok(req(v, "/api-keys")[0] == 403 and req(v, "/mail/send", {"csrf": c2, "kind": "invite", "confirm": "on"})[0] == 403, "läsare når inte API-nycklar/utskick")
 ok(req(v, "/seating/assign", raw=b"{}", headers={"Content-Type": "application/json", "X-CSRF-Token": c2})[0] == 403, "läsare kan inte flytta gäster")
 ok('draggable' not in html(req(v, "/seating")), "läsare ser placering utan dra-funktion")
