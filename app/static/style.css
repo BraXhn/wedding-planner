@@ -437,3 +437,13 @@ body.slideshow main { max-width: none; padding: 0; }
 .show-help { position: absolute; left: 2vw; bottom: 2vw; margin: 0; color: #888; font-size: .85rem; transition: opacity .5s; }
 .show-help a { color: #aaa; }
 .show:fullscreen .show-help { opacity: 0; }
+
+/* ------------------------------------------------------------------ tackkort */
+.thanks { list-style: none; padding: 0; margin: 0; }
+.thanks-row { display: grid; grid-template-columns: minmax(180px, 1fr) 2fr; gap: 8px 16px; align-items: center; padding: 14px 18px; margin-bottom: 10px; }
+.thanks-row h3 { margin: 0; font-size: 1rem; }
+.thanks-row p { margin: 2px 0 0; }
+.thanks-row.done { opacity: .7; }
+.thanks-form { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; }
+.thanks-form .field { margin: 0; }
+@media (max-width: 700px) { .thanks-row, .thanks-form { grid-template-columns: 1fr; } }

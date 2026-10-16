@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Tackkort · {{ super() }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/m/guests">← Gäster</a></p>
+<div class="pagehead">
+  <h1>Tackkort <small class="muted">{{ sent }} av {{ total }} skickade</small></h1>
+  <div class="actions"><a class="btn" href="#" data-print>Skriv ut</a></div>
+</div>
+<p class="hint">Alla som kom (och alla som gett en present). Skriv vad ni fick och bocka av när tackkortet är skickat – adressen står med för kuverten.
+Önskelistans reservationer visas inte här, så att ni inte ser vem som köpt vad före bröllopet.</p>
+<p class="chips noprint">
+  <a class="chip {{ 'on' if flt != 'kvar' }}" href="/tack">Alla</a>
+  <a class="chip {{ 'on' if flt == 'kvar' }}" href="/tack?f=kvar">Kvar att tacka</a>
+</p>
+{% if rows %}
+<ul class="thanks">
+  {% for r in rows %}
+  <li class="card thanks-row {{ 'done' if r.thanks_sent }}" id="g{{ r.id }}">
+    <div>
+      <h3><a href="/m/guests/{{ r.id }}">{{ r.name }}</a></h3>
+      <p class="muted small">{% if r.street or r.city %}{{ r.street }}{% if r.street and (r.postcode or r.city) %}, {% endif %}{{ r.postcode }} {{ r.city }}{% else %}Adress saknas{% endif %}</p>
+    </div>
+    {% if can_write %}
+    <form method="post" action="/tack/{{ r.id }}" class="thanks-form">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="f" value="{{ flt }}">
+      <input name="gift_received" value="{{ r.gift_received or '' }}" maxlength="200" placeholder="Present" aria-label="Present från {{ r.name }}">
+      <label class="field checkbox"><span>Tackkort skickat</span><input type="checkbox" name="thanks_sent" {{ 'checked' if r.thanks_sent }}></label>
+      <button class="btn">Spara</button>
+    </form>
+    {% else %}
+    <p>{{ r.gift_received or '–' }} {% if r.thanks_sent %}<span class="pill yes">Tackat</span>{% endif %}</p>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}<div class="card empty"><p class="muted">{{ 'Alla är tackade! 💌' if flt == 'kvar' and total else 'Ingen har svarat ”Kommer” än.' }}</p></div>{% endif %}
+{% endblock %}

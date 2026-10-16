@@ -70,6 +70,8 @@ ENTITIES = {
             F("table_id", "Bord", "ref", ref="tables", help="Enklast via Placering"),
             F("message", "Meddelande från gäst", "textarea"),
             F("notes", "Egna anteckningar", "textarea"),
+            F("gift_received", "Present från dem", help="Fylls i efter bröllopet – se Tackkort"),
+            F("thanks_sent", "Tackkort skickat", "bool"),
         ],
         "list": ["name", "group_name", "invited_count", "rsvp", "attending", "diet", "table_id"],
         "search": ["name", "email", "group_name", "diet", "street", "city"],

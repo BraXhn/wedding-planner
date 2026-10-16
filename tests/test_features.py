@@ -405,6 +405,16 @@ ok(req(client(), f"/o/{g['rsvp_code']}", follow=False)[0] == 404, "ny länk → 
 for i in range(16): r = req(pub, "/osa", {"code": "BBBBB-BBBBC"})
 ok(r[0] == 429 and "många" in html(r), "gissning av koder stoppas (rate limit)")
 
+# ---------------------------------------------------------------- tackkort
+h = html(req(a, "/tack")); ok(f'id="g{gA[0]}"' in h and "0 av" in h, "tackkort: de som kommer listas")
+req(a, f"/tack/{gA[0]}", {"csrf": c, "gift_received": "<b>Vas</b>", "thanks_sent": "on"})
+ok(tuple(q("SELECT gift_received, thanks_sent FROM guests WHERE id=?", gA[0])[0]) == ("<b>Vas</b>", 1), "tackkort: present och avbockning sparas")
+h = html(req(a, "/tack")); ok("&lt;b&gt;Vas" in h and "<b>Vas" not in h and "1 av" in h, "tackkort: escapas och räknas")
+ok(f'id="g{gA[0]}"' not in html(req(a, "/tack?f=kvar")), "tackkort: filtret visar bara de som är kvar")
+ok(req(a, f"/tack/{gA[0]}", {"gift_received": "x"})[0] == 403 and req(v, f"/tack/{gA[0]}", {"csrf": c2, "gift_received": "x"})[0] == 403,
+   "tackkort kräver CSRF och skrivbehörighet")
+ok(q("SELECT gift_received FROM guests WHERE id=?", gA[0])[0][0] == "<b>Vas</b>", "tackkort oförändrat efter nekade försök")
+
 # ---------------------------------------------------------------- leverantör → budget
 VEND = {"csrf": c, "name": "Blomsterbutiken", "category": "Blommor & dekor", "status": "Förfrågan", "price": "8 000"}
 req(a, "/m/vendors/new", VEND)

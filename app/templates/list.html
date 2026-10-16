@@ -4,7 +4,7 @@
 <div class="pagehead">
   <h1>{{ spec.title }} <small class="muted">{{ rows|length }}</small></h1>
   <div class="actions">
-    {% if ent == 'guests' %}{% if can_write %}<a class="btn" href="/m/guests/qr">OSA-kort med QR</a>{% endif %}<a class="btn" href="/rapport/mat">Till cateringen</a><a class="btn" href="/seating">Placering</a><a class="btn" href="/mail">Utskick</a>{% endif %}
+    {% if ent == 'guests' %}{% if can_write %}<a class="btn" href="/m/guests/qr">OSA-kort med QR</a>{% endif %}<a class="btn" href="/rapport/mat">Till cateringen</a><a class="btn" href="/tack">Tackkort</a><a class="btn" href="/seating">Placering</a><a class="btn" href="/mail">Utskick</a>{% endif %}
     {% if ent == 'speeches' %}<a class="btn" href="#" data-print>Skriv ut</a>{% endif %}
     <a class="btn" href="/m/{{ ent }}/export.csv">Exportera CSV</a>
     {% if can_write %}<a class="btn primary" href="/m/{{ ent }}/new">+ Ny {{ spec.singular }}</a>{% endif %}
