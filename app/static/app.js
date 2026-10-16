@@ -210,3 +210,40 @@ if (show) {
   setInterval(next, seconds * 1000);
   setInterval(load, 30000);
 }
+
+// Trycksaker: förhandsvisa medan man skriver. Platshållare fylls i med exempelvärden; textContent → aldrig HTML.
+const cardEditor = document.querySelector("[data-card-editor]");
+const cardPreview = document.querySelector("[data-card-preview]");
+if (cardEditor && cardPreview) {
+  let vars = {};
+  try { vars = JSON.parse(cardPreview.closest("[data-vars]").dataset.vars || "{}"); } catch { vars = {}; }
+  const fill = (tpl) => tpl.replace(/\{([a-zåäö_]+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+  const update = () => {
+    cardEditor.querySelectorAll("[data-text]").forEach((inp) => {
+      const out = cardPreview.querySelector(`[data-f="${inp.dataset.text}"]`);
+      if (out) out.textContent = fill(inp.value).trim();
+    });
+    cardEditor.querySelectorAll("select[data-class-prefix]").forEach((sel) => {
+      const prefix = sel.dataset.classPrefix;
+      [...cardPreview.classList].filter((c) => c.startsWith(prefix)).forEach((c) => cardPreview.classList.remove(c));
+      cardPreview.classList.add(prefix + sel.value);
+    });
+    const qrBox = cardPreview.querySelector("[data-qr]");
+    const qrToggle = cardEditor.querySelector("[data-qr-toggle]");
+    if (qrBox && qrToggle) qrBox.hidden = !qrToggle.checked || !qrBox.firstElementChild;
+  };
+  cardEditor.addEventListener("input", update);
+  cardEditor.addEventListener("change", update);
+
+  // Platshållarknappar infogar i det textfält som senast hade fokus
+  let lastField = cardEditor.querySelector('[data-text="body"]');
+  cardEditor.addEventListener("focusin", (e) => { if (e.target.matches("[data-text]")) lastField = e.target; });
+  cardEditor.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-insert]");
+    if (!btn || !lastField) return;
+    const t = btn.dataset.insert, s = lastField.selectionStart ?? lastField.value.length, end = lastField.selectionEnd ?? s;
+    lastField.value = lastField.value.slice(0, s) + t + lastField.value.slice(end);
+    lastField.focus(); lastField.setSelectionRange(s + t.length, s + t.length);
+    update();
+  });
+}

@@ -70,5 +70,17 @@ ok([normalize_swish(x) for x in ("070-123 45 67", "+46701234567", "1231234567", 
 ok(swish_payload("0701234567", "Bröllopsgåva") == "C0701234567;;Bröllopsgåva;6", "Swish-QR: låst mottagare, fritt belopp och meddelande")
 ok(SWISH_MSG_RE.fullmatch("Till resan!") and not SWISH_MSG_RE.fullmatch("a;b") and not SWISH_MSG_RE.fullmatch("x" * 51),
    "Swish-meddelande: tillåtna tecken och längd")
+
+# --- trycksaker
+from app.cards import SEED, _mid_sentence  # noqa: E402
+with dbm.db() as c:
+    n0 = c.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
+    c.execute("DELETE FROM cards WHERE kind = 'menu'")
+dbm.init_db()
+with dbm.db() as c:
+    n1 = c.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
+ok(n0 == len(SEED) and n1 == len(SEED) - 1, "förslagen läggs in en gång och kommer inte tillbaka när de tagits bort")
+ok([_mid_sentence(x) for x in ("Vas från Svenskt Tenn", "IKEA-kort", "x")] == ["vas från Svenskt Tenn", "IKEA-kort", "x"],
+   "presenten skrivs med liten bokstav mitt i meningen")
 print(f"\n{len(fails)} fel")
 sys.exit(1 if fails else 0)

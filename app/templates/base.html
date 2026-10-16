@@ -28,7 +28,7 @@
         ("home", "/", "Översikt"), ("guests", "/m/guests", "Gäster"), ("seating", "/seating", "Placering"),
         ("tasks", "/m/tasks", "Att göra"), ("budget", "/m/budget", "Budget"), ("vendors", "/m/vendors", "Leverantörer"),
         ("timeline", "/m/timeline", "Körschema"), ("day", "/dagen", "Dagen"), ("speeches", "/m/speeches", "Tal"), ("wishlist", "/m/wishlist", "Önskelista"),
-        ("photos", "/photos", "Bilder"), ("mail", "/mail", "Utskick"), ("settings", "/settings", "Inställningar") ] %}
+        ("photos", "/photos", "Bilder"), ("mail", "/mail", "Utskick"), ("cards", "/kort", "Trycksaker"), ("settings", "/settings", "Inställningar") ] %}
       {% for key, href, label in items %}<a href="{{ href }}" class="{{ 'active' if active == key }}" {% if active == key %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
       {% if user.role == 'admin' %}<a href="/users" class="{{ 'active' if active == 'users' }}">Användare</a><a href="/api-keys" class="{{ 'active' if active == 'api' }}">API</a>{% endif %}
       <a href="/account" class="mobile-only {{ 'active' if active == 'account' }}">Konto</a>

@@ -1,6 +1,7 @@
 # Ändringslogg
 
 ## Ej släppt
+- **Trycksaker:** förslag på save the date, inbjudan, tackkort, meny, program och välkomstskylt som redigeras i appen med förhandsvisning medan man skriver. Fyra designer, fem färger och formaten A6 (stående/liggande), A5 och A4. Personliga trycksaker skrivs ut ett per hushåll (alla, de som inte svarat eller de som kommer) med namn och egen OSA-QR; {program} fylls med körschemat och {present} med presenten från Tackkort. Läsare ser förhandsvisningen men kan inte skriva ut kort med gästernas koder.
 - **Personer per hushåll.** Gästen skriver i OSA-svaret namn och allergier för var och en som kommer och bockar ur den som inte kan. ”Antal som kommer” räknas fram från personerna. Samma uppgifter går att redigera under Gäster → Personer. Det gamla fältet för specialkost finns kvar som ”Specialkost – övrigt”.
 - **Postadress** per hushåll (gatuadress, postnummer, ort), med i CSV:n för dokumentkoppling på OSA-korten.
 - **Till cateringen:** antal som kommer, allergier per person och bord och en sammanställning. Utskrift och CSV.

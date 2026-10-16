@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_card.html" import pcard %}
+{% block title %}{{ card.title }} · {{ super() }}{% endblock %}
+{% block bodyclass %}printing{% endblock %}
+{% block content %}
+<div class="noprint">
+  <p class="crumb"><a href="/kort/{{ card.id }}">← {{ card.title }}</a></p>
+  <div class="pagehead">
+    <h1>{{ card.title }} <small class="muted">{{ sheet|length }} st</small></h1>
+    <div class="actions">
+      {% if not personal %}<form method="get" class="inline"><label class="inline-field">Antal <input type="number" name="antal" value="{{ sheet|length }}" min="1" max="200"></label> <button class="btn">Uppdatera</button></form>{% endif %}
+      <a class="btn primary" href="#" data-print>Skriv ut</a>
+    </div>
+  </div>
+  <p class="hint">{% if personal %}Ett kort per hushåll: {{ audience|lower }}.{% endif %} Skriv ut i 100 % skala (inte ”anpassa till sidan”) på tjockt papper och skär längs de streckade linjerna.
+  {% if personal and not sheet %}<strong class="warn">Inga hushåll matchar – lägg till gäster eller välj en annan mottagargrupp.</strong>{% endif %}</p>
+</div>
+<div class="print-sheet s-{{ card.size }}">
+  {% for it in sheet %}{{ pcard(card, it.texts, it.qr) }}{% endfor %}
+</div>
+{% endblock %}

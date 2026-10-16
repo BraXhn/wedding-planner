@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_card.html" import pcard %}
+{% block title %}{{ card.title }} · {{ super() }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/kort">← Trycksaker</a></p>
+<div class="pagehead">
+  <h1>{{ card.title }}</h1>
+  <div class="actions"><a class="btn primary" href="/kort/{{ card.id }}/skriv-ut">Skriv ut</a></div>
+</div>
+{% if saved %}<p class="alert ok">Sparat.</p>{% endif %}
+{% if errors %}<div class="alert error"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+
+<div class="card-editor">
+  <div class="card-stage" data-vars='{{ values|tojson }}'>
+    {{ pcard(card, texts, qr, preview=true) }}
+    <p class="muted small">Förhandsvisning med en påhittad gäst. Utskriften får riktiga namn{% if can_write %} och koder{% endif %}.</p>
+  </div>
+
+  <form method="post" class="card" data-card-editor>
+    <input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <label class="field"><span>Namn på trycksaken</span><input name="title" value="{{ card.title }}" maxlength="80" required {{ 'disabled' if not can_write }}></label>
+    <div class="form-grid tight">
+      <label class="field"><span>Design</span><select name="design" data-class-prefix="d-" {{ 'disabled' if not can_write }}>{% for k, lab in designs %}<option value="{{ k }}" {{ 'selected' if card.design == k }}>{{ lab }}</option>{% endfor %}</select></label>
+      <label class="field"><span>Färg</span><select name="color" data-class-prefix="c-" {{ 'disabled' if not can_write }}>{% for k, lab in colors %}<option value="{{ k }}" {{ 'selected' if card.color == k }}>{{ lab }}</option>{% endfor %}</select></label>
+      <label class="field"><span>Format</span><select name="size" data-class-prefix="s-" {{ 'disabled' if not can_write }}>{% for k, lab in sizes %}<option value="{{ k }}" {{ 'selected' if card.size == k }}>{{ lab }}</option>{% endfor %}</select></label>
+      <label class="field"><span>Vem får kortet?</span><select name="audience" {{ 'disabled' if not can_write }}>{% for k, lab in audiences %}<option value="{{ k }}" {{ 'selected' if card.audience == k }}>{{ lab }}</option>{% endfor %}</select></label>
+    </div>
+    <p class="small muted">A6 och A5 skrivs ut 4 respektive 2 per A4-ark. Väljer du hushåll blir det ett kort per hushåll med deras namn,
+    annars skriver du ut så många du vill.</p>
+    <label class="field checkbox"><span>Visa QR-kod för OSA<small>Personliga kort får hushållets egen kod.</small></span><input type="checkbox" name="show_qr" data-qr-toggle {{ 'checked' if card.show_qr }} {{ 'disabled' if not can_write }}></label>
+
+    <label class="field"><span>Överrad</span><input name="eyebrow" value="{{ card.eyebrow or '' }}" maxlength="{{ limits.eyebrow }}" data-text="eyebrow" {{ 'disabled' if not can_write }}></label>
+    <label class="field"><span>Rubrik</span><input name="heading" value="{{ card.heading or '' }}" maxlength="{{ limits.heading }}" data-text="heading" {{ 'disabled' if not can_write }}></label>
+    <label class="field"><span>Text</span><textarea name="body" rows="8" maxlength="{{ limits.body }}" data-text="body" {{ 'disabled' if not can_write }}>{{ card.body or '' }}</textarea></label>
+    <label class="field"><span>Sista rad</span><input name="footer" value="{{ card.footer or '' }}" maxlength="{{ limits.footer }}" data-text="footer" {{ 'disabled' if not can_write }}></label>
+    {% if can_write %}
+    <p class="small muted">Infoga i texten: {% for p in placeholders %}<button type="button" class="chip" data-insert="{{ '{' ~ p ~ '}' }}">{{ '{' ~ p ~ '}' }}</button> {% endfor %}</p>
+    <div class="form-actions"><button class="btn primary">Spara</button></div>
+    {% endif %}
+  </form>
+</div>
+
+{% if can_write %}
+<form method="post" action="/kort/{{ card.id }}/delete" class="danger-zone" data-confirm="Ta bort trycksaken? Texterna försvinner.">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  <button class="btn danger">Ta bort trycksaken</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,6 +1,6 @@
 import email.policy, re, sys, io, json, time, uuid, sqlite3, urllib.request, urllib.parse, http.cookiejar
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
-from app.security import totp_now
+from app.security import format_code, totp_now
 from PIL import Image
 S = sys.argv[2]; B = "http://127.0.0.1:" + __import__("os").environ.get("TEST_PORT", "8099")
 PW = re.search(r"Engångslösenord: (\S+)", open(sys.argv[1]).read()).group(1)
@@ -437,6 +437,45 @@ ok(len(b) == 1 and tuple(b[0]) == (9500, 7500, 1), "nytt pris uppdaterar budgete
 ok(f'href="/m/budget/{bid}"' in html(req(a, f"/m/vendors/{vid}")), "leverantören länkar till budgetposten")
 req(a, f"/m/vendors/{vid}/delete", {"csrf": c})
 ok(q("SELECT vendor_id FROM budget WHERE id=?", bid)[0][0] is None, "borttagen leverantör → budgetposten finns kvar utan koppling")
+
+# ---------------------------------------------------------------- trycksaker
+h = html(req(a, "/kort"))
+ok(all(t in h for t in ("Save the date", "Inbjudan", "Tackkort", "Meny", "Program", "Välkomstskylt")) and "Anna &amp; Erik Exempel" in h,
+   "trycksaker: förslagen finns och förhandsvisas med påhittad gäst")
+cid = {r[0]: r[1] for r in q("SELECT kind, id FROM cards")}
+inv = cid["invite"]
+CARD = {"csrf": c, "title": "Inbjudan", "design": "modern", "color": "bla", "size": "a5", "audience": "all", "show_qr": "on",
+        "eyebrow": "Välkommen", "heading": "<b>{namn}</b>", "body": "Vi gifter oss {datum}!", "footer": "OSA med koden {kod}"}
+r = req(a, f"/kort/{inv}", CARD)
+ok(r[0] == 200 and "Sparat" in html(r) and tuple(q("SELECT design, color, heading FROM cards WHERE id=?", inv)[0]) == ("modern", "bla", "<b>{namn}</b>"),
+   "trycksaker: design, färg och text sparas")
+ok(req(a, f"/kort/{inv}", {**CARD, "design": "<script>"})[0] == 400 and req(a, f"/kort/{inv}", {**CARD, "body": "x" * 1501})[0] == 400,
+   "trycksaker: ogiltig design och för lång text nekas")
+ok(req(a, f"/kort/{inv}", {**CARD, "csrf": "fel"})[0] == 403 and req(v, f"/kort/{inv}", {**CARD, "csrf": c2})[0] == 403,
+   "trycksaker: kräver CSRF och skrivbehörighet")
+h = html(req(a, f"/kort/{inv}/skriv-ut"))
+n_households = q("SELECT COUNT(*) FROM guests")[0][0]
+codes = [format_code(x[0]) for x in q("SELECT rsvp_code FROM guests")]
+ok(h.count('class="pcard ') == n_households and all(k in h for k in codes) and h.count("<svg") >= n_households,
+   "trycksaker: personlig inbjudan – ett kort per hushåll med egen kod och QR")
+ok("&lt;b&gt;Bertil&lt;/b&gt;" in h and "<b>Bertil" not in h, "trycksaker: texter och namn escapas")
+h = html(req(v, f"/kort/{inv}"))
+ok(req(v, f"/kort/{inv}")[0] == 200 and not any(k in h for k in codes), "trycksaker: läsare ser förhandsvisning utan riktiga koder")
+ok(req(v, f"/kort/{inv}/skriv-ut")[0] == 403, "trycksaker: läsare kan inte skriva ut kort med gästernas QR-koder")
+ok(req(v, f"/kort/{cid['menu']}/skriv-ut")[0] == 200, "trycksaker: läsare kan skriva ut menyn")
+h = html(req(a, f"/kort/{cid['thanks']}/skriv-ut"))
+ok(h.count('class="pcard ') == q("SELECT COUNT(*) FROM guests WHERE rsvp='yes'")[0][0] and "och för &lt;b&gt;Vas" in h,
+   "trycksaker: tackkort till dem som kom, med presenten i texten")
+ok("Vigsel i parken" in html(req(a, f"/kort/{cid['program']}/skriv-ut")), "trycksaker: {program} fylls med körschemat")
+ok(html(req(a, f"/kort/{cid['menu']}/skriv-ut?antal=3")).count('class="pcard ') == 3
+   and html(req(a, f"/kort/{cid['menu']}/skriv-ut?antal=999")).count('class="pcard ') == 1, "trycksaker: antal kopior, med gräns")
+r = req(a, "/kort/ny", {"csrf": c, "kind": "save"})
+new_id = q("SELECT MAX(id) FROM cards")[0][0]
+ok(r[0] == 200 and q("SELECT kind FROM cards WHERE id=?", new_id)[0][0] == "save", "trycksaker: ny trycksak från förslag")
+ok(req(a, "/kort/ny", {"csrf": c, "kind": "hack"})[0] == 400, "trycksaker: okänt förslag nekas")
+req(a, f"/kort/{new_id}/delete", {"csrf": c})
+ok(not q("SELECT 1 FROM cards WHERE id=?", new_id), "trycksaker: ta bort")
+ok(req(client(), "/kort", follow=False)[0] == 303, "trycksaker kräver inloggning")
 
 # ---------------------------------------------------------------- cache-busting av statiska filer
 import hashlib as _hl
