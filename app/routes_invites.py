@@ -18,7 +18,7 @@ from . import db as dbm
 from .core import auth, csrf_form, get_settings, log, parse_date, public_base, render, set_settings, sv_date, today
 from .routes_crud import csv_cell
 from .routes_mail import fill
-from .qr import qr_png, qr_svg
+from .qr import qr_png, qr_svg, qr_svg_fancy
 from .security import format_code
 
 
@@ -80,7 +80,7 @@ async def qr_sheet(request: Request):
     common = footer_values(s)
     cards = [{"name": g["name"], "code": format_code(g["rsvp_code"]), "count": g["invited_count"] or 1,
               "footer": fill(footer, {**common, "namn": g["name"], "antal": str(g["invited_count"] or 1)}),
-              "qr": Markup(qr_svg(code_url(request, g["rsvp_code"]), "M"))} for g in _guests(scope) if g["rsvp_code"]]
+              "qr": Markup(qr_svg_fancy(code_url(request, g["rsvp_code"]), "prickar", "hjarta"))} for g in _guests(scope) if g["rsvp_code"]]
     return render(request, "invite_cards.html", user, status=400 if error else 200, settings=s, cards=cards,
                   scope=scope, host=short_host(request), footer=footer, common=common, saved=saved, error=error,
                   footer_max=FOOTER_MAX, can_write=user["role"] != "viewer", active="guests")

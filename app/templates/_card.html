@@ -2,7 +2,7 @@
    förhandsvisningen kan byta design utan att ladda om). Texterna är redan ifyllda och autoescapas.
    p-* = papper: på färgat papper skrivs ingen bakgrund eller fyllning ut. #}
 {% macro pcard(c, t, qr=none, preview=false) %}
-<article class="pcard d-{{ c.design }} c-{{ c.color }} p-{{ c.paper or 'vit' }} s-{{ c.size }}" {% if preview %}data-card-preview{% endif %}>
+<article class="pcard d-{{ c.design }} c-{{ c.color }} p-{{ c.paper or 'vit' }} q-{{ c.qr_color or 'kort' }} s-{{ c.size }}" {% if preview %}data-card-preview{% endif %}>
   <div class="pcard-bg" aria-hidden="true"></div>
   <span class="deco-corner tl" aria-hidden="true"></span><span class="deco-corner tr" aria-hidden="true"></span>
   <span class="deco-corner bl" aria-hidden="true"></span><span class="deco-corner br" aria-hidden="true"></span>

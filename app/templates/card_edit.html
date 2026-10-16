@@ -38,6 +38,12 @@
     <p class="small muted">A6 och A5 skrivs ut 4 respektive 2 per A4-ark. Väljer du hushåll blir det ett kort per hushåll med deras namn,
     annars skriver du ut så många du vill.</p>
     <label class="field checkbox"><span>Visa QR-kod för OSA<small>Personliga kort får hushållets egen kod.</small></span><input type="checkbox" name="show_qr" data-qr-toggle {{ 'checked' if card.show_qr }} {{ 'disabled' if not can_write }}></label>
+    <div class="form-grid tight qr-options" data-qr-options {{ 'hidden' if not card.show_qr }}>
+      <label class="field"><span>QR-stil</span><select name="qr_style" data-qr-param="stil" {{ 'disabled' if not can_write }}>{% for k, lab in qr_styles %}<option value="{{ k }}" {{ 'selected' if card.qr_style == k }}>{{ lab }}</option>{% endfor %}</select></label>
+      <label class="field"><span>I mitten</span><select name="qr_center" data-qr-param="mitt" {{ 'disabled' if not can_write }}>{% for k, lab in qr_centers %}<option value="{{ k }}" {{ 'selected' if card.qr_center == k }}>{{ lab }}</option>{% endfor %}</select></label>
+      <label class="field wide"><span>QR-kodens färg</span><select name="qr_color" data-class-prefix="q-" {{ 'disabled' if not can_write }}>{% for k, lab in qr_colors %}<option value="{{ k }}" {{ 'selected' if card.qr_color == k }}>{{ lab }}</option>{% endfor %}</select>
+        <small>Alla stilar går att skanna. På mörkt papper (t.ex. kraft) eller med ljus färg: välj svart och testa med mobilen innan ni skriver ut alla.</small></label>
+    </div>
 
     <label class="field"><span>Överrad</span><input name="eyebrow" value="{{ card.eyebrow or '' }}" maxlength="{{ limits.eyebrow }}" data-text="eyebrow" {{ 'disabled' if not can_write }}></label>
     <label class="field"><span>Rubrik</span><input name="heading" value="{{ card.heading or '' }}" maxlength="{{ limits.heading }}" data-text="heading" {{ 'disabled' if not can_write }}></label>
