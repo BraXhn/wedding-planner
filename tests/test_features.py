@@ -221,6 +221,13 @@ r = req(p, f"/r/{gA[1]}/photos", raw=body, headers=hd)
 last = q("SELECT guest_id, uploader FROM photos ORDER BY id DESC LIMIT 1")[0]
 ok(last[0] == gA[0], "uppladdning via gästportal kopplas till gästen")
 ok(last[1] == "Familjen Andersson", "gäst kan inte ange annat uppladdarnamn")
+r = req(a, "/photos/bildspel"); h = html(r)
+ok(r[0] == 200 and "data-slideshow" in h and "<svg" in h and 'class="top"' not in h, "bildspel: helskärmssida med QR för uppladdning")
+sj = json.loads(req(a, "/photos/bildspel.json")[2])
+hidden_files = {x[0] for x in q("SELECT file FROM photos WHERE hidden=1")}
+ok(sj["photos"] and all(p["src"].startswith("/photos/img/") for p in sj["photos"])
+   and not any(p["src"].rsplit("/", 1)[1] in hidden_files for p in sj["photos"]), "bildspel: bara synliga bilder")
+ok(req(client(), "/photos/bildspel.json", follow=False)[0] == 303, "bildspel kräver inloggning")
 ok(req(client(), f"/r/{gA[1]}/photos?ok=%C2%B2")[0] == 200 and req(client(), f"/p/{ptok}?ok=" + "9" * 5000)[0] == 200,
    "konstigt ?ok= ger ingen krasch")
 s2 = html(req(a, "/settings"))

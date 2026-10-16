@@ -17,7 +17,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import FileResponse, RedirectResponse
+from starlette.responses import FileResponse, JSONResponse, RedirectResponse
 from starlette.routing import Route
 
 from . import db as dbm
@@ -256,6 +256,18 @@ async def admin_zip(request: Request):
                         background=BackgroundTask(os.remove, path))
 
 
+async def slideshow(request: Request):
+    """Helskärmsbildspel för projektor/TV på festen. Hämtar nya bilder av sig själv."""
+    user = auth(request)
+    url = f"{public_base(request)}/p/{photo_token()}"
+    return render(request, "slideshow.html", user, public_page=True, qr=Markup(qr_svg(url, "Q")))
+
+
+async def slideshow_json(request: Request):
+    auth(request)
+    return JSONResponse({"photos": [{"id": p["id"], "src": f"/photos/img/{p['file']}"} for p in visible_photos()]})
+
+
 async def table_cards(request: Request):
     user = auth(request)
     url = f"{public_base(request)}/p/{photo_token()}"
@@ -275,4 +287,6 @@ routes = [
     Route("/photos/bulk", admin_bulk, methods=["POST"]),
     Route("/photos/all.zip", admin_zip),
     Route("/photos/cards", table_cards),
+    Route("/photos/bildspel", slideshow),
+    Route("/photos/bildspel.json", slideshow_json),
 ]

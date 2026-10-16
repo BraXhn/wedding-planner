@@ -170,3 +170,43 @@ if (peopleBox) {
   answers.forEach((r) => r.addEventListener("change", update));
   update();
 }
+
+// Bildspel: växlar bild var n:e sekund och hämtar nya bilder var 30:e sekund (nya visas först)
+const show = document.querySelector("[data-slideshow]");
+if (show) {
+  const imgs = show.querySelectorAll(".show-img");
+  const empty = show.querySelector("[data-show-empty]");
+  const seconds = Number(show.dataset.interval) || 8;
+  let photos = [], queue = [], seen = null, front = 0, pos = 0;
+
+  const load = async () => {
+    try {
+      const r = await fetch("/photos/bildspel.json", { credentials: "same-origin" });
+      if (!r.ok) return;
+      photos = (await r.json()).photos;  // nyast först
+      if (seen) {  // bilder som tillkommit sedan förra hämtningen visas härnäst, äldst först
+        queue.push(...photos.filter((p) => !seen.has(p.id)).reverse());
+      }
+      seen = new Set(photos.map((p) => p.id));
+      empty.hidden = photos.length > 0;
+    } catch { /* nätverksfel: försök igen nästa gång */ }
+  };
+
+  const next = () => {
+    if (!photos.length) return;
+    const p = queue.shift() || photos[pos++ % photos.length];
+    const img = imgs[1 - front];
+    img.onload = () => { img.classList.add("on"); imgs[front].classList.remove("on"); front = 1 - front; };
+    img.src = p.src;
+  };
+
+  show.addEventListener("click", (e) => {
+    if (e.target.closest("a")) return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else show.requestFullscreen?.().catch(() => {});
+  });
+
+  load().then(next);
+  setInterval(next, seconds * 1000);
+  setInterval(load, 30000);
+}
