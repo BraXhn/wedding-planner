@@ -1,0 +1,16 @@
+{# Ett kort. Alla designers ornament finns i markupen; CSS visar det som hör till vald design (så att
+   förhandsvisningen kan byta design utan att ladda om). Texterna är redan ifyllda och autoescapas. #}
+{% macro pcard(c, t, qr=none, preview=false) %}
+<article class="pcard d-{{ c.design }} c-{{ c.color }} s-{{ c.size }}" {% if preview %}data-card-preview{% endif %}>
+  <div class="pcard-inner">
+    <svg class="orn orn-top" viewBox="0 0 200 40" aria-hidden="true"><path d="M100 30 C80 30 60 22 40 24 C55 14 75 12 100 30 Z M100 30 C120 30 140 22 160 24 C145 14 125 12 100 30 Z M100 30 C92 22 92 12 100 4 C108 12 108 22 100 30 Z M40 24 C28 26 16 22 6 26 M160 24 C172 26 184 22 194 26" fill="currentColor" stroke="currentColor" stroke-width=".8"/></svg>
+    <p class="pc-eyebrow" data-f="eyebrow">{{ t.eyebrow }}</p>
+    <h2 class="pc-heading" data-f="heading">{{ t.heading }}</h2>
+    <p class="pc-divider" aria-hidden="true">❦</p>
+    <p class="pc-body" data-f="body">{{ t.body }}</p>
+    <div class="pc-qr" data-qr {% if not c.show_qr or not qr %}hidden{% endif %}>{{ qr if qr }}</div>
+    <p class="pc-footer" data-f="footer">{{ t.footer }}</p>
+    <svg class="orn orn-bottom" viewBox="0 0 200 40" aria-hidden="true"><path d="M100 10 C80 10 60 18 40 16 C55 26 75 28 100 10 Z M100 10 C120 10 140 18 160 16 C145 26 125 28 100 10 Z M40 16 C28 14 16 18 6 14 M160 16 C172 14 184 18 194 14" fill="currentColor" stroke="currentColor" stroke-width=".8"/></svg>
+  </div>
+</article>
+{% endmacro %}

@@ -59,6 +59,19 @@ CREATE TABLE IF NOT EXISTS api_keys (
     created_at TEXT DEFAULT (datetime('now')),
     last_used_at TEXT
 );
+CREATE TABLE IF NOT EXISTS cards (
+    id INTEGER PRIMARY KEY,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    design TEXT NOT NULL DEFAULT 'klassisk',
+    color TEXT NOT NULL DEFAULT 'skog',
+    size TEXT NOT NULL DEFAULT 'a6',
+    audience TEXT NOT NULL DEFAULT 'none',
+    show_qr INTEGER NOT NULL DEFAULT 0,
+    eyebrow TEXT, heading TEXT, body TEXT, footer TEXT,
+    sort_no INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS mail_log (
     id INTEGER PRIMARY KEY,
     guest_id INTEGER,
@@ -146,6 +159,9 @@ def init_db() -> None:
         # "Kommer" utan antal betyder att hela hushållet kommer
         c.execute("UPDATE guests SET attending = COALESCE(invited_count, 1) "
                   "WHERE rsvp = 'yes' AND COALESCE(attending, 0) = 0")
+
+        from .cards import seed_cards
+        seed_cards(c)
 
         if not c.execute("SELECT 1 FROM settings WHERE key='seeded'").fetchone():
             c.executemany(

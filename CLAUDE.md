@@ -15,6 +15,7 @@ Starlette (inte FastAPI) + Jinja2 + SQLite. Kryptot (scrypt, TOTP, tokens) bygge
 - `app/db.py` – schema och migreringar. Nya fält i `ENTITIES` läggs till som kolumner automatiskt vid start; datamigreringar skrivs i `init_db()` och måste tåla att köras vid varje start.
 - `app/core.py` – sessioner, behörighet, validering (`parse_form`), mallhjälpare (`render`, `asset`, `sv_date`).
 - `app/people.py` – personer i ett hushåll (`guest_people`: namn, kommer, allergier); `coming_people()` ger en rad per person som kommer och används av matrapport, bordskort och placeringslista.
+- `app/cards.py` + `app/routes_cards.py` – trycksaker (tabell `cards`, förslagen i `SEED` läggs in en gång). Kortet ritas av makrot `templates/_card.html`; designerna är bara CSS (`.d-*`, `.c-*`, `.s-*`, mått i `cqw` så att förhandsvisning och utskrift blir lika).
 - `app/backup.py` – daglig SQLite-kopia i `DATA_DIR/backups` (bakgrundstråd som startas i `lifespan`).
 - `app/routes_*.py` – en modul per område; registreras i `app/main.py` (ordningen spelar roll där specifika sökvägar krockar med `/m/{ent}/...`).
 - `app/templates/`, `app/static/app.js`, `app/static/style.css` – all JS och CSS ligger i filerna (CSP tillåter inget inline).

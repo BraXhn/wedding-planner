@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_card.html" import pcard %}
+{% block title %}Trycksaker · {{ super() }}{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <h1>Trycksaker <small class="muted">{{ cards|length }}</small></h1>
+</div>
+<p class="hint">Förslag på inbjudan, save the date, tackkort, meny, program och skylt. Klicka på ett kort för att ändra text, design,
+färg och format – förhandsvisningen uppdateras medan du skriver. Personliga kort skrivs ut ett per hushåll med namn
+{%- if can_write %} och egen OSA-kod{% endif %}. Exemplen nedan visar påhittade gäster.</p>
+
+<div class="card-gallery">
+  {% for it in cards %}
+  <a class="card-thumb" href="/kort/{{ it.card.id }}">
+    {{ pcard(it.card, it.texts, qr) }}
+    <span class="card-thumb-title">{{ it.card.title }}</span>
+  </a>
+  {% else %}
+  <div class="card empty"><p class="muted">Inga trycksaker. Skapa en nedan.</p></div>
+  {% endfor %}
+</div>
+
+{% if can_write %}
+<form method="post" action="/kort/ny" class="card inline-form">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  <label class="field"><span>Ny trycksak från förslag</span>
+    <select name="kind">{% for k, lab in kinds %}<option value="{{ k }}">{{ lab }}</option>{% endfor %}</select></label>
+  <button class="btn primary">Skapa</button>
+</form>
+{% endif %}
+{% endblock %}
