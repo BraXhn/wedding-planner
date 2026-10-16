@@ -390,3 +390,24 @@ details summary { cursor: pointer; color: var(--muted); margin: 8px 0; }
 .person .person-allergy { grid-column: 1 / -1; }
 .person .person-coming { align-self: end; }
 .people[data-hidden] { display: none; }
+
+/* ------------------------------------------------------------------ rapporter: mat, bordskort, placeringslista */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 16px; }
+.columns { columns: 2 220px; }
+.report-table { padding: 10px 0; border-top: 1px solid var(--line); break-inside: avoid; }
+.report-table:first-of-type { border-top: 0; }
+.report-table h3 { margin: 0 0 4px; font-size: 1rem; }
+.place-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 16px; }
+.place-card { background: #fff; border: 1px dashed var(--line); border-radius: 12px; display: grid; grid-template-rows: 1fr 1fr; min-height: 150px; text-align: center; }
+.place-fold { border-bottom: 1px dotted var(--line); }
+.place-front { display: flex; flex-direction: column; justify-content: center; padding: 8px 12px; }
+.place-front .script { font-family: var(--serif); font-style: italic; color: var(--accent); font-size: 1.5rem; margin: 0; overflow-wrap: anywhere; }
+.place-front .eyebrow { margin: 4px 0 0; }
+.seat-list { list-style: none; padding: 0; margin: 0; columns: 2 300px; column-gap: 32px; }
+.seat-list li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); break-inside: avoid; }
+@media print {
+  .place-cards { grid-template-columns: 105mm 105mm; gap: 0; }
+  .place-card { width: 105mm; height: 74.25mm; border: 0; outline: 1px dashed #ccc; outline-offset: -1px; border-radius: 0; break-inside: avoid; }
+  .place-front .script { font-size: 20pt; }
+  .seat-list { font-size: 11pt; }
+}

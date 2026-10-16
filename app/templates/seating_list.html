@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Placeringslista · {{ super() }}{% endblock %}
+{% block content %}
+<p class="crumb noprint"><a href="/seating">← Placering</a></p>
+<div class="pagehead">
+  <h1>Var sitter jag?</h1>
+  <div class="actions noprint"><a class="btn" href="/seating/kort">Bordskort</a><a class="btn primary" href="#" data-print>Skriv ut</a></div>
+</div>
+<p class="hint noprint">Alla som kommer i bokstavsordning – skriv ut och sätt upp vid entrén.</p>
+<ul class="seat-list">
+  {% for p in people %}<li><span>{{ p.name }}{% if p.count > 1 %} <small class="muted">({{ p.count }} pers.)</small>{% endif %}</span><b>{{ p.table_name or '–' }}</b></li>
+  {% else %}<li class="muted">Ingen har svarat ”Kommer” än.</li>{% endfor %}
+</ul>
+{% endblock %}

@@ -12,7 +12,7 @@ from starlette.staticfiles import StaticFiles
 
 from . import backup
 from . import db as dbm
-from . import routes_account, routes_backup, routes_api, routes_invites, routes_calendar, routes_crud, routes_mail, routes_photos, routes_public, routes_seating
+from . import routes_account, routes_backup, routes_api, routes_invites, routes_calendar, routes_crud, routes_mail, routes_photos, routes_public, routes_reports, routes_seating
 from .core import APP_VERSION, BASE, COOKIE_MODE, MAX_BODY, MAX_UPLOAD_BODY, Redirect, get_session, log, render, today
 from .routes_mail import configured as smtp_configured
 
@@ -133,6 +133,7 @@ routes = [
     *routes_backup.routes,
     *routes_invites.routes,    # före routes_crud så /m/guests/qr inte tolkas som en post
     *routes_crud.routes,
+    *routes_reports.routes,
     *routes_seating.routes,
     *routes_calendar.routes,   # före routes_public så /r/{token}/brollop.ics matchar
     *routes_public.routes,

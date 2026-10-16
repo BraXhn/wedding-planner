@@ -125,6 +125,22 @@ r = req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, "name_1": "Anders", "coming_
 ok(q("SELECT attending FROM guests WHERE id=?", gA[0])[0][0] == 2, "admin bockar ur en person → antal som kommer räknas om")
 ok(req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, "name_1": "Anders"})[0] == 400, "admin: minst en måste komma vid ”Kommer”")
 ok(req(a, f"/m/guests/{gA[0]}/people", {"name_1": "X", "coming_1": "on"})[0] == 403, "personer kräver CSRF")
+req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, **{k: v for k, v in FAM.items() if k != "answer"}, "allergy_2": "Gluten, nötter", "allergy_3": "<i>Soja"})
+
+# ---------------------------------------------------------------- rapporter: mat, bordskort, placeringslista
+tname = q("SELECT t.name FROM tables t JOIN guests g ON g.table_id = t.id WHERE g.id=?", gA[0])[0][0]
+h = html(req(a, "/rapport/mat"))
+ok("Anders" in h and "Nötter" in h and "<strong>2</strong> × nötter" in h and "<strong>1</strong> × gluten" in h,
+   "matrapport: allergier per person och sammanställning")
+ok("&lt;i&gt;Soja" in h and "<i>Soja" not in h, "matrapport escapar allergitext")
+body = req(a, "/rapport/mat.csv")[2].decode("utf-8-sig")
+ok(f"{tname};Anders;Familjen Andersson;Nötter" in body, "matrapport som CSV")
+h = html(req(a, "/seating/kort"))
+ok(h.count('class="place-card"') == 3 and "Albin" in h and tname in h, "bordskort: ett per person som kommer")
+h = html(req(a, "/seating/lista"))
+ok(h.index("Albin") < h.index("Anders") < h.index("Annika"), "placeringslista i bokstavsordning")
+ok(req(client(), "/rapport/mat", follow=False)[0] == 303 and req(client(), "/seating/kort", follow=False)[0] == 303,
+   "rapporter kräver inloggning")
 req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, **{k: v for k, v in FAM.items() if k != "answer"}})
 r = req(p, f"/r/{gA[1]}/info"); h = html(r)
 ok("Buss 503" in h and "Hotell X" in h, "informationssida")
