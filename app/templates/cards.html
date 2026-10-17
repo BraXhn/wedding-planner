@@ -12,7 +12,7 @@ färg och format – förhandsvisningen uppdateras medan du skriver. Personliga 
 <div class="card-gallery">
   {% for it in cards %}
   <a class="card-thumb" href="/kort/{{ it.card.id }}">
-    {{ pcard(it.card, it.texts, qr) }}
+    {{ pcard(it.card, it.texts, it.qr) }}
     <span class="card-thumb-title">{{ it.card.title }}</span>
   </a>
   {% else %}

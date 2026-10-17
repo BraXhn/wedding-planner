@@ -268,6 +268,89 @@ def qr_svg(text: str, ecl: str = "M") -> str:
     return QrCode(text, ecl).svg()
 
 
+# ----------------------------------------------------------------------- dekorativ QR för trycksaker
+QR_STYLES = [("prickar", "Prickar"), ("rundad", "Rundade"), ("hjartan", "Små hjärtan"), ("romb", "Romber"),
+             ("fyrkant", "Vanliga fyrkanter")]
+QR_CENTERS = [("hjarta", "Hjärta i mitten"), ("ringar", "Två ringar i mitten"), ("initialer", "Initialerna i mitten"),
+              ("kamera", "Kamera i mitten"), ("ingen", "Inget i mitten")]
+
+_HEART = "M0,-.18C-.08,-.42 -.46,-.4 -.46,-.1C-.46,.14 -.2,.28 0,.44C.2,.28 .46,.14 .46,-.1C.46,-.4 .08,-.42 0,-.18Z"
+
+
+def _module(style: str, x: int, y: int) -> str:
+    """En mörk modul som SVG-path, centrerad i rutan (x, y)."""
+    cx, cy = x + .5, y + .5
+    if style == "prickar":
+        r = .46
+        return f"M{cx - r:.2f},{cy:.2f}a{r},{r} 0 1,0 {2 * r},0a{r},{r} 0 1,0 {-2 * r},0"
+    if style == "rundad":
+        return f"M{x + .3:.2f},{y + .05:.2f}h.4a.25,.25 0 0 1 .25,.25v.4a.25,.25 0 0 1 -.25,.25h-.4a.25,.25 0 0 1 -.25,-.25v-.4a.25,.25 0 0 1 .25,-.25z"
+    if style == "romb":
+        return f"M{cx:.2f},{y - .02:.2f}l.52,.52l-.52,.52l-.52,-.52z"
+    if style == "hjartan":
+        return f"M{cx:.2f},{cy - .2:.2f}c-.09,-.26 -.5,-.24 -.5,.08c0,.26 .28,.4 .5,.58c.22,-.18 .5,-.32 .5,-.58c0,-.32 -.41,-.34 -.5,-.08z"
+    return f"M{x},{y}h1v1h-1z"
+
+
+def _eye(style: str, x: int, y: int) -> str:
+    """Hörnmarkering (7×7): yttre ring + kärna, i samma anda som modulerna."""
+    if style == "prickar":
+        return (f'<circle cx="{x + 3.5}" cy="{y + 3.5}" r="3" fill="none" stroke="currentColor" stroke-width="1"/>'
+                f'<circle cx="{x + 3.5}" cy="{y + 3.5}" r="1.55" fill="currentColor"/>')
+    if style == "hjartan":
+        return (f'<rect x="{x + .5}" y="{y + .5}" width="6" height="6" rx="2" fill="none" stroke="currentColor" stroke-width="1"/>'
+                f'<path transform="translate({x + 3.5} {y + 3.55}) scale(3.6)" d="{_HEART}" fill="currentColor"/>')
+    ring = f'<rect x="{x + .5}" y="{y + .5}" width="6" height="6" rx="1.8" fill="none" stroke="currentColor" stroke-width="1"/>'
+    if style == "rundad":
+        return ring + f'<rect x="{x + 2}" y="{y + 2}" width="3" height="3" rx=".9" fill="currentColor"/>'
+    if style == "romb":
+        return ring + f'<path d="M{x + 3.5},{y + 1.6}l1.9,1.9l-1.9,1.9l-1.9,-1.9z" fill="currentColor"/>'
+    return (f'<path d="M{x},{y}h7v7h-7zM{x + 1},{y + 1}v5h5v-5z" fill="currentColor" fill-rule="evenodd"/>'
+            f'<rect x="{x + 2}" y="{y + 2}" width="3" height="3" fill="currentColor"/>')
+
+
+def _center(kind: str, n: int, border: int, label: str) -> str:
+    c = n / 2
+    if kind == "hjarta":
+        return f'<path transform="translate({c} {c + .2}) scale({n * .16:.2f})" d="{_HEART}" fill="currentColor"/>'
+    if kind == "ringar":
+        r = n * .055
+        return (f'<g fill="none" stroke="currentColor" stroke-width="{r * .32:.2f}">'
+                f'<circle cx="{c - r * .62:.2f}" cy="{c:.2f}" r="{r:.2f}"/><circle cx="{c + r * .62:.2f}" cy="{c:.2f}" r="{r:.2f}"/></g>')
+    if kind == "kamera":
+        w = n * .17
+        return (f'<g transform="translate({c - w / 2:.2f} {c - w * .36:.2f})" fill="currentColor">'
+                f'<path d="M{w * .3:.2f},0h{w * .4:.2f}l{w * .08:.2f},{w * .12:.2f}h{w * .22:.2f}v{w * .6:.2f}h-{w:.2f}v-{w * .6:.2f}h{w * .22:.2f}z"/>'
+                f'<circle cx="{w / 2:.2f}" cy="{w * .42:.2f}" r="{w * .2:.2f}" fill="#fff"/><circle cx="{w / 2:.2f}" cy="{w * .42:.2f}" r="{w * .12:.2f}"/></g>')
+    if kind == "initialer" and label:
+        from html import escape
+        return (f'<text x="{c}" y="{c}" text-anchor="middle" dominant-baseline="central" fill="currentColor" '
+                f'font-family="Georgia, serif" font-style="italic" font-weight="bold" font-size="{n * .095:.2f}">{escape(label)}</text>')
+    return ""
+
+
+def qr_svg_fancy(text: str, style: str = "prickar", center: str = "hjarta", label: str = "", border: int = 4) -> str:
+    """QR-kod med dekorativa moduler och ett motiv i mitten. Färgen är currentColor (sätts med CSS).
+    Med motiv används felkorrigering H (30 %) och motivet täcker högst ~6 % av koden, så den förblir läsbar."""
+    style = style if style in dict(QR_STYLES) else "prickar"
+    center = center if center in dict(QR_CENTERS) else "ingen"
+    if center == "initialer" and not label:
+        center = "ingen"
+    q = QrCode(text, "H" if center != "ingen" else "Q")
+    s, n = q.size, q.size + border * 2
+    eyes = [(0, 0), (s - 7, 0), (0, s - 7)]
+    in_eye = lambda x, y: any(ex <= x < ex + 7 and ey <= y < ey + 7 for ex, ey in eyes)
+    hole = int(s * .24) | 1 if center != "ingen" else 0   # udda antal moduler → symmetriskt kring mitten
+    h0 = (s - hole) // 2
+    in_hole = lambda x, y: hole and h0 <= x < h0 + hole and h0 <= y < h0 + hole
+    parts = [_module(style, x + border, y + border)
+             for y in range(s) for x in range(s) if q.mod[y][x] and not in_eye(x, y) and not in_hole(x, y)]
+    eyes_svg = "".join(_eye(style, ex + border, ey + border) for ex, ey in eyes)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" class="qr qr-fancy" viewBox="0 0 {n} {n}" role="img" aria-label="QR-kod">'
+            f'<rect class="qr-bg" width="{n}" height="{n}" fill="#fff"/>'
+            f'<path d="{"".join(parts)}" fill="currentColor"/>{eyes_svg}{_center(center, n, border, label)}</svg>')
+
+
 def qr_png(text: str, ecl: str = "M", scale: int = 16, border: int = 4) -> bytes:
     """PNG i hög upplösning för tryck (t.ex. 16 px per modul ≈ 600+ px)."""
     import io

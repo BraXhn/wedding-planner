@@ -26,7 +26,7 @@ from .core import (
     MAX_UPLOAD_MB, TOKEN_RE, UPLOAD_IP, auth, client_ip, csrf_form, flag, get_settings, log, parse_date, public_base,
     public_rate_limit, render, set_settings, today,
 )
-from .qr import qr_svg
+from .qr import qr_svg, qr_svg_fancy
 
 Image.MAX_IMAGE_PIXELS = 50_000_000      # skydd mot dekomprimeringsbomber
 MAX_SIDE, THUMB_SIDE = 2560, 640
@@ -260,7 +260,7 @@ async def slideshow(request: Request):
     """Helskärmsbildspel för projektor/TV på festen. Hämtar nya bilder av sig själv."""
     user = auth(request)
     url = f"{public_base(request)}/p/{photo_token()}"
-    return render(request, "slideshow.html", user, public_page=True, qr=Markup(qr_svg(url, "Q")))
+    return render(request, "slideshow.html", user, public_page=True, qr=Markup(qr_svg_fancy(url, "rundad", "kamera")))
 
 
 async def slideshow_json(request: Request):
@@ -275,7 +275,7 @@ async def table_cards(request: Request):
         n = max(1, min(60, int(request.query_params.get("n", "8"))))
     except ValueError:
         n = 8
-    return render(request, "photo_cards.html", user, qr=Markup(qr_svg(url, "Q")), url=url, n=n)
+    return render(request, "photo_cards.html", user, qr=Markup(qr_svg_fancy(url, "rundad", "kamera")), url=url, n=n)
 
 
 routes = [

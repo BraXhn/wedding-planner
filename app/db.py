@@ -83,7 +83,10 @@ CREATE TABLE IF NOT EXISTS mail_log (
 );
 """
 
-_CORE_EXTRA = {"users": {"ics_token_hash": "TEXT"}, "cards": {"paper": "TEXT NOT NULL DEFAULT 'vit'"}}
+_CORE_EXTRA = {"users": {"ics_token_hash": "TEXT"}, "cards": {"paper": "TEXT NOT NULL DEFAULT 'vit'",
+                                                             "qr_style": "TEXT NOT NULL DEFAULT 'prickar'",
+                                                             "qr_center": "TEXT NOT NULL DEFAULT 'hjarta'",
+                                                             "qr_color": "TEXT NOT NULL DEFAULT 'kort'"}}
 
 
 def _connect() -> sqlite3.Connection:

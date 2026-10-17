@@ -31,29 +31,30 @@ LIMITS = {"eyebrow": 120, "heading": 120, "body": 1500, "footer": 300}
 
 SEED = [
     {"kind": "save", "title": "Save the date", "design": "botanisk", "color": "skog", "size": "a6l", "audience": "all",
-     "paper": "vit", "show_qr": 0, "eyebrow": "Save the date", "heading": "{brudpar}",
+     "paper": "vit", "show_qr": 0, "qr_style": "prickar", "qr_center": "hjarta", "qr_color": "kort", "eyebrow": "Save the date", "heading": "{brudpar}",
      "body": "gifter sig\n{datum}\n{plats}", "footer": "Inbjudan kommer senare"},
     {"kind": "invite", "title": "Inbjudan", "design": "klassisk", "color": "skog", "size": "a5", "audience": "all",
-     "paper": "vit", "show_qr": 1, "eyebrow": "Välkommen på bröllop", "heading": "{brudpar}",
+     "paper": "vit", "show_qr": 1, "qr_style": "prickar", "qr_center": "hjarta", "qr_color": "kort", "eyebrow": "Välkommen på bröllop", "heading": "{brudpar}",
      "body": "Kära {namn}!\n\nVi gifter oss och vill så gärna fira dagen tillsammans med er.\n\n"
              "{datum} kl. {tid}\n{plats}\n{adress}",
      "footer": "Svara senast {osa_senast}: skanna koden eller gå till {osa_adress} och skriv in {kod}"},
     {"kind": "thanks", "title": "Tackkort", "design": "romantisk", "color": "rosa", "size": "a6l", "audience": "coming",
-     "paper": "vit", "show_qr": 0, "eyebrow": "Tack", "heading": "Kära {namn}",
+     "paper": "vit", "show_qr": 0, "qr_style": "prickar", "qr_center": "hjarta", "qr_color": "kort", "eyebrow": "Tack", "heading": "Kära {namn}",
      "body": "Tack för att ni firade vår dag med oss – och för {present}. Det betyder mer än vi kan säga.",
      "footer": "Varma hälsningar, {brudpar}"},
     {"kind": "menu", "title": "Meny", "design": "klassisk", "color": "guld", "size": "a4", "audience": "none",
-     "paper": "vit", "show_qr": 0, "eyebrow": "{datum}", "heading": "Meny",
+     "paper": "vit", "show_qr": 0, "qr_style": "prickar", "qr_center": "hjarta", "qr_color": "kort", "eyebrow": "{datum}", "heading": "Meny",
      "body": "Förrätt\nSkriv förrätten här\n\nVarmrätt\nSkriv varmrätten här\n\nDessert\nSkriv desserten här\n\n"
              "Bröllopstårta och kaffe",
      "footer": "{brudpar}"},
     {"kind": "program", "title": "Program", "design": "botanisk", "color": "skog", "size": "a5", "audience": "none",
-     "paper": "vit", "show_qr": 0, "eyebrow": "Dagens program", "heading": "{brudpar}", "body": "{program}", "footer": "{plats}"},
+     "paper": "vit", "show_qr": 0, "qr_style": "prickar", "qr_center": "hjarta", "qr_color": "kort", "eyebrow": "Dagens program", "heading": "{brudpar}", "body": "{program}", "footer": "{plats}"},
     {"kind": "sign", "title": "Välkomstskylt", "design": "modern", "color": "skog", "size": "a4", "audience": "none",
-     "paper": "vit", "show_qr": 0, "eyebrow": "Välkommen till", "heading": "{brudpar}s bröllop", "body": "{datum}",
+     "paper": "vit", "show_qr": 0, "qr_style": "prickar", "qr_center": "hjarta", "qr_color": "kort", "eyebrow": "Välkommen till", "heading": "{brudpar}s bröllop", "body": "{datum}",
      "footer": "Dela era bilder – skanna QR-koden på borden"},
 ]
-FIELDS = ["kind", "title", "design", "color", "paper", "size", "audience", "show_qr", "eyebrow", "heading", "body", "footer"]
+QR_COLORS = [("kort", "Kortets färg"), ("svart", "Svart – säkrast att skanna")]
+FIELDS = ["kind", "title", "design", "color", "paper", "size", "audience", "show_qr", "qr_style", "qr_center", "qr_color", "eyebrow", "heading", "body", "footer"]
 
 
 def seed_cards(c) -> None:

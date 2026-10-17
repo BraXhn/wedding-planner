@@ -244,9 +244,28 @@ if (cardEditor && cardPreview) {
     const qrBox = cardPreview.querySelector("[data-qr]");
     const qrToggle = cardEditor.querySelector("[data-qr-toggle]");
     if (qrBox && qrToggle) qrBox.hidden = !qrToggle.checked || !qrBox.firstElementChild;
+    const qrOptions = cardEditor.querySelector("[data-qr-options]");
+    if (qrOptions && qrToggle) qrOptions.hidden = !qrToggle.checked;
   };
   cardEditor.addEventListener("input", update);
   cardEditor.addEventListener("change", update);
+
+  // QR-stil: hämta en exempelkod i vald stil från servern (vår egen SVG, samma origin)
+  let qrReq = 0;
+  cardEditor.addEventListener("change", async (e) => {
+    if (!e.target.matches("[data-qr-param]")) return;
+    const params = new URLSearchParams();
+    cardEditor.querySelectorAll("[data-qr-param]").forEach((s) => params.set(s.dataset.qrParam, s.value));
+    const mine = ++qrReq;
+    try {
+      const r = await fetch("/kort/qr.svg?" + params, { credentials: "same-origin" });
+      if (!r.ok || mine !== qrReq) return;
+      const svg = new DOMParser().parseFromString(await r.text(), "image/svg+xml").documentElement;
+      const box = cardPreview.querySelector("[data-qr]");
+      if (box && svg.nodeName === "svg") box.replaceChildren(document.importNode(svg, true));
+      requestAnimationFrame(() => typeof fitAll === "function" && fitAll());
+    } catch { /* behåll den gamla förhandsvisningen */ }
+  });
   picker?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-pick-design]");
     const sel = cardEditor.querySelector('select[name="design"]');

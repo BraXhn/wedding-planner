@@ -483,6 +483,17 @@ ok(tuple(q("SELECT design, paper FROM cards WHERE id=?", inv)[0]) == ("krans", "
 h = html(req(a, f"/kort/{inv}/skriv-ut"))
 ok('p-kraft' in h and 'd-krans' in h and "A &amp; E" in h, "trycksaker: utskrift med färgat papper och initialer i kransen")
 ok(req(a, f"/kort/{inv}", {**CARD, "paper": "neon"})[0] == 400, "trycksaker: okänt papper nekas")
+r = req(a, "/kort/qr.svg?stil=hjartan&mitt=ringar")
+ok(r[0] == 200 and r[1]["Content-Type"].startswith("image/svg+xml") and b"qr-fancy" in r[2] and b"EXEMPEL" not in r[2],
+   "rolig QR: förhandsvisning i vald stil")
+ok(req(a, "/kort/qr.svg?stil=<x>&mitt=ringar")[0] == 400 and req(client(), "/kort/qr.svg?stil=prickar&mitt=hjarta", follow=False)[0] == 303,
+   "rolig QR: ogiltig stil nekas, kräver inloggning")
+req(a, f"/kort/{inv}", {**CARD, "qr_style": "romb", "qr_center": "initialer", "qr_color": "svart"})
+ok(tuple(q("SELECT qr_style, qr_center, qr_color FROM cards WHERE id=?", inv)[0]) == ("romb", "initialer", "svart"), "rolig QR: valen sparas")
+h = html(req(a, f"/kort/{inv}/skriv-ut"))
+ok(h.count("qr-fancy") == n_households and "q-svart" in h, "rolig QR: personliga kort får dekorativ kod i vald färg")
+ok(req(a, f"/kort/{inv}", {**CARD, "qr_center": "drake"})[0] == 400, "rolig QR: okänt motiv nekas")
+ok("qr-fancy" in html(req(a, "/m/guests/qr")) and "qr-fancy" in html(req(a, "/photos/cards")), "rolig QR på OSA-kort och bordskort för bilder")
 
 # ---------------------------------------------------------------- cache-busting av statiska filer
 import hashlib as _hl

@@ -479,7 +479,7 @@ body.slideshow main { max-width: none; padding: 0; }
 .pc-body { font-size: 4.3cqw; line-height: 1.45; white-space: pre-line; overflow-wrap: anywhere; }
 .pc-footer { font-family: var(--sans); font-size: 2.8cqw; color: #6b6b6b; line-height: 1.4; }
 .pcard:not(.p-vit) .pc-footer { color: #4d4d4d; }
-.pc-qr { width: 22cqw; margin: 1cqw 0; } .pc-qr svg { display: block; width: 100%; height: auto; } .pc-qr[hidden] { display: none; }
+.pc-qr { width: 25cqw; margin: 1cqw 0; } .pc-qr svg { display: block; width: 100%; height: auto; } .pc-qr[hidden] { display: none; }
 .pcard [data-f]:empty { display: none; }
 .pc-divider, .pc-divider > span, .orn, .pc-crest, .deco-corner { display: none; color: var(--c); }
 .pc-divider { font-size: 4.5cqw; line-height: 1; }
@@ -489,7 +489,7 @@ body.slideshow main { max-width: none; padding: 0; }
 /* liggande och stora format: mindre text i förhållande till bredden */
 .s-a6l .pcard-inner { padding: 7cqw 9cqw; gap: 1.1cqw; }
 .s-a6l .pc-heading { font-size: 6.4cqw; } .s-a6l .pc-body { font-size: 3cqw; } .s-a6l .pc-eyebrow { font-size: 2.1cqw; }
-.s-a6l .pc-footer { font-size: 2cqw; } .s-a6l .pc-qr { width: 15cqw; } .s-a6l .pc-crest { width: 19cqw; } .s-a6l .pc-mono { font-size: 5cqw; }
+.s-a6l .pc-footer { font-size: 2cqw; } .s-a6l .pc-qr { width: 17cqw; } .s-a6l .pc-crest { width: 19cqw; } .s-a6l .pc-mono { font-size: 5cqw; }
 .s-a4 .pc-heading { font-size: 10cqw; } .s-a4 .pc-body { font-size: 4.2cqw; }
 
 /* Klassisk: dubbel ram */
@@ -596,3 +596,10 @@ button.chip { font: inherit; font-size: .8rem; cursor: pointer; margin: 2px 0; }
 }
 .warn-note { background: var(--warn-bg); color: var(--warn); padding: 8px 12px; border-radius: 10px; }
 .warn-note[hidden] { display: none; }
+
+/* ------------------------------------------------------------------ dekorativ QR-kod */
+.pc-qr { color: var(--c); }
+.q-svart .pc-qr { color: #111; }
+.pcard:not(.p-vit) .qr-bg { fill: transparent; }  /* färgat papper: ingen vit ruta bakom koden */
+.qr-options[hidden] { display: none; }
+.osa-card-qr, .tcard .qrbox, .show-qr { color: var(--accent); }

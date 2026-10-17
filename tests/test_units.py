@@ -92,5 +92,20 @@ dbm.init_db()
 with dbm.db() as c:
     papers = {r[0] for r in c.execute("SELECT paper FROM cards")}
 ok(papers == {"vit"}, "migrering: befintliga trycksaker får vitt papper")
+
+# --- dekorativ QR
+from app.qr import QrCode, qr_svg_fancy  # noqa: E402
+svg = qr_svg_fancy("https://x.se/o/ABC", "prickar", "initialer", "<&>")
+ok("&lt;&amp;&gt;" in svg and "<&>" not in svg, "QR: initialer i mitten escapas")
+ok("qr-fancy" in qr_svg_fancy("https://x.se", "okänd", "okänt"), "QR: okänd stil faller tillbaka")
+ok(QrCode("https://x.se/o/ABCDEFGH23", "H").version >= QrCode("https://x.se/o/ABCDEFGH23", "M").version,
+   "QR: motiv i mitten använder högsta felkorrigeringen")
+with dbm.db() as c:
+    for col in ("qr_style", "qr_center", "qr_color"):
+        c.execute(f"ALTER TABLE cards DROP COLUMN {col}")
+dbm.init_db()
+with dbm.db() as c:
+    qrs = {tuple(r) for r in c.execute("SELECT qr_style, qr_center, qr_color FROM cards")}
+ok(qrs == {("prickar", "hjarta", "kort")}, "migrering: befintliga trycksaker får prickar och hjärta")
 print(f"\n{len(fails)} fel")
 sys.exit(1 if fails else 0)
