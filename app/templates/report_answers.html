@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}OSA-frågor · {{ super() }}{% endblock %}
+{% block content %}
+<p class="crumb noprint"><a href="/m/guests">← Gäster</a></p>
+<div class="pagehead">
+  <h1>OSA-frågor</h1>
+  <div class="actions noprint">
+    {% if can_write %}<a class="btn" href="/m/questions">Ändra frågorna</a>{% endif %}
+    <a class="btn" href="/rapport/svar.csv">Exportera CSV</a>
+    <a class="btn primary" href="#" data-print>Skriv ut</a>
+  </div>
+</div>
+<p class="hint">Svaren från de {{ coming }} hushåll som kommer. Frågorna visas i OSA-formuläret för den som svarar ”Ja, gärna!”.
+{% if can_write %}Under <a href="/m/questions">Ändra frågorna</a> lägger ni till egna frågor eller stänger av dem ni inte behöver.{% endif %}</p>
+{% for q in questions %}
+<section class="card">
+  <h2>{{ q.label }} {% if not q.enabled %}<span class="pill">Avstängd</span>{% endif %}</h2>
+  {% if q.kind in ('yesno', 'choice') %}
+  <ul class="report-list">
+    {% for t in q.tally %}
+    <li><strong>{{ t.value|capitalize }}</strong>: {{ t.households|length }} hushåll ({{ t.people }} pers.)
+      {% if t.households and t.value != 'nej' %}<span class="muted small"> – {{ t.households|map(attribute='name')|join(', ') }}</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  {% if q.answers %}<ul class="report-list">{% for a in q.answers %}<li><strong>{{ a.name }}</strong>: {{ a.value }}</li>{% endfor %}</ul>
+  {% else %}<p class="muted">Inga svar än.</p>{% endif %}
+  {% endif %}
+</section>
+{% else %}
+<div class="card empty"><p class="muted">Inga frågor. {% if can_write %}<a href="/m/questions/new">Lägg till en</a>.{% endif %}</p></div>
+{% endfor %}
+{% endblock %}

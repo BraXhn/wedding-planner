@@ -140,6 +140,30 @@ ok(req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, "name_1": "Anders"})[0] == 40
 ok(req(a, f"/m/guests/{gA[0]}/people", {"name_1": "X", "coming_1": "on"})[0] == 403, "personer kräver CSRF")
 req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, **{k: v for k, v in FAM.items() if k != "answer"}, "allergy_2": "Gluten, nötter", "allergy_3": "<i>Soja"})
 
+# ---------------------------------------------------------------- egna OSA-frågor
+qid = {r[0]: r[1] for r in q("SELECT label, id FROM questions")}
+q_ride, q_stay, q_chair = qid["Behöver ni skjuts från stationen?"], qid["Var bor ni under helgen?"], qid["Behöver ni barnstol?"]
+h = html(req(p, f"/r/{gA[1]}"))
+ok(all(f'name="q_{i}"' in h for i in (q_ride, q_stay, q_chair)) and "Hotellet vi tipsat om" in h, "OSA-frågor: förslagen visas i formuläret")
+r = req(p, f"/r/{gA[1]}", {**FAM, f"q_{q_stay}": "Slottet"})
+ok(r[0] == 400 and "Ogiltigt val" in html(r), "OSA-frågor: ogiltigt alternativ nekas")
+req(p, f"/r/{gA[1]}", {**FAM, f"q_{q_ride}": "ja", f"q_{q_stay}": "Hotellet vi tipsat om", f"q_{q_chair}": "nej"})
+ok({r[0]: r[1] for r in q("SELECT question_id, value FROM answers WHERE guest_id=?", gA[0])}
+   == {q_ride: "ja", q_stay: "Hotellet vi tipsat om", q_chair: "nej"}, "OSA-frågor: svaren sparas")
+for _ in range(30):
+    if "Behöver ni skjuts från stationen? ja" in read_mail(): break
+    time.sleep(0.1)
+ok("stationen? ja" in read_mail(), "OSA-frågor: svaren står i mejlet till brudparet")
+req(a, f"/m/questions/{q_chair}", {"csrf": c, "label": "Behöver ni barnstol?", "kind": "yesno", "options": "", "sort_no": "2"})
+ok(f'name="q_{q_chair}"' not in html(req(p, f"/r/{gA[1]}")), "OSA-frågor: avstängd fråga visas inte för gästerna")
+h = html(req(a, "/rapport/svar"))
+ok("Familjen Andersson" in h and "Avstängd" in h and "1 hushåll (3 pers.)" in h, "OSA-frågor: sammanställning med antal personer")
+ok(f"Familjen Andersson;3;ja;Hotellet vi tipsat om;nej" in req(a, "/rapport/svar.csv")[2].decode("utf-8-sig"), "OSA-frågor: CSV")
+ok("Var bor ni under helgen?" in html(req(a, f"/m/guests/{gA[0]}")), "OSA-frågor: svaren syns på gästsidan")
+req(a, "/m/questions/new", {"csrf": c, "label": "<i>Ny</i> fråga?", "kind": "text", "enabled": "on", "sort_no": "9"})
+ok("&lt;i&gt;Ny" in html(req(p, f"/r/{gA[1]}")), "OSA-frågor: egen fråga visas och escapas")
+req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, **{k: v for k, v in FAM.items() if k != "answer"}, "allergy_2": "Gluten, nötter", "allergy_3": "<i>Soja"})
+
 # ---------------------------------------------------------------- rapporter: mat, bordskort, placeringslista
 tname = q("SELECT t.name FROM tables t JOIN guests g ON g.table_id = t.id WHERE g.id=?", gA[0])[0][0]
 h = html(req(a, "/rapport/mat"))
@@ -311,6 +335,8 @@ ok(req(v, "/api-keys")[0] == 403 and req(v, "/mail/send", {"csrf": c2, "kind": "
 ok(req(v, "/seating/assign", raw=b"{}", headers={"Content-Type": "application/json", "X-CSRF-Token": c2})[0] == 403, "läsare kan inte flytta gäster")
 ok('draggable' not in html(req(v, "/seating")), "läsare ser placering utan dra-funktion")
 ok(req(v, f"/m/guests/{gA[0]}/people", {"csrf": c2, "name_1": "X", "coming_1": "on"})[0] == 403, "läsare kan inte ändra personer")
+ok(req(v, f"/m/questions/{q_ride}", {"csrf": c2, "label": "x", "kind": "text"})[0] == 403, "OSA-frågor: läsare kan inte ändra frågorna")
+ok(req(v, "/rapport/svar")[0] == 200, "läsare ser svaren på OSA-frågorna")
 h = html(req(v, f"/m/guests/{gA[0]}"))
 ok("rsvplink" not in h and gA[1] not in h and "Anders" in h, "läsare ser gästen men inte OSA-länken")
 ok(gA[1] not in req(v, "/m/guests/export.csv")[2].decode("utf-8-sig"), "läsare får inte OSA-länkar i CSV-exporten")

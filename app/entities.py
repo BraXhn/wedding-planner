@@ -202,6 +202,28 @@ ENTITIES = {
     },
 }
 
+QUESTION_KINDS = [("yesno", "Ja eller nej"), ("choice", "Välj ett alternativ"), ("text", "Fritext")]
+ENTITIES["questions"] = {
+    "title": "OSA-frågor", "singular": "fråga", "nav": False,
+    "order": "sort_no, id",
+    "fields": [
+        F("label", "Fråga", required=True, help="Visas i OSA-formuläret för den som svarar ”Ja, gärna!”"),
+        F("kind", "Typ av svar", "select", options=QUESTION_KINDS, default="yesno"),
+        F("options", "Alternativ", "textarea", help="Ett alternativ per rad – bara för ”Välj ett alternativ”"),
+        F("enabled", "Påslagen", "bool", default=1, help="Avstängda frågor visas inte för gästerna; svar som redan kommit in finns kvar"),
+        F("sort_no", "Ordning", "int", default=0, min=0, max=999),
+    ],
+    "list": ["label", "kind", "enabled", "sort_no"],
+    "search": ["label"],
+    "sum": [],
+    "filters": [],
+}
+QUESTION_SEED = [
+    ("Behöver ni skjuts från stationen?", "yesno", ""),
+    ("Var bor ni under helgen?", "choice", "Hemma / hos släkt\nHotellet vi tipsat om\nAnnat boende\nVet inte än"),
+    ("Behöver ni barnstol?", "yesno", ""),
+]
+
 for _spec in ENTITIES.values():
     _spec["by_name"] = {f["name"]: f for f in _spec["fields"]}
     _spec.setdefault("nav", True)

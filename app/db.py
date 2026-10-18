@@ -163,6 +163,17 @@ def init_db() -> None:
         c.execute("UPDATE guests SET attending = COALESCE(invited_count, 1) "
                   "WHERE rsvp = 'yes' AND COALESCE(attending, 0) = 0")
 
+        c.execute("""CREATE TABLE IF NOT EXISTS answers (
+            guest_id INTEGER NOT NULL REFERENCES guests(id) ON DELETE CASCADE,
+            question_id INTEGER NOT NULL,
+            value TEXT NOT NULL,
+            PRIMARY KEY (guest_id, question_id))""")
+        if not c.execute("SELECT 1 FROM settings WHERE key='questions_seeded'").fetchone():
+            from .entities import QUESTION_SEED
+            c.executemany("INSERT INTO questions (label, kind, options, enabled, sort_no) VALUES (?, ?, ?, 1, ?)",
+                          [(lab, kind, opts, i) for i, (lab, kind, opts) in enumerate(QUESTION_SEED)])
+            c.execute("INSERT INTO settings (key, value) VALUES ('questions_seeded', '1')")
+
         from .cards import seed_cards
         seed_cards(c)
 

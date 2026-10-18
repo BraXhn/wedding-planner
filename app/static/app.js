@@ -165,7 +165,7 @@ if (peopleBox) {
   const answers = document.querySelectorAll('input[name="answer"]');
   const update = () => {
     const no = document.querySelector('input[name="answer"][value="no"]');
-    peopleBox.toggleAttribute("data-hidden", Boolean(no && no.checked));
+    document.querySelectorAll("[data-people], [data-yes-only]").forEach((el) => el.toggleAttribute("data-hidden", Boolean(no && no.checked)));
   };
   answers.forEach((r) => r.addEventListener("change", update));
   update();

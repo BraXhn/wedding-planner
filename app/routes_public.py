@@ -15,6 +15,7 @@ from .core import (
 )
 from .qr import qr_svg
 from .people import parse_people, people_for, save_people
+from .questions import answers_for, enabled_questions, parse_answers, save_answers
 from .routes_mail import notify_couple
 from .security import RateLimiter, normalize_code
 from .routes_photos import handle_upload, saved_count, serve_photo, visible_photos
@@ -99,8 +100,11 @@ async def rsvp(request: Request):
     ctx = _portal_ctx(g, "rsvp")
     with dbm.db() as c:
         people = people_for(c, g)
+        questions = enabled_questions(c)
+        answers = answers_for(c, g["id"])
     if len(people) == 1 and not people[0]["name"]:
         people[0]["name"] = g["name"]  # ensamhushåll: förifyll med namnet på inbjudan
+    ctx.update(questions=questions, answers=answers)
     if request.method == "GET":
         return render(request, "rsvp.html", saved=request.query_params.get("ok") == "1", people=people, **ctx)
     if ctx["closed"]:
@@ -112,10 +116,13 @@ async def rsvp(request: Request):
     errors = []
     if answer not in ("yes", "no"):
         errors.append("Välj om ni kommer eller inte.")
-    new_people, count = None, 0
+    new_people, count, new_answers = None, 0, None
     if answer == "yes":
         new_people, perr = parse_people(form, ctx["max_count"])
         errors += perr
+        new_answers, aerr = parse_answers(form, questions)
+        errors += aerr
+        ctx["answers"] = new_answers
         count = sum(p["attending"] for p in new_people)
         if not count:
             errors.append("Kryssa i vem eller vilka som kommer.")
@@ -129,19 +136,26 @@ async def rsvp(request: Request):
                   "WHERE id = ?", (answer, count, song, message, speech, g["id"]))
         if new_people is not None:
             save_people(c, g["id"], new_people)
+        if new_answers is not None:
+            save_answers(c, g["id"], new_answers)
         sync_speech_from_guest(c, g["id"])
     log.info("rsvp guest_id=%s answer=%s count=%s", g["id"], answer, count)
-    _notify_rsvp(request, g, answer, count, new_people, speech, song, message)
+    _notify_rsvp(request, g, answer, count, new_people, speech, song, message,
+                 [(q["label"], new_answers[q["id"]]) for q in questions if new_answers and new_answers.get(q["id"])])
     return RedirectResponse(f"/r/{g['rsvp_token']}?ok=1", 303)
 
 
-def _notify_rsvp(request: Request, g, answer: str, count: int, people, speech: int, song: str, message: str) -> None:
+def _notify_rsvp(request: Request, g, answer: str, count: int, people, speech: int, song: str, message: str,
+                 qa: list[tuple[str, str]] = ()) -> None:
     changed = g["rsvp"] != "pending"
     what = f"kommer ({count} av {g['invited_count']})" if answer == "yes" else "kommer inte"
     lines = [f"{g['name']} har {'ändrat sitt svar' if changed else 'svarat'}: {what}.", ""]
     for p in people or []:
         if p["attending"]:
             lines.append(f"- {p['name']}" + (f" (allergi/specialkost: {p['allergies']})" if p["allergies"] else ""))
+    if qa:
+        lines.append("")
+        lines += [f"{label} {value}" for label, value in qa]
     if speech:
         lines.append("\nVill hålla tal.")
     if song:

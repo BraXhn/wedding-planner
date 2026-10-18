@@ -603,3 +603,6 @@ button.chip { font: inherit; font-size: .8rem; cursor: pointer; margin: 2px 0; }
 .pcard:not(.p-vit) .qr-bg { fill: transparent; }  /* färgat papper: ingen vit ruta bakom koden */
 .qr-options[hidden] { display: none; }
 .osa-card-qr, .tcard .qrbox, .show-qr { color: var(--accent); }
+.people[data-yes-only] { border-top: 1px solid var(--line); padding-top: 8px; }
+.small-choice { margin: 8px 0 12px; } .small-choice legend { font-weight: 600; margin-bottom: 4px; }
+.small-choice label { padding: 8px 14px; }
