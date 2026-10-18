@@ -23,6 +23,7 @@
     </section>
   </div>
 {% elif wedding_date %}
+  <p class="hint">Tips till toastmastern: lägg sidan på hemskärmen (Dela → Lägg till på hemskärmen) så öppnas den som en app.</p>
   <p class="hint">Den här sidan visar vad som händer nu och härnäst på {{ sv_date(wedding_date) }}. Fram till dess ser du hela körschemat och talarlistan.
   Förhandsvisa: <a href="/dagen?tid=15:00">kl. 15</a> · <a href="/dagen?tid=19:30">kl. 19.30</a></p>
 {% else %}
@@ -39,11 +40,17 @@
     {% else %}<p class="muted">Körschemat är tomt. <a href="/m/timeline">Lägg till programpunkter</a>.</p>{% endif %}
   </section>
   <section class="card">
-    <h2>Tal <small class="muted">{{ total_minutes }} min</small></h2>
+    <h2>Tal <small class="muted">{{ total_minutes }} min{% if held %} · {{ held }} av {{ n_speeches }} hållna{% endif %}</small></h2>
+    <p class="speech-timer" data-timer hidden><span data-timer-name></span> <b data-timer-left></b> <button type="button" class="btn" data-timer-stop>Stoppa</button></p>
     {% for p in parts %}
     <h3 class="day-part">{{ p.part }} <small class="muted">{{ p.minutes }} min</small></h3>
     <ol class="day-list">
-      {% for sp in p.speeches %}<li><b>{{ sp.minutes }} min</b><span>{{ sp.speaker }}{% if sp.topic %} <small class="muted">{{ sp.topic }}</small>{% endif %}{% if sp.notes %}<small class="muted">{{ sp.notes }}</small>{% endif %}{% if sp.status == 'Anmäld' %} <span class="pill pending">ej bekräftat</span>{% endif %}</span></li>{% endfor %}
+      {% for sp in p.speeches %}<li id="tal{{ sp.id }}" class="{{ 'past' if sp.status == 'Hållen' }}"><b>{{ sp.minutes }} min</b><span>{{ sp.speaker }}{% if sp.topic %} <small class="muted">{{ sp.topic }}</small>{% endif %}{% if sp.notes %}<small class="muted">{{ sp.notes }}</small>{% endif %}{% if sp.status == 'Anmäld' %} <span class="pill pending">ej bekräftat</span>{% endif %}
+        <span class="speech-actions noprint">
+          {% if sp.status != 'Hållen' %}<button type="button" class="linklike small" data-timer-start="{{ sp.minutes }}" data-timer-label="{{ sp.speaker }}">⏱ Timer</button>{% endif %}
+          <form method="post" action="/dagen/tal/{{ sp.id }}" class="inline"><input type="hidden" name="csrf" value="{{ user.csrf }}">
+            <button class="linklike small">{{ '↺ Ångra' if sp.status == 'Hållen' else '✓ Hållet' }}</button></form>
+        </span></span></li>{% endfor %}
     </ol>
     {% else %}<p class="muted">Inga tal anmälda.</p>{% endfor %}
   </section>

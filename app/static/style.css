@@ -622,3 +622,9 @@ button.chip { font: inherit; font-size: .8rem; cursor: pointer; margin: 2px 0; }
 .show-greeting cite { font-style: normal; font-size: clamp(1rem, 2vw, 1.8rem); color: #e9dcc4; }
 .greetings li { display: flex; justify-content: space-between; gap: 12px; align-items: start; border-bottom: 1px solid var(--line); padding: 8px 0; }
 .greetings li p { margin: 0; } .greetings li.is-hidden { opacity: .6; }
+.speech-actions { display: inline-flex; gap: 12px; margin-left: 8px; }
+.speech-timer { position: sticky; top: 8px; z-index: 5; display: flex; align-items: center; gap: 12px; background: var(--accent); color: #fff;
+                padding: 10px 14px; border-radius: 12px; margin: 0 0 12px; }
+.speech-timer[hidden] { display: none; }
+.speech-timer b { font-size: 1.6rem; font-variant-numeric: tabular-nums; margin-left: auto; }
+.speech-timer.over { background: var(--err); }

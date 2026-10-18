@@ -25,7 +25,7 @@ Starlette (inte FastAPI) + Jinja2 + SQLite. Kryptot (scrypt, TOTP, tokens) bygge
 
 Appen ligger ute på internet; varje ändring håller dessa:
 
-- Inloggade vyer anropar `auth(request, write=…, admin=…)`; roller: admin, editor, viewer. Läsare får aldrig se gästernas OSA-länkar, koder eller QR (de ger skrivrätt till gästens svar).
+- Inloggade vyer anropar `auth(request, write=…, admin=…)`; roller: admin, editor, viewer. Läsare får aldrig se gästernas OSA-länkar, koder eller QR (de ger skrivrätt till gästens svar). Enda skrivundantaget för läsare: bocka av tal som hållna på `/dagen` (toastmastern har oftast en läsarinloggning).
 - Varje POST verifierar CSRF: `csrf_form()` för formulär, `csrf_header()` för `fetch()`-anrop med JSON.
 - Publika token-sidor (`/r/`, `/p/`, `/o/`, `/osa`, `/cal/`, `/api/`) anropar `public_rate_limit()` eller en egen `RateLimiter`, validerar token/nyckel mot ett strikt mönster (`TOKEN_RE`, `KEY_RE`, `normalize_code`) och svarar 404/401 utan att avslöja om den finns.
 - SQL är parametriserad; tabell- och kolumnnamn kommer bara från `ENTITIES` (vitlista).

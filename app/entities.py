@@ -177,7 +177,7 @@ ENTITIES = {
             F("part", "När", "select", options=opts(SPEECH_PARTS), default=SPEECH_PARTS[1]),
             F("order_no", "Ordning", "int", default=0, min=0, max=999),
             F("minutes", "Minuter", "int", default=5, min=1, max=60),
-            F("status", "Status", "select", options=opts(["Anmäld", "Bekräftad", "Struken"]), default="Anmäld"),
+            F("status", "Status", "select", options=opts(["Anmäld", "Bekräftad", "Hållen", "Struken"]), default="Anmäld"),
             F("notes", "Anteckningar (t.ex. behöver mikrofon/projektor)", "textarea"),
         ],
         "list": ["part", "order_no", "speaker", "topic", "minutes", "status"],

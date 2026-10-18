@@ -29,7 +29,10 @@ document.addEventListener("click", async (e) => {
 
 // Uppdatera sidan medan e-postutskick pågår
 const refresh = document.querySelector("[data-autorefresh]");
-if (refresh) setTimeout(() => location.reload(), Number(refresh.dataset.autorefresh) * 1000);
+if (refresh) {
+  const again = () => (document.querySelector("[data-timer]:not([hidden])") ? setTimeout(again, 10000) : location.reload());
+  setTimeout(again, Number(refresh.dataset.autorefresh) * 1000);  // ladda inte om mitt i ett tal
+}
 
 // Visa valda filnamn vid uppladdning
 document.querySelectorAll(".upload-drop input[type=file]").forEach((inp) => {
@@ -335,4 +338,27 @@ if (document.querySelector(".pcard")) {
   document.addEventListener("input", (e) => { if (e.target.closest("[data-card-editor]")) requestAnimationFrame(fitAll); });
   document.addEventListener("change", (e) => { if (e.target.closest("[data-card-editor]")) requestAnimationFrame(fitAll); });
   document.addEventListener("click", (e) => { if (e.target.closest("[data-pick-design], [data-insert]")) requestAnimationFrame(fitAll); });
+}
+
+// Dagen: timer för ett tal – räknar ner och blir röd när tiden är slut
+const timerBox = document.querySelector("[data-timer]");
+if (timerBox) {
+  let iv = null;
+  const out = timerBox.querySelector("[data-timer-left]");
+  const stop = () => { clearInterval(iv); iv = null; timerBox.hidden = true; timerBox.classList.remove("over"); };
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-timer-start]");
+    if (btn) {
+      stop();
+      const end = Date.now() + Number(btn.dataset.timerStart) * 60000;
+      timerBox.querySelector("[data-timer-name]").textContent = btn.dataset.timerLabel;
+      const tickT = () => {
+        const left = Math.round((end - Date.now()) / 1000), a = Math.abs(left);
+        out.textContent = (left < 0 ? "+" : "") + Math.floor(a / 60) + ":" + String(a % 60).padStart(2, "0");
+        timerBox.classList.toggle("over", left < 0);
+      };
+      tickT(); iv = setInterval(tickT, 1000); timerBox.hidden = false;
+    }
+    if (e.target.closest("[data-timer-stop]")) stop();
+  });
 }

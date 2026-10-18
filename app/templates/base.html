@@ -7,6 +7,9 @@
 <title>{% block title %}{{ settings.couple_names or "Bröllopsplaneraren" }}{% endblock %}</title>
 <link rel="stylesheet" href="{{ asset('style.css') }}">
 <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+{% if user and not public_page %}<link rel="manifest" href="{{ asset('manifest.json') }}">
+<link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+<meta name="theme-color" content="#2f4a3e"><meta name="apple-mobile-web-app-title" content="Bröllopet">{% endif %}
 <script src="{{ asset('app.js') }}" defer></script>
 </head>
 <body class="{% block bodyclass %}{% endblock %}">
