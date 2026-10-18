@@ -12,6 +12,18 @@
     {% if can_write %}<a class="btn primary" href="/m/tables/new">+ Nytt bord</a>{% endif %}
   </div>
 </div>
+{% if result %}<p class="alert {{ 'warn-note' if result[1] else 'ok' }} noprint">{{ result[0] }} hushåll placerades.
+  {% if result[1] %}{{ result[1] }} fick inte plats – lägg till bord eller fler platser, eller flytta någon för hand.{% endif %}</p>{% endif %}
+{% if can_write %}
+<div class="seat-tools noprint">
+  <form method="post" action="/seating/forslag" class="inline" data-confirm="Placera alla hushåll som saknar bord? Grupper hålls ihop och ingen hamnar vid samma bord som den inte ska sitta med. Redan placerade flyttas inte.">
+    <input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="btn primary" {{ 'disabled' if not unseated or not tables }}>Föreslå placering för de utan bord</button>
+  </form>
+  <form method="post" action="/seating/tom" class="inline" data-confirm="Ta bort ALLA från sina bord och börja om?">
+    <input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike small">Töm alla bord</button>
+  </form>
+</div>
+{% endif %}
 <p class="hint noprint">
   {{ total_need }} platser behövs · {{ total_seats }} finns.
   {% if total_need > total_seats %}<strong class="warn">{{ total_need - total_seats }} platser saknas.</strong>{% endif %}

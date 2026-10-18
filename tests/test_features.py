@@ -353,6 +353,13 @@ ok(req(v, "/dagen")[0] == 200 and req(client(), "/dagen", follow=False)[0] == 30
 ok(req(v, "/api-keys")[0] == 403 and req(v, "/mail/send", {"csrf": c2, "kind": "invite", "confirm": "on"})[0] == 403, "läsare når inte API-nycklar/utskick")
 ok(req(v, "/seating/assign", raw=b"{}", headers={"Content-Type": "application/json", "X-CSRF-Token": c2})[0] == 403, "läsare kan inte flytta gäster")
 ok('draggable' not in html(req(v, "/seating")), "läsare ser placering utan dra-funktion")
+ok(req(v, "/seating/forslag", {"csrf": c2})[0] == 403 and req(a, "/seating/forslag", {"csrf": "x"})[0] == 403,
+   "placeringsförslag kräver skrivbehörighet och CSRF")
+before = q("SELECT id, table_id FROM guests WHERE table_id IS NOT NULL")
+r = req(a, "/seating/forslag", {"csrf": c})
+ok(r[0] == 200 and "hushåll placerades" in html(r) and all(q("SELECT table_id FROM guests WHERE id=?", g)[0][0] == t for g, t in before),
+   "placeringsförslag: redan placerade flyttas inte")
+ok(req(a, "/seating?placerade=" + "9" * 5000)[0] == 200, "placering: konstiga parametrar ger ingen krasch")
 ok(req(v, f"/m/guests/{gA[0]}/people", {"csrf": c2, "name_1": "X", "coming_1": "on"})[0] == 403, "läsare kan inte ändra personer")
 ok(req(v, f"/m/questions/{q_ride}", {"csrf": c2, "label": "x", "kind": "text"})[0] == 403, "OSA-frågor: läsare kan inte ändra frågorna")
 ok(req(v, "/rapport/svar")[0] == 200, "läsare ser svaren på OSA-frågorna")

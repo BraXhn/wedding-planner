@@ -610,3 +610,4 @@ button.chip { font: inherit; font-size: .8rem; cursor: pointer; margin: 2px 0; }
 .faq:first-of-type { border-top: 0; }
 .faq summary { cursor: pointer; font-weight: 600; }
 .faq p { margin: 8px 0 0; }
+.seat-tools { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }

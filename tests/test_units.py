@@ -119,5 +119,29 @@ set_settings({"digest_week": "2027-09"})
 ok(digest_due(mon7) is None, "veckobrev: bara en gång per vecka")
 set_settings({"digest_enabled": "0", "digest_week": ""})
 ok(digest_due(mon7) is None, "veckobrev: kan stängas av")
+
+# --- förslag på bordsplacering
+from app.seating_plan import suggest  # noqa: E402
+with dbm.db() as c:
+    c.execute("DELETE FROM guests"); c.execute("DELETE FROM tables")
+    t1 = c.execute("INSERT INTO tables (name, seats, sort_no) VALUES ('Bord 1', 5, 1)").lastrowid
+    t2 = c.execute("INSERT INTO tables (name, seats, sort_no) VALUES ('Bord 2', 5, 2)").lastrowid
+    def gst(name, n, grp="", rsvp="pending", table=None, avoid=None):
+        return c.execute("INSERT INTO guests (name, invited_count, rsvp, attending, group_name, table_id, avoid_guest_id) "
+                         "VALUES (?,?,?,?,?,?,?)", (name, n, rsvp, n if rsvp == "yes" else 0, grp, table, avoid)).lastrowid
+    k1, k2 = gst("Kollega A", 2, "Kollegor"), gst("Kollega B", 2, "Kollegor")
+    fam = gst("Familjen", 3, "Familj", rsvp="yes")
+    ex = gst("Exet", 1, avoid=fam)
+    nej = gst("Kommer inte", 2, rsvp="no")
+    stor = gst("Jättegruppen", 6, "Ensam")
+    plan, left = suggest(c)
+    placed = dict(plan)
+ok(placed.get(k1) == placed.get(k2) and placed.get(k1) is not None, "placering: gruppen hålls ihop")
+ok(placed.get(ex) != placed.get(fam) and ex in placed and fam in placed, "placering: ”sitt inte med” respekteras")
+ok(nej not in placed and stor in left, "placering: de som tackat nej och de som inte får plats lämnas")
+used = {t: 0 for t in (t1, t2)}
+need = {k1: 2, k2: 2, fam: 3, ex: 1}
+for g, t in plan: used[t] += need[g]
+ok(used[t1] <= 5 and used[t2] <= 5, "placering: bord fylls aldrig över antal platser")
 print(f"\n{len(fails)} fel")
 sys.exit(1 if fails else 0)

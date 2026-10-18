@@ -68,6 +68,8 @@ ENTITIES = {
             F("speech", "Vill hålla tal", "bool"),
             F("song", "Låtönskemål"),
             F("table_id", "Bord", "ref", ref="tables", help="Enklast via Placering"),
+            F("avoid_guest_id", "Ska inte sitta vid samma bord som", "ref", ref="guests",
+              help="Följs av ”Föreslå placering” under Placering"),
             F("message", "Meddelande från gäst", "textarea"),
             F("notes", "Egna anteckningar", "textarea"),
             F("gift_received", "Present från dem", help="Fylls i efter bröllopet – se Tackkort"),
