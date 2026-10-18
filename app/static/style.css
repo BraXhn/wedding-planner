@@ -611,3 +611,7 @@ button.chip { font: inherit; font-size: .8rem; cursor: pointer; margin: 2px 0; }
 .faq summary { cursor: pointer; font-weight: 600; }
 .faq p { margin: 8px 0 0; }
 .seat-tools { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.show-caption { position: absolute; left: 50%; top: 3vw; transform: translateX(-50%); margin: 0; padding: .4em 1.1em; border-radius: 999px;
+                background: rgba(255,255,255,.92); color: var(--ink); font-family: var(--serif); font-size: clamp(1rem, 2.2vw, 2rem); white-space: nowrap; }
+.show-caption[hidden] { display: none; }
+.challenges { margin: 0; padding-left: 1.2em; } .challenges li { margin: 4px 0; }

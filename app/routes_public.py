@@ -18,7 +18,7 @@ from .people import parse_people, people_for, save_people
 from .questions import answers_for, enabled_questions, parse_answers, save_answers
 from .routes_mail import notify_couple
 from .security import RateLimiter, normalize_code
-from .routes_photos import handle_upload, saved_count, serve_photo, visible_photos
+from .routes_photos import active_challenges, handle_upload, saved_count, serve_photo, visible_photos
 
 
 def guest_by_token(request: Request):
@@ -238,7 +238,7 @@ async def photos(request: Request):
         saved, errors = await handle_upload(request, guest=g)
         if saved and not errors:
             return RedirectResponse(f"/r/{g['rsvp_token']}/photos?ok={saved}", 303)
-    return render(request, "photos_public.html", saved=saved or saved_count(request), errors=errors,
+    return render(request, "photos_public.html", saved=saved or saved_count(request), errors=errors, challenges=active_challenges(),
                   photos=visible_photos() if flag(ctx["settings"], "gallery_public") else [], max_mb=MAX_UPLOAD_MB, **ctx)
 
 

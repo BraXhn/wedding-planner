@@ -9,6 +9,10 @@
     {% if flag(settings, 'photos_enabled') %}
     <form method="post" enctype="multipart/form-data" data-upload>
       {% if not guest %}<label class="field"><span>Ditt namn (valfritt)</span><input name="name" maxlength="60" autocomplete="name"></label>{% endif %}
+      {% if challenges %}
+      <label class="field"><span>Fotoutmaning (valfritt)</span>
+        <select name="challenge"><option value="">Ingen särskild</option>{% for ch in challenges %}<option value="{{ ch.id }}">{{ ch.text }}</option>{% endfor %}</select></label>
+      {% endif %}
       <label class="upload-drop">
         <input type="file" name="photos" accept="image/*" multiple required>
         <span>Välj bilder</span>
@@ -18,6 +22,14 @@
     </form>
     {% else %}<p>Bilduppladdning är inte öppen just nu.</p>{% endif %}
   </section>
+
+  {% if challenges %}
+  <section class="card">
+    <h2>Fotoutmaningar 🎯</h2>
+    <p class="muted small">Klarar ni alla? Välj utmaningen när ni laddar upp bilden.</p>
+    <ul class="challenges">{% for ch in challenges %}<li>{{ ch.text }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
 
   {% if not guest and programme %}
   <section class="card">

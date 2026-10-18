@@ -196,7 +196,11 @@ if (show) {
     if (!photos.length) return;
     const p = queue.shift() || photos[pos++ % photos.length];
     const img = imgs[1 - front];
-    img.onload = () => { img.classList.add("on"); imgs[front].classList.remove("on"); front = 1 - front; };
+    const caption = show.querySelector("[data-show-caption]");
+    img.onload = () => {
+      img.classList.add("on"); imgs[front].classList.remove("on"); front = 1 - front;
+      if (caption) { caption.textContent = p.caption ? "🎯 " + p.caption : ""; caption.hidden = !p.caption; }
+    };
     img.src = p.src;
   };
 

@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS mail_log (
 );
 """
 
-_CORE_EXTRA = {"users": {"ics_token_hash": "TEXT"}, "cards": {"paper": "TEXT NOT NULL DEFAULT 'vit'",
+_CORE_EXTRA = {"users": {"ics_token_hash": "TEXT"}, "photos": {"challenge_id": "INTEGER"}, "cards": {"paper": "TEXT NOT NULL DEFAULT 'vit'",
                                                              "qr_style": "TEXT NOT NULL DEFAULT 'prickar'",
                                                              "qr_center": "TEXT NOT NULL DEFAULT 'hjarta'",
                                                              "qr_color": "TEXT NOT NULL DEFAULT 'kort'"}}
@@ -173,6 +173,12 @@ def init_db() -> None:
             c.executemany("INSERT INTO questions (label, kind, options, enabled, sort_no) VALUES (?, ?, ?, 1, ?)",
                           [(lab, kind, opts, i) for i, (lab, kind, opts) in enumerate(QUESTION_SEED)])
             c.execute("INSERT INTO settings (key, value) VALUES ('questions_seeded', '1')")
+
+        if not c.execute("SELECT 1 FROM settings WHERE key='challenges_seeded'").fetchone():
+            from .entities import CHALLENGE_SEED
+            c.executemany("INSERT INTO challenges (text, enabled, sort_no) VALUES (?, 1, ?)",
+                          [(t, i) for i, t in enumerate(CHALLENGE_SEED)])
+            c.execute("INSERT INTO settings (key, value) VALUES ('challenges_seeded', '1')")
 
         from .cards import seed_cards
         seed_cards(c)

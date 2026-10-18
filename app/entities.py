@@ -233,6 +233,24 @@ ENTITIES["faq"] = {
     "sum": [],
     "filters": [],
 }
+ENTITIES["challenges"] = {
+    "title": "Fotoutmaningar", "singular": "utmaning", "nav": False, "back": "/photos",
+    "order": "sort_no, id",
+    "fields": [
+        F("text", "Utmaning", required=True, help="Visas på sidan där gästerna laddar upp bilder"),
+        F("enabled", "Påslagen", "bool", default=1),
+        F("sort_no", "Ordning", "int", default=0, min=0, max=999),
+    ],
+    "list": ["text", "enabled", "sort_no"],
+    "search": ["text"],
+    "sum": [],
+    "filters": [],
+}
+CHALLENGE_SEED = [
+    "En selfie med brudparet", "Någon du träffade för första gången i dag", "Bästa dansmovet",
+    "Det finaste på bordet", "Ett skratt som inte går att hålla inne", "Er bästa gruppbild",
+    "Någon som gråter av glädje", "Brudparet när de inte ser det",
+]
 QUESTION_SEED = [
     ("Behöver ni skjuts från stationen?", "yesno", ""),
     ("Var bor ni under helgen?", "choice", "Hemma / hos släkt\nHotellet vi tipsat om\nAnnat boende\nVet inte än"),

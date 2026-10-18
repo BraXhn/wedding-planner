@@ -5,6 +5,7 @@
   <h1>Gästbilder <small class="muted">{{ photos|length }}</small></h1>
   <div class="actions">
     <a class="btn" href="/photos/bildspel">Bildspel</a>
+    <a class="btn" href="/m/challenges">Fotoutmaningar</a>
     <a class="btn" href="/photos/cards">Skriv ut bordskort</a>
     {% if photos %}<a class="btn" href="/photos/all.zip">Ladda ner alla (zip)</a>{% endif %}
   </div>
@@ -46,7 +47,7 @@
   <figure class="{{ 'hidden-photo' if p.hidden }}" id="p{{ p.id }}">
     <a href="/photos/img/{{ p.file }}" target="_blank" rel="noopener"><img src="/photos/img/{{ p.file|replace('.jpg', '_t.jpg') }}" alt="" loading="lazy"></a>
     <figcaption>
-      <span class="small">{{ p.guest_name or p.uploader or 'Anonym' }}{% if p.hidden %} · <strong class="warn">dold</strong>{% endif %}</span>
+      <span class="small">{{ p.guest_name or p.uploader or 'Anonym' }}{% if p.challenge %} · 🎯 {{ p.challenge }}{% endif %}{% if p.hidden %} · <strong class="warn">dold</strong>{% endif %}</span>
       {% if can_write %}
       <span>
         <form method="post" action="/photos/{{ p.id }}" class="inline"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike small" name="action" value="toggle">{{ 'Visa' if p.hidden else 'Dölj' }}</button></form>

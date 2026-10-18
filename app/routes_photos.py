@@ -70,6 +70,11 @@ def _used_bytes() -> int:
         return c.execute("SELECT COALESCE(SUM(bytes),0) FROM photos").fetchone()[0]
 
 
+def active_challenges():
+    with dbm.db() as c:
+        return c.execute("SELECT id, text FROM challenges WHERE enabled = 1 ORDER BY sort_no, id").fetchall()
+
+
 async def handle_upload(request: Request, guest=None) -> tuple[int, list[str]]:
     s = get_settings()
     if not flag(s, "photos_enabled"):
@@ -77,6 +82,8 @@ async def handle_upload(request: Request, guest=None) -> tuple[int, list[str]]:
     form = await request.form(max_files=20, max_fields=10, max_part_size=16 * 1024)
     uploader = re.sub(r"[\r\n\t]", " ", str(guest["name"] if guest else form.get("name", "")))[:60].strip()
     files = [f for f in form.getlist("photos") if isinstance(f, UploadFile)]
+    raw_ch = str(form.get("challenge", ""))
+    challenge = int(raw_ch) if raw_ch in {str(ch["id"]) for ch in active_challenges()} else None
     quota = int(s.get("photo_quota_mb") or 5000) * 1024 * 1024
     ip = client_ip(request)
     saved, errors = 0, []
@@ -103,9 +110,10 @@ async def handle_upload(request: Request, guest=None) -> tuple[int, list[str]]:
                 log.info("upload_rejected ip=%s reason=%s", ip, type(e).__name__)
                 continue
             with dbm.db() as c:
-                c.execute("INSERT INTO photos (file, width, height, bytes, uploader, guest_id, hidden) VALUES (?,?,?,?,?,?,?)",
+                c.execute("INSERT INTO photos (file, width, height, bytes, uploader, guest_id, hidden, challenge_id) "
+                          "VALUES (?,?,?,?,?,?,?,?)",
                           (info["file"], info["width"], info["height"], info["bytes"], uploader or None,
-                           guest["id"] if guest else None, 1 if flag(s, "photo_moderation") else 0))
+                           guest["id"] if guest else None, 1 if flag(s, "photo_moderation") else 0, challenge))
             saved += 1
     finally:
         await form.close()
@@ -171,7 +179,7 @@ async def public_upload(request: Request):
             return RedirectResponse(f"/p/{request.path_params['token']}?ok={saved}", 303)
     return render(request, "photos_public.html", settings=s, base=f"/p/{request.path_params['token']}",
                   guest=None, wedding_date=parse_date(s.get("wedding_date")),
-                  saved=saved or saved_count(request), errors=errors, programme=_public_programme(),
+                  saved=saved or saved_count(request), errors=errors, programme=_public_programme(), challenges=active_challenges(),
                   photos=visible_photos() if flag(s, "gallery_public") else [], max_mb=MAX_UPLOAD_MB)
 
 
@@ -186,7 +194,8 @@ async def public_img(request: Request):
 async def admin_photos(request: Request):
     user = auth(request)
     with dbm.db() as c:
-        photos = c.execute("SELECT p.*, g.name AS guest_name FROM photos p LEFT JOIN guests g ON g.id = p.guest_id "
+        photos = c.execute("SELECT p.*, g.name AS guest_name, ch.text AS challenge FROM photos p "
+                           "LEFT JOIN guests g ON g.id = p.guest_id LEFT JOIN challenges ch ON ch.id = p.challenge_id "
                            "ORDER BY p.hidden DESC, p.id DESC").fetchall()
     s = get_settings()
     url = f"{public_base(request)}/p/{photo_token()}"
@@ -265,7 +274,10 @@ async def slideshow(request: Request):
 
 async def slideshow_json(request: Request):
     auth(request)
-    return JSONResponse({"photos": [{"id": p["id"], "src": f"/photos/img/{p['file']}"} for p in visible_photos()]})
+    with dbm.db() as c:
+        ch = {r["id"]: r["text"] for r in c.execute("SELECT id, text FROM challenges")}
+    return JSONResponse({"photos": [{"id": p["id"], "src": f"/photos/img/{p['file']}", "caption": ch.get(p["challenge_id"], "")}
+                                    for p in visible_photos()]})
 
 
 async def table_cards(request: Request):
