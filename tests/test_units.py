@@ -107,5 +107,17 @@ dbm.init_db()
 with dbm.db() as c:
     qrs = {tuple(r) for r in c.execute("SELECT qr_style, qr_center, qr_color FROM cards")}
 ok(qrs == {("prickar", "hjarta", "kort")}, "migrering: befintliga trycksaker får prickar och hjärta")
+
+# --- veckobrev: när ska det gå ut?
+import datetime as _d  # noqa: E402
+from app.core import set_settings  # noqa: E402
+from app.digest import digest_due  # noqa: E402
+mon7, mon6, tue = _d.datetime(2027, 3, 1, 7, 5), _d.datetime(2027, 3, 1, 6, 59), _d.datetime(2027, 3, 2, 9)
+set_settings({"digest_enabled": "1", "digest_week": ""})
+ok(digest_due(mon7) == "2027-09" and digest_due(mon6) is None and digest_due(tue) is None, "veckobrev: måndag efter 07")
+set_settings({"digest_week": "2027-09"})
+ok(digest_due(mon7) is None, "veckobrev: bara en gång per vecka")
+set_settings({"digest_enabled": "0", "digest_week": ""})
+ok(digest_due(mon7) is None, "veckobrev: kan stängas av")
 print(f"\n{len(fails)} fel")
 sys.exit(1 if fails else 0)

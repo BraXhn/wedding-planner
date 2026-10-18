@@ -65,6 +65,8 @@ def _back(ent: str, spec: dict) -> str:
 async def dashboard(request: Request):
     user = auth(request)
     s = get_settings()
+    if s.get("app_url") != public_base(request):  # adressen till länken i veckobrevet (skickas utan förfrågan)
+        set_settings({"app_url": public_base(request)})
     td = today()
     with dbm.db() as c:
         g = c.execute(

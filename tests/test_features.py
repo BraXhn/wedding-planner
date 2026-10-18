@@ -140,6 +140,16 @@ ok(req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, "name_1": "Anders"})[0] == 40
 ok(req(a, f"/m/guests/{gA[0]}/people", {"name_1": "X", "coming_1": "on"})[0] == 403, "personer kräver CSRF")
 req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, **{k: v for k, v in FAM.items() if k != "answer"}, "allergy_2": "Gluten, nötter", "allergy_3": "<i>Soja"})
 
+# ---------------------------------------------------------------- veckobrev
+open(S + "/mail.txt", "w").close()
+r = req(a, "/mail/veckobrev", {"csrf": c})
+ok(r[0] == 200 and "Veckobrevet är skickat" in html(r), "veckobrev: skicka nu")
+m = read_mail()
+ok("Veckobrev:" in m and "personer kommer" in m and "Nya svar den senaste veckan" in m and "Familjen Andersson: kommer (3)" in m
+   and "/\n" in m.replace("\r", ""), "veckobrev: nya svar, OSA-läge och länk")
+ok(req(a, "/mail/veckobrev", {"csrf": "fel"})[0] == 403 and req(client(), "/mail/veckobrev", {"csrf": c}, follow=False)[0] == 303,
+   "veckobrev kräver CSRF och inloggning")
+
 # ---------------------------------------------------------------- frågor och svar i gästportalen
 ok("Frågor och svar" not in html(req(p, f"/r/{gA[1]}/info")), "FAQ: inget avsnitt när listan är tom")
 req(a, "/m/faq/new", {"csrf": c, "question": "Får barn följa med?", "answer": "Ja, alla barn är välkomna.\nSäg till om barnstol.", "sort_no": "1"})

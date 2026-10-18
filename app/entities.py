@@ -260,6 +260,7 @@ SETTINGS_DEFAULTS = {
     "photo_quota_mb": "5000",
     "osa_card_footer": "Svara senast {osa_senast}",
     "swish_message": "Bröllopsgåva",
+    "digest_enabled": "1",
 }
 
 SETTINGS_FIELDS = [
@@ -290,6 +291,8 @@ SETTINGS_FIELDS = [
     S("Aviseringar"),
     F("notify_email", "Mejla oss när någon svarar på OSA",
       help="En eller flera e-postadresser, separerade med komma. Lämna tomt för inga mejl. Kräver SMTP."),
+    F("digest_enabled", "Veckobrev varje måndag morgon", "bool",
+      help="Till samma adresser: nya svar, vilka som inte svarat, uppgifter och räkningar som närmar sig"),
     S("E-postmallar"),
     F("invite_subject", "Ämne – inbjudan"),
     F("invite_body", "Text – inbjudan", "textarea", help="Platshållare: {namn} {länk} {kod} {osa_adress} {brudpar} {datum} {plats} {osa_senast}"),
