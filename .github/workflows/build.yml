@@ -73,7 +73,7 @@ jobs:
             type=sha,format=short
 
       - name: Bygg (amd64 + arm64) och publicera
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
