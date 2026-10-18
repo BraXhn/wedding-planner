@@ -12,10 +12,10 @@ from starlette.responses import PlainTextResponse, RedirectResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import backup
+from . import scheduler
 from . import db as dbm
-from . import routes_account, routes_backup, routes_api, routes_invites, routes_calendar, routes_cards, routes_crud, routes_day, routes_mail, routes_photos, routes_public, routes_reports, routes_seating, routes_thanks
-from .core import APP_VERSION, BASE, COOKIE_MODE, MAX_BODY, MAX_UPLOAD_BODY, Redirect, get_session, log, render, today
+from . import routes_account, routes_backup, routes_api, routes_import, routes_invites, routes_calendar, routes_cards, routes_crud, routes_day, routes_mail, routes_photos, routes_public, routes_reports, routes_seating, routes_thanks
+from .core import APP_VERSION, BASE, COOKIE_MODE, MAX_BODY, MAX_UPLOAD_BODY, Redirect, get_session, log, render
 from .routes_mail import configured as smtp_configured
 
 UPLOAD_PATH = re.compile(r"^/(p/[A-Za-z0-9_-]+|r/[A-Za-z0-9_-]+/photos)$")
@@ -122,7 +122,7 @@ async def lifespan(app):
     dbm.init_db()
     tempfile.tempdir = dbm.TMP_DIR  # uppladdningar spoolas till disk, inte till RAM-/tmp
     routes_account.bootstrap_admin()
-    backup.start_scheduler(today, log)
+    scheduler.start(log)
     log.info("Bröllopsplaneraren %s startar (COOKIE_SECURE=%s)", APP_VERSION, COOKIE_MODE)
     if COOKIE_MODE == "false":
         log.warning("COOKIE_SECURE=false – använd bara så här på ett betrott LAN, aldrig mot internet.")
@@ -137,6 +137,7 @@ async def lifespan(app):
 routes = [
     *routes_account.routes,
     *routes_backup.routes,
+    *routes_import.routes,     # före routes_crud så /m/guests/import inte tolkas som en post
     *routes_invites.routes,    # före routes_crud så /m/guests/qr inte tolkas som en post
     *routes_crud.routes,
     *routes_reports.routes,

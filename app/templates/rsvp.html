@@ -33,6 +33,23 @@
       </div>
       {% endfor %}
     </fieldset>
+    {% if questions %}
+    <fieldset class="people" data-yes-only>
+      {% for q in questions %}
+      {% set v = answers.get(q.id, '') %}
+      {% if q.kind == 'yesno' %}
+      <fieldset class="choice small-choice"><legend>{{ q.label }}</legend>
+        <label><input type="radio" name="q_{{ q.id }}" value="ja" {{ 'checked' if v == 'ja' }}> Ja</label>
+        <label><input type="radio" name="q_{{ q.id }}" value="nej" {{ 'checked' if v == 'nej' }}> Nej</label>
+      </fieldset>
+      {% elif q.kind == 'choice' %}
+      <label class="field"><span>{{ q.label }}</span><select name="q_{{ q.id }}"><option value="">Välj …</option>{% for o in q.choices %}<option {{ 'selected' if v == o }}>{{ o }}</option>{% endfor %}</select></label>
+      {% else %}
+      <label class="field"><span>{{ q.label }}</span><input name="q_{{ q.id }}" value="{{ v }}" maxlength="300"></label>
+      {% endif %}
+      {% endfor %}
+    </fieldset>
+    {% endif %}
     <label class="field checkbox"><span>Jag/vi vill hålla tal eller göra ett framträdande<small>Toastmaster hör av sig om tid och ordning.</small></span><input type="checkbox" name="speech" {{ 'checked' if guest.speech }}></label>
     <label class="field"><span>Låten som får dig upp på dansgolvet</span><input name="song" maxlength="200" value="{{ guest.song or '' }}"></label>
     <label class="field"><span>Hälsning till brudparet</span><textarea name="message" rows="3" maxlength="2000">{{ guest.message or '' }}</textarea></label>

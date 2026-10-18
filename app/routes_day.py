@@ -2,11 +2,13 @@
 import datetime as dt
 import re
 
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
+from starlette.responses import RedirectResponse
 from starlette.routing import Route
 
 from . import db as dbm
-from .core import auth, get_settings, parse_date, render
+from .core import auth, csrf_form, get_settings, log, parse_date, render
 from .entities import ENTITIES, NIGHT_CUTOFF, SPEECH_PARTS, TIMELINE_ORDER
 
 
@@ -49,7 +51,27 @@ async def day_view(request: Request):
             parts.append({"part": part, "speeches": rows, "minutes": sum(sp["minutes"] or 0 for sp in rows)})
     return render(request, "day.html", user, schedule=items, current=current, upcoming=upcoming, live=live,
                   parts=parts, total_minutes=sum(sp["minutes"] or 0 for sp in speeches), now=now,
+                  held=sum(1 for sp in speeches if sp["status"] == "Hållen"), n_speeches=len(speeches),
                   wedding_date=wd, preview=preview, active="day")
 
 
-routes = [Route("/dagen", day_view)]
+async def speech_done(request: Request):
+    """Toastmastern bockar av ett tal. Undantag från läsarrollen: alla inloggade får växla Hållen ↔ Bekräftad
+    (toastmastern har ofta en läsare-inloggning). Inget annat på talet kan ändras härifrån."""
+    user = auth(request)
+    await csrf_form(request, user)
+    sid = request.path_params["speech_id"]
+    with dbm.db() as c:
+        sp = c.execute("SELECT status FROM speeches WHERE id = ?", (sid,)).fetchone()
+        if not sp or sp["status"] == "Struken":
+            raise HTTPException(404)
+        new = "Bekräftad" if sp["status"] == "Hållen" else "Hållen"
+        c.execute("UPDATE speeches SET status = ? WHERE id = ?", (new, sid))
+    log.info("speech_status id=%s status=%s by=%s", sid, new, user["username"])
+    return RedirectResponse(f"/dagen#tal{sid}", 303)
+
+
+routes = [
+    Route("/dagen", day_view),
+    Route("/dagen/tal/{speech_id:id}", speech_done, methods=["POST"]),
+]

@@ -1,0 +1,14 @@
+{% extends "guest_base.html" %}
+{% block portal %}
+<div class="card narrow">
+  <h2>Tidskapseln 💌</h2>
+  <p>Skriv ett brev till {{ settings.couple_names or 'brudparet' }}. Det hålls hemligt och mejlas till dem på ettårsdagen{% if open_date %}, {{ sv_date(open_date) }}{% endif %}.
+  Vad hoppas ni att de minns? Vad önskar ni dem det första året?</p>
+  {% if result == 'ok' %}<p class="alert ok">Tack! Brevet ligger i tidskapseln.</p>{% elif result %}<p class="alert error">{{ results[result] }}</p>{% endif %}
+  {% if mine %}<p class="muted small">Ni har lagt {{ mine }} {{ 'brev' }} i tidskapseln. Ni får gärna skriva fler.</p>{% endif %}
+  <form method="post">
+    <label class="field"><span>Brev från {{ guest.name }}</span><textarea name="letter" rows="8" maxlength="{{ max_len }}" required></textarea></label>
+    <button class="btn primary wide">Lägg i tidskapseln</button>
+  </form>
+</div>
+{% endblock %}

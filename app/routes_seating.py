@@ -1,12 +1,13 @@
 import json
+import re
 
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, RedirectResponse
 from starlette.routing import Route
 
 from . import db as dbm
-from .core import auth, csrf_header, log, render
+from .core import auth, csrf_form, csrf_header, log, render
 
 
 def seat_need(g) -> int:
@@ -35,7 +36,10 @@ async def seating(request: Request):
         t["used"] = sum(g["need"] for g in t["guests"])
     total_seats = sum(t["seats"] or 0 for t in tables)
     total_need = sum(g["need"] for g in guests)
-    return render(request, "seating.html", user, tables=tables, unseated=unseated, total_seats=total_seats,
+    qp = request.query_params
+    nums = [qp.get("placerade", ""), qp.get("kvar", "0")]
+    result = tuple(int(x) for x in nums) if all(re.fullmatch(r"[0-9]{1,4}", x) for x in nums) else None
+    return render(request, "seating.html", user, tables=tables, unseated=unseated, total_seats=total_seats, result=result,
                   total_need=total_need, can_write=user["role"] != "viewer", active="seating",
                   print_mode=request.query_params.get("print") == "1")
 
@@ -63,7 +67,31 @@ async def seating_assign(request: Request):
     return JSONResponse({"ok": True})
 
 
+async def seating_suggest(request: Request):
+    """Placerar hushåll utan bord enligt seating_plan.suggest. Redan placerade flyttas inte."""
+    from .seating_plan import suggest
+    user = auth(request, write=True)
+    await csrf_form(request, user)
+    with dbm.db() as c:
+        c.execute("BEGIN IMMEDIATE")
+        plan, left = suggest(c)
+        c.executemany("UPDATE guests SET table_id = ? WHERE id = ?", [(t, g) for g, t in plan])
+    log.info("seating_suggest placed=%s left=%s by=%s", len(plan), len(left), user["username"])
+    return RedirectResponse(f"/seating?placerade={len(plan)}&kvar={len(left)}", 303)
+
+
+async def seating_clear(request: Request):
+    user = auth(request, write=True)
+    await csrf_form(request, user)
+    with dbm.db() as c:
+        n = c.execute("UPDATE guests SET table_id = NULL WHERE table_id IS NOT NULL").rowcount
+    log.info("seating_clear n=%s by=%s", n, user["username"])
+    return RedirectResponse("/seating", 303)
+
+
 routes = [
+    Route("/seating/forslag", seating_suggest, methods=["POST"]),
+    Route("/seating/tom", seating_clear, methods=["POST"]),
     Route("/seating", seating),
     Route("/seating/assign", seating_assign, methods=["POST"]),
 ]

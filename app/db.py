@@ -72,6 +72,21 @@ CREATE TABLE IF NOT EXISTS cards (
     sort_no INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS greetings (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    text TEXT NOT NULL,
+    guest_id INTEGER,
+    hidden INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS capsule (
+    id INTEGER PRIMARY KEY,
+    guest_id INTEGER,
+    name TEXT,
+    text TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS mail_log (
     id INTEGER PRIMARY KEY,
     guest_id INTEGER,
@@ -83,7 +98,7 @@ CREATE TABLE IF NOT EXISTS mail_log (
 );
 """
 
-_CORE_EXTRA = {"users": {"ics_token_hash": "TEXT"}, "cards": {"paper": "TEXT NOT NULL DEFAULT 'vit'",
+_CORE_EXTRA = {"users": {"ics_token_hash": "TEXT"}, "photos": {"challenge_id": "INTEGER"}, "cards": {"paper": "TEXT NOT NULL DEFAULT 'vit'",
                                                              "qr_style": "TEXT NOT NULL DEFAULT 'prickar'",
                                                              "qr_center": "TEXT NOT NULL DEFAULT 'hjarta'",
                                                              "qr_color": "TEXT NOT NULL DEFAULT 'kort'"}}
@@ -162,6 +177,23 @@ def init_db() -> None:
         # "Kommer" utan antal betyder att hela hushållet kommer
         c.execute("UPDATE guests SET attending = COALESCE(invited_count, 1) "
                   "WHERE rsvp = 'yes' AND COALESCE(attending, 0) = 0")
+
+        c.execute("""CREATE TABLE IF NOT EXISTS answers (
+            guest_id INTEGER NOT NULL REFERENCES guests(id) ON DELETE CASCADE,
+            question_id INTEGER NOT NULL,
+            value TEXT NOT NULL,
+            PRIMARY KEY (guest_id, question_id))""")
+        if not c.execute("SELECT 1 FROM settings WHERE key='questions_seeded'").fetchone():
+            from .entities import QUESTION_SEED
+            c.executemany("INSERT INTO questions (label, kind, options, enabled, sort_no) VALUES (?, ?, ?, 1, ?)",
+                          [(lab, kind, opts, i) for i, (lab, kind, opts) in enumerate(QUESTION_SEED)])
+            c.execute("INSERT INTO settings (key, value) VALUES ('questions_seeded', '1')")
+
+        if not c.execute("SELECT 1 FROM settings WHERE key='challenges_seeded'").fetchone():
+            from .entities import CHALLENGE_SEED
+            c.executemany("INSERT INTO challenges (text, enabled, sort_no) VALUES (?, 1, ?)",
+                          [(t, i) for i, t in enumerate(CHALLENGE_SEED)])
+            c.execute("INSERT INTO settings (key, value) VALUES ('challenges_seeded', '1')")
 
         from .cards import seed_cards
         seed_cards(c)

@@ -107,5 +107,58 @@ dbm.init_db()
 with dbm.db() as c:
     qrs = {tuple(r) for r in c.execute("SELECT qr_style, qr_center, qr_color FROM cards")}
 ok(qrs == {("prickar", "hjarta", "kort")}, "migrering: befintliga trycksaker får prickar och hjärta")
+
+# --- veckobrev: när ska det gå ut?
+import datetime as _d  # noqa: E402
+from app.core import set_settings  # noqa: E402
+from app.digest import digest_due  # noqa: E402
+mon7, mon6, tue = _d.datetime(2027, 3, 1, 7, 5), _d.datetime(2027, 3, 1, 6, 59), _d.datetime(2027, 3, 2, 9)
+set_settings({"digest_enabled": "1", "digest_week": ""})
+ok(digest_due(mon7) == "2027-09" and digest_due(mon6) is None and digest_due(tue) is None, "veckobrev: måndag efter 07")
+set_settings({"digest_week": "2027-09"})
+ok(digest_due(mon7) is None, "veckobrev: bara en gång per vecka")
+set_settings({"digest_enabled": "0", "digest_week": ""})
+ok(digest_due(mon7) is None, "veckobrev: kan stängas av")
+
+# --- förslag på bordsplacering
+from app.seating_plan import suggest  # noqa: E402
+with dbm.db() as c:
+    c.execute("DELETE FROM guests"); c.execute("DELETE FROM tables")
+    t1 = c.execute("INSERT INTO tables (name, seats, sort_no) VALUES ('Bord 1', 5, 1)").lastrowid
+    t2 = c.execute("INSERT INTO tables (name, seats, sort_no) VALUES ('Bord 2', 5, 2)").lastrowid
+    def gst(name, n, grp="", rsvp="pending", table=None, avoid=None):
+        return c.execute("INSERT INTO guests (name, invited_count, rsvp, attending, group_name, table_id, avoid_guest_id) "
+                         "VALUES (?,?,?,?,?,?,?)", (name, n, rsvp, n if rsvp == "yes" else 0, grp, table, avoid)).lastrowid
+    k1, k2 = gst("Kollega A", 2, "Kollegor"), gst("Kollega B", 2, "Kollegor")
+    fam = gst("Familjen", 3, "Familj", rsvp="yes")
+    ex = gst("Exet", 1, avoid=fam)
+    nej = gst("Kommer inte", 2, rsvp="no")
+    stor = gst("Jättegruppen", 6, "Ensam")
+    plan, left = suggest(c)
+    placed = dict(plan)
+ok(placed.get(k1) == placed.get(k2) and placed.get(k1) is not None, "placering: gruppen hålls ihop")
+ok(placed.get(ex) != placed.get(fam) and ex in placed and fam in placed, "placering: ”sitt inte med” respekteras")
+ok(nej not in placed and stor in left, "placering: de som tackat nej och de som inte får plats lämnas")
+used = {t: 0 for t in (t1, t2)}
+need = {k1: 2, k2: 2, fam: 3, ex: 1}
+for g, t in plan: used[t] += need[g]
+ok(used[t1] <= 5 and used[t2] <= 5, "placering: bord fylls aldrig över antal platser")
+
+# --- tidskapsel
+import logging  # noqa: E402
+from app import capsule  # noqa: E402
+set_settings({"wedding_date": "2025-06-01", "capsule_enabled": "1", "capsule_sent": ""})
+with dbm.db() as c:
+    c.execute("DELETE FROM capsule")
+ok(not capsule.capsule_due(), "tidskapsel: inget skickas utan brev")
+with dbm.db() as c:
+    c.execute("INSERT INTO capsule (name, text) VALUES ('Moster', 'Grattis!')")
+ok(capsule.capsule_due() and not capsule.is_open(), "tidskapsel: ett år efter bröllopet är det dags och kapseln stängd")
+subj, body = capsule.build_letters()
+ok("Tidskapseln" in subj and "Från Moster:" in body and "Grattis!" in body, "tidskapsel: alla brev i ett mejl")
+set_settings({"wedding_date": "2099-06-01"})
+ok(not capsule.capsule_due() and capsule.is_open(), "tidskapsel: före ettårsdagen skickas inget")
+set_settings({"wedding_date": "2025-06-01", "capsule_sent": "1"})
+ok(not capsule.capsule_due(), "tidskapsel: skickas bara en gång")
 print(f"\n{len(fails)} fel")
 sys.exit(1 if fails else 0)

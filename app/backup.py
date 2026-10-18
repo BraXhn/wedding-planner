@@ -6,8 +6,6 @@ ligger redan som filer i DATA_DIR/photos och säkerhetskopieras bäst med Unraid
 import os
 import re
 import sqlite3
-import threading
-import time
 
 from . import db as dbm
 
@@ -56,18 +54,3 @@ def list_backups() -> list[dict]:
         st = os.stat(os.path.join(BACKUP_DIR, n))
         out.append({"name": n, "bytes": st.st_size, "date": n[7:17]})
     return out
-
-
-def start_scheduler(today, log) -> None:
-    """Bakgrundstråd som en gång i timmen ser till att dagens kopia finns."""
-    def loop():
-        while True:
-            try:
-                name = daily_backup(today())
-                if name:
-                    log.info("backup_created file=%s", name)
-            except (OSError, sqlite3.Error) as e:
-                log.error("backup_failed error=%s: %s", type(e).__name__, e)
-            time.sleep(3600)
-
-    threading.Thread(target=loop, name="backup", daemon=True).start()

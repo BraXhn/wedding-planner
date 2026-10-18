@@ -9,6 +9,10 @@
     {% if flag(settings, 'photos_enabled') %}
     <form method="post" enctype="multipart/form-data" data-upload>
       {% if not guest %}<label class="field"><span>Ditt namn (valfritt)</span><input name="name" maxlength="60" autocomplete="name"></label>{% endif %}
+      {% if challenges %}
+      <label class="field"><span>Fotoutmaning (valfritt)</span>
+        <select name="challenge"><option value="">Ingen särskild</option>{% for ch in challenges %}<option value="{{ ch.id }}">{{ ch.text }}</option>{% endfor %}</select></label>
+      {% endif %}
       <label class="upload-drop">
         <input type="file" name="photos" accept="image/*" multiple required>
         <span>Välj bilder</span>
@@ -18,6 +22,40 @@
     </form>
     {% else %}<p>Bilduppladdning är inte öppen just nu.</p>{% endif %}
   </section>
+
+  {% if flag(settings, 'photos_enabled') %}
+  <section class="card" id="gastbok">
+    <h2>Gästboken ✍️</h2>
+    <p class="muted small">Skriv en hälsning till brudparet – den visas på storbildsskärmen under kvällen{% if flag(settings, 'photo_moderation') %} när brudparet godkänt den{% endif %}.</p>
+    {% if greeting == 'ok' %}<p class="alert ok">Tack för hälsningen!</p>{% elif greeting %}<p class="alert error">{{ greeting_results[greeting] }}</p>{% endif %}
+    <form method="post" action="{{ base }}/halsning">
+      {% if not guest %}<label class="field"><span>Ditt namn</span><input name="name" maxlength="60" autocomplete="name"></label>{% endif %}
+      <label class="field"><span>Hälsning</span><textarea name="greeting" rows="3" maxlength="{{ greeting_max }}" required></textarea></label>
+      <button class="btn">Skicka hälsningen</button>
+    </form>
+  </section>
+  {% endif %}
+
+  {% if not guest and capsule_open %}
+  <section class="card" id="tidskapsel">
+    <h2>Tidskapseln 💌</h2>
+    <p class="muted small">Skriv ett brev till brudparet. Det hålls hemligt och mejlas till dem på ettårsdagen{% if capsule_date %}, {{ sv_date(capsule_date) }}{% endif %}.</p>
+    {% if capsule_result == 'ok' %}<p class="alert ok">Tack! Brevet ligger i tidskapseln.</p>{% elif capsule_result %}<p class="alert error">{{ capsule_results[capsule_result] }}</p>{% endif %}
+    <form method="post" action="{{ base }}/tidskapsel">
+      <label class="field"><span>Från</span><input name="name" maxlength="60" autocomplete="name"></label>
+      <label class="field"><span>Brev</span><textarea name="letter" rows="5" maxlength="{{ capsule_max }}" required></textarea></label>
+      <button class="btn">Lägg i tidskapseln</button>
+    </form>
+  </section>
+  {% endif %}
+
+  {% if challenges %}
+  <section class="card">
+    <h2>Fotoutmaningar 🎯</h2>
+    <p class="muted small">Klarar ni alla? Välj utmaningen när ni laddar upp bilden.</p>
+    <ul class="challenges">{% for ch in challenges %}<li>{{ ch.text }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
 
   {% if not guest and programme %}
   <section class="card">

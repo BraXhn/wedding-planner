@@ -65,6 +65,8 @@ def _back(ent: str, spec: dict) -> str:
 async def dashboard(request: Request):
     user = auth(request)
     s = get_settings()
+    if s.get("app_url") != public_base(request):  # adressen till länken i veckobrevet (skickas utan förfrågan)
+        set_settings({"app_url": public_base(request)})
     td = today()
     with dbm.db() as c:
         g = c.execute(
@@ -167,6 +169,8 @@ async def item_form(request: Request):
     if ent == "guests" and row is not None:
         with dbm.db() as c:
             ctx["people"] = people_for(c, row)
+            ctx["qa"] = c.execute("SELECT q.label, a.value FROM answers a JOIN questions q ON q.id = a.question_id "
+                                  "WHERE a.guest_id = ? ORDER BY q.sort_no, q.id", (row["id"],)).fetchall()
     if ent == "vendors" and row is not None:
         with dbm.db() as c:
             ctx["budget_item"] = c.execute("SELECT id, item FROM budget WHERE vendor_id = ? ORDER BY id LIMIT 1",
@@ -214,9 +218,12 @@ def delete_cleanup(c, ent: str, item_id: int) -> None:
     if ent == "guests":
         c.execute("DELETE FROM gift_reservations WHERE guest_id = ?", (item_id,))
         c.execute("DELETE FROM guest_people WHERE guest_id = ?", (item_id,))
+        c.execute("DELETE FROM answers WHERE guest_id = ?", (item_id,))
         c.execute("UPDATE photos SET guest_id = NULL WHERE guest_id = ?", (item_id,))
     if ent == "wishlist":
         c.execute("DELETE FROM gift_reservations WHERE gift_id = ?", (item_id,))
+    if ent == "questions":
+        c.execute("DELETE FROM answers WHERE question_id = ?", (item_id,))
 
 
 async def item_delete(request: Request):

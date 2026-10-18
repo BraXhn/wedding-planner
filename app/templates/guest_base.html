@@ -16,6 +16,7 @@
   <a href="{{ base }}/info" class="{{ 'on' if tab == 'info' }}">Information</a>
   {% if has_gifts %}<a href="{{ base }}/gifts" class="{{ 'on' if tab == 'gifts' }}">Önskelista</a>{% endif %}
   {% if has_photos %}<a href="{{ base }}/photos" class="{{ 'on' if tab == 'photos' }}">Bilder</a>{% endif %}
+  {% if has_capsule %}<a href="{{ base }}/tidskapsel" class="{{ 'on' if tab == 'capsule' }}">Tidskapsel</a>{% endif %}
 </nav>
 {% endif %}
 {% block portal %}{% endblock %}

@@ -68,6 +68,8 @@ ENTITIES = {
             F("speech", "Vill hålla tal", "bool"),
             F("song", "Låtönskemål"),
             F("table_id", "Bord", "ref", ref="tables", help="Enklast via Placering"),
+            F("avoid_guest_id", "Ska inte sitta vid samma bord som", "ref", ref="guests",
+              help="Följs av ”Föreslå placering” under Placering"),
             F("message", "Meddelande från gäst", "textarea"),
             F("notes", "Egna anteckningar", "textarea"),
             F("gift_received", "Present från dem", help="Fylls i efter bröllopet – se Tackkort"),
@@ -175,7 +177,7 @@ ENTITIES = {
             F("part", "När", "select", options=opts(SPEECH_PARTS), default=SPEECH_PARTS[1]),
             F("order_no", "Ordning", "int", default=0, min=0, max=999),
             F("minutes", "Minuter", "int", default=5, min=1, max=60),
-            F("status", "Status", "select", options=opts(["Anmäld", "Bekräftad", "Struken"]), default="Anmäld"),
+            F("status", "Status", "select", options=opts(["Anmäld", "Bekräftad", "Hållen", "Struken"]), default="Anmäld"),
             F("notes", "Anteckningar (t.ex. behöver mikrofon/projektor)", "textarea"),
         ],
         "list": ["part", "order_no", "speaker", "topic", "minutes", "status"],
@@ -202,6 +204,59 @@ ENTITIES = {
     },
 }
 
+QUESTION_KINDS = [("yesno", "Ja eller nej"), ("choice", "Välj ett alternativ"), ("text", "Fritext")]
+ENTITIES["questions"] = {
+    "title": "OSA-frågor", "singular": "fråga", "nav": False,
+    "order": "sort_no, id",
+    "fields": [
+        F("label", "Fråga", required=True, help="Visas i OSA-formuläret för den som svarar ”Ja, gärna!”"),
+        F("kind", "Typ av svar", "select", options=QUESTION_KINDS, default="yesno"),
+        F("options", "Alternativ", "textarea", help="Ett alternativ per rad – bara för ”Välj ett alternativ”"),
+        F("enabled", "Påslagen", "bool", default=1, help="Avstängda frågor visas inte för gästerna; svar som redan kommit in finns kvar"),
+        F("sort_no", "Ordning", "int", default=0, min=0, max=999),
+    ],
+    "list": ["label", "kind", "enabled", "sort_no"],
+    "search": ["label"],
+    "sum": [],
+    "filters": [],
+}
+ENTITIES["faq"] = {
+    "title": "Frågor och svar", "singular": "fråga", "nav": False,
+    "order": "sort_no, id",
+    "fields": [
+        F("question", "Fråga", required=True, help="t.ex. ”Får barn följa med?”, ”Finns det parkering?”, ”Vad ska vi ge i present?”"),
+        F("answer", "Svar", "textarea", required=True),
+        F("sort_no", "Ordning", "int", default=0, min=0, max=999),
+    ],
+    "list": ["question", "sort_no"],
+    "search": ["question", "answer"],
+    "sum": [],
+    "filters": [],
+}
+ENTITIES["challenges"] = {
+    "title": "Fotoutmaningar", "singular": "utmaning", "nav": False, "back": "/photos",
+    "order": "sort_no, id",
+    "fields": [
+        F("text", "Utmaning", required=True, help="Visas på sidan där gästerna laddar upp bilder"),
+        F("enabled", "Påslagen", "bool", default=1),
+        F("sort_no", "Ordning", "int", default=0, min=0, max=999),
+    ],
+    "list": ["text", "enabled", "sort_no"],
+    "search": ["text"],
+    "sum": [],
+    "filters": [],
+}
+CHALLENGE_SEED = [
+    "En selfie med brudparet", "Någon du träffade för första gången i dag", "Bästa dansmovet",
+    "Det finaste på bordet", "Ett skratt som inte går att hålla inne", "Er bästa gruppbild",
+    "Någon som gråter av glädje", "Brudparet när de inte ser det",
+]
+QUESTION_SEED = [
+    ("Behöver ni skjuts från stationen?", "yesno", ""),
+    ("Var bor ni under helgen?", "choice", "Hemma / hos släkt\nHotellet vi tipsat om\nAnnat boende\nVet inte än"),
+    ("Behöver ni barnstol?", "yesno", ""),
+]
+
 for _spec in ENTITIES.values():
     _spec["by_name"] = {f["name"]: f for f in _spec["fields"]}
     _spec.setdefault("nav", True)
@@ -225,6 +280,8 @@ SETTINGS_DEFAULTS = {
     "photo_quota_mb": "5000",
     "osa_card_footer": "Svara senast {osa_senast}",
     "swish_message": "Bröllopsgåva",
+    "digest_enabled": "1",
+    "capsule_enabled": "1",
 }
 
 SETTINGS_FIELDS = [
@@ -244,6 +301,9 @@ SETTINGS_FIELDS = [
     F("gift_info", "Presenter", "textarea", help="t.ex. bidrag till bröllopsresan. Visas ovanför önskelistan."),
     F("swish_number", "Swish-nummer", help="Mobilnummer eller Swish-nummer. Gästerna får en QR-kod att skanna med Swish under Önskelista."),
     F("swish_message", "Meddelande i Swish", help="Förifyllt i Swish, t.ex. ”Bröllopsgåva”. Högst 50 tecken, gästen kan ändra det."),
+    F("capsule_enabled", "Tidskapsel", "bool",
+      help="Gästerna kan skriva brev till er i gästportalen och via QR-koden på borden. Breven mejlas till adresserna "
+           "under Aviseringar på er ettårsdag – ni ser bara antalet innan dess."),
     S("Bilder"),
     F("photos_enabled", "Låt gäster ladda upp bilder", "bool"),
     F("gallery_public", "Gäster får se alla uppladdade bilder", "bool"),
@@ -255,6 +315,8 @@ SETTINGS_FIELDS = [
     S("Aviseringar"),
     F("notify_email", "Mejla oss när någon svarar på OSA",
       help="En eller flera e-postadresser, separerade med komma. Lämna tomt för inga mejl. Kräver SMTP."),
+    F("digest_enabled", "Veckobrev varje måndag morgon", "bool",
+      help="Till samma adresser: nya svar, vilka som inte svarat, uppgifter och räkningar som närmar sig"),
     S("E-postmallar"),
     F("invite_subject", "Ämne – inbjudan"),
     F("invite_body", "Text – inbjudan", "textarea", help="Platshållare: {namn} {länk} {kod} {osa_adress} {brudpar} {datum} {plats} {osa_senast}"),

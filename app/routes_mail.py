@@ -82,25 +82,32 @@ def parse_addresses(raw: str) -> tuple[list[str], str | None]:
     return addrs, (f"ogiltig adress: {bad[0][:60]}" if bad else None)
 
 
-def notify_couple(subject: str, body: str) -> None:
-    """Mejlar adresserna i inställningen notify_email i en bakgrundstråd. Fel loggas, stoppar aldrig gästens svar."""
+def couple_addresses() -> list[str]:
     addrs, err = parse_addresses(get_settings().get("notify_email", ""))
-    if not configured() or not addrs or err:
-        return
+    return [] if err or not configured() else addrs
 
-    def run():
-        for to in addrs:
-            try:
-                server = _connect()
-                server.send_message(build_message(to, subject, body))
-                server.quit()
-                ok, error = 1, None
-            except (smtplib.SMTPException, OSError, ValueError) as e:
-                ok, error = 0, type(e).__name__
-            with dbm.db() as c:
-                c.execute("INSERT INTO mail_log (recipient, kind, ok, error) VALUES (?, 'notify', ?, ?)", (to, ok, error))
 
-    threading.Thread(target=run, daemon=True).start()
+def send_to_couple(subject: str, body: str, kind: str = "notify") -> int:
+    """Mejlar adresserna i inställningen notify_email (synkront). Returnerar antal lyckade; allt loggas i mail_log."""
+    sent = 0
+    for to in couple_addresses():
+        try:
+            server = _connect()
+            server.send_message(build_message(to, subject, body))
+            server.quit()
+            ok, error = 1, None
+        except (smtplib.SMTPException, OSError, ValueError) as e:
+            ok, error = 0, type(e).__name__
+        sent += ok
+        with dbm.db() as c:
+            c.execute("INSERT INTO mail_log (recipient, kind, ok, error) VALUES (?, ?, ?, ?)", (to, kind, ok, error))
+    return sent
+
+
+def notify_couple(subject: str, body: str) -> None:
+    """Som send_to_couple men i en bakgrundstråd – fel stoppar aldrig gästens svar."""
+    if couple_addresses():
+        threading.Thread(target=send_to_couple, args=(subject, body), daemon=True).start()
 
 
 def _connect():
@@ -184,7 +191,9 @@ async def mail_view(request: Request):
     preview = {k: fill(s.get(f"invite_{k}", ""), _values(s, None, public_base(request))) for k in ("subject", "body")}
     with _job_lock:
         job = dict(_job)
+    from . import capsule as cap
     return render(request, "mail.html", user, settings=s, stats=stats, mlog=mlog, job=job, preview=preview,
+                  capsule_count=cap.count(), capsule_date=cap.open_date(),
                   configured=configured(), smtp=SMTP, can_write=user["role"] != "viewer", active="mail",
                   msg=request.query_params.get("msg"))
 
@@ -231,7 +240,20 @@ async def mail_test(request: Request):
     return RedirectResponse(f"/mail?msg={'test_ok' if ok else 'test_fail'}", 303)
 
 
+async def digest_now(request: Request):
+    user = auth(request, write=True)
+    await csrf_form(request, user)
+    if not couple_addresses():
+        raise HTTPException(400, "Ange adresser under Inställningar → Aviseringar (och konfigurera SMTP) först.")
+    from .digest import build_digest
+    subject, body = build_digest(public_base(request))
+    n = send_to_couple(subject, body, kind="digest")
+    log.info("digest_now ok=%s by=%s", n, user["username"])
+    return RedirectResponse(f"/mail?msg={'digest_ok' if n else 'digest_fail'}", 303)
+
+
 routes = [
+    Route("/mail/veckobrev", digest_now, methods=["POST"]),
     Route("/mail", mail_view),
     Route("/mail/send", mail_send, methods=["POST"]),
     Route("/mail/test", mail_test, methods=["POST"]),

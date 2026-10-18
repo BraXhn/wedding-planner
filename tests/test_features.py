@@ -57,7 +57,7 @@ SET = {"csrf": c, "couple_names": "Anna & Erik", "wedding_date": "2027-06-12", "
      "photos_enabled": "on", "photo_quota_mb": "500",
      "invite_subject": "Inbjudan {brudpar} {__class__}", "invite_body": "Hej {namn}! {länk} {datum} {0.__class__}",
      "reminder_subject": "Påminnelse", "reminder_body": "Svara {länk}", "notify_email": "louise@example.se; anton@example.se",
-       "swish_number": "+46 70-123 45 67", "swish_message": "Bröllopsgåva"}
+       "swish_number": "+46 70-123 45 67", "swish_message": "Bröllopsgåva", "capsule_enabled": "on", "digest_enabled": "on"}
 r = req(a, "/settings", SET)
 h = html(r); ok("Sparat" in h and "deadlines" in h, "inställningar sparas + deadlines fylls i")
 ok(q("SELECT value FROM settings WHERE key='notify_email'")[0][0] == "louise@example.se, anton@example.se", "aviseringsadresser normaliseras")
@@ -138,6 +138,49 @@ r = req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, "name_1": "Anders", "coming_
 ok(q("SELECT attending FROM guests WHERE id=?", gA[0])[0][0] == 2, "admin bockar ur en person → antal som kommer räknas om")
 ok(req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, "name_1": "Anders"})[0] == 400, "admin: minst en måste komma vid ”Kommer”")
 ok(req(a, f"/m/guests/{gA[0]}/people", {"name_1": "X", "coming_1": "on"})[0] == 403, "personer kräver CSRF")
+req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, **{k: v for k, v in FAM.items() if k != "answer"}, "allergy_2": "Gluten, nötter", "allergy_3": "<i>Soja"})
+
+# ---------------------------------------------------------------- veckobrev
+open(S + "/mail.txt", "w").close()
+r = req(a, "/mail/veckobrev", {"csrf": c})
+ok(r[0] == 200 and "Veckobrevet är skickat" in html(r), "veckobrev: skicka nu")
+m = read_mail()
+ok("Veckobrev:" in m and "personer kommer" in m and "Nya svar den senaste veckan" in m and "Familjen Andersson: kommer (3)" in m
+   and "/\n" in m.replace("\r", ""), "veckobrev: nya svar, OSA-läge och länk")
+ok(req(a, "/mail/veckobrev", {"csrf": "fel"})[0] == 403 and req(client(), "/mail/veckobrev", {"csrf": c}, follow=False)[0] == 303,
+   "veckobrev kräver CSRF och inloggning")
+
+# ---------------------------------------------------------------- frågor och svar i gästportalen
+ok("Frågor och svar" not in html(req(p, f"/r/{gA[1]}/info")), "FAQ: inget avsnitt när listan är tom")
+req(a, "/m/faq/new", {"csrf": c, "question": "Får barn följa med?", "answer": "Ja, alla barn är välkomna.\nSäg till om barnstol.", "sort_no": "1"})
+req(a, "/m/faq/new", {"csrf": c, "question": "<b>Parkering?</b>", "answer": "Finns vid slottet.", "sort_no": "0"})
+h = html(req(p, f"/r/{gA[1]}/info"))
+ok("Frågor och svar" in h and h.index("Parkering") < h.index("Får barn") and "&lt;b&gt;Parkering" in h,
+   "FAQ: frågorna visas i gästportalen, sorterade och escapade")
+ok(req(a, "/m/faq/new", {"csrf": c, "question": "Utan svar"})[0] == 400, "FAQ: svar krävs")
+
+# ---------------------------------------------------------------- egna OSA-frågor
+qid = {r[0]: r[1] for r in q("SELECT label, id FROM questions")}
+q_ride, q_stay, q_chair = qid["Behöver ni skjuts från stationen?"], qid["Var bor ni under helgen?"], qid["Behöver ni barnstol?"]
+h = html(req(p, f"/r/{gA[1]}"))
+ok(all(f'name="q_{i}"' in h for i in (q_ride, q_stay, q_chair)) and "Hotellet vi tipsat om" in h, "OSA-frågor: förslagen visas i formuläret")
+r = req(p, f"/r/{gA[1]}", {**FAM, f"q_{q_stay}": "Slottet"})
+ok(r[0] == 400 and "Ogiltigt val" in html(r), "OSA-frågor: ogiltigt alternativ nekas")
+req(p, f"/r/{gA[1]}", {**FAM, f"q_{q_ride}": "ja", f"q_{q_stay}": "Hotellet vi tipsat om", f"q_{q_chair}": "nej"})
+ok({r[0]: r[1] for r in q("SELECT question_id, value FROM answers WHERE guest_id=?", gA[0])}
+   == {q_ride: "ja", q_stay: "Hotellet vi tipsat om", q_chair: "nej"}, "OSA-frågor: svaren sparas")
+for _ in range(30):
+    if "Behöver ni skjuts från stationen? ja" in read_mail(): break
+    time.sleep(0.1)
+ok("stationen? ja" in read_mail(), "OSA-frågor: svaren står i mejlet till brudparet")
+req(a, f"/m/questions/{q_chair}", {"csrf": c, "label": "Behöver ni barnstol?", "kind": "yesno", "options": "", "sort_no": "2"})
+ok(f'name="q_{q_chair}"' not in html(req(p, f"/r/{gA[1]}")), "OSA-frågor: avstängd fråga visas inte för gästerna")
+h = html(req(a, "/rapport/svar"))
+ok("Familjen Andersson" in h and "Avstängd" in h and "1 hushåll (3 pers.)" in h, "OSA-frågor: sammanställning med antal personer")
+ok(f"Familjen Andersson;3;ja;Hotellet vi tipsat om;nej" in req(a, "/rapport/svar.csv")[2].decode("utf-8-sig"), "OSA-frågor: CSV")
+ok("Var bor ni under helgen?" in html(req(a, f"/m/guests/{gA[0]}")), "OSA-frågor: svaren syns på gästsidan")
+req(a, "/m/questions/new", {"csrf": c, "label": "<i>Ny</i> fråga?", "kind": "text", "enabled": "on", "sort_no": "9"})
+ok("&lt;i&gt;Ny" in html(req(p, f"/r/{gA[1]}")), "OSA-frågor: egen fråga visas och escapas")
 req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, **{k: v for k, v in FAM.items() if k != "answer"}, "allergy_2": "Gluten, nötter", "allergy_3": "<i>Soja"})
 
 # ---------------------------------------------------------------- rapporter: mat, bordskort, placeringslista
@@ -227,6 +270,16 @@ r = req(p, f"/r/{gA[1]}/photos", raw=body, headers=hd)
 last = q("SELECT guest_id, uploader FROM photos ORDER BY id DESC LIMIT 1")[0]
 ok(last[0] == gA[0], "uppladdning via gästportal kopplas till gästen")
 ok(last[1] == "Familjen Andersson", "gäst kan inte ange annat uppladdarnamn")
+chid = q("SELECT id FROM challenges WHERE text='Bästa dansmovet'")[0][0]
+h = html(req(p, f"/r/{gA[1]}/photos"))
+ok("Fotoutmaningar" in h and "Bästa dansmovet" in h and f'value="{chid}"' in h, "fotoutmaningar visas på uppladdningssidan")
+body, hd = multipart({"challenge": str(chid)}, [("photos", ("p.jpg", raw, "image/jpeg"))])
+req(p, f"/r/{gA[1]}/photos", raw=body, headers=hd)
+ok(q("SELECT challenge_id FROM photos ORDER BY id DESC LIMIT 1")[0][0] == chid, "fotoutmaning sparas med bilden")
+body, hd = multipart({"challenge": "99999"}, [("photos", ("p.jpg", raw, "image/jpeg"))])
+req(p, f"/r/{gA[1]}/photos", raw=body, headers=hd)
+ok(q("SELECT challenge_id FROM photos ORDER BY id DESC LIMIT 1")[0][0] is None, "okänd utmaning ignoreras")
+DB.execute("UPDATE photos SET hidden = 0"); DB.commit()
 r = req(a, "/photos/bildspel"); h = html(r)
 ok(r[0] == 200 and "data-slideshow" in h and "<svg" in h and 'class="top"' not in h, "bildspel: helskärmssida med QR för uppladdning")
 sj = json.loads(req(a, "/photos/bildspel.json")[2])
@@ -234,11 +287,47 @@ hidden_files = {x[0] for x in q("SELECT file FROM photos WHERE hidden=1")}
 ok(sj["photos"] and all(p["src"].startswith("/photos/img/") for p in sj["photos"])
    and not any(p["src"].rsplit("/", 1)[1] in hidden_files for p in sj["photos"]), "bildspel: bara synliga bilder")
 ok(req(client(), "/photos/bildspel.json", follow=False)[0] == 303, "bildspel kräver inloggning")
+ok(any(p_["caption"] == "Bästa dansmovet" for p_ in sj["photos"]), "bildspel: utmaningen följer med som bildtext")
+ok("🎯 Bästa dansmovet" in html(req(a, "/photos")), "fotoutmaning syns i admin")
+
+# gästbok
+r = req(client(), f"/p/{ptok}/halsning", {"name": "Moster Berit", "greeting": "  Grattis <3  "})
+ok("Tack för hälsningen" in html(r), "gästbok: hälsning via QR-sidan")
+req(p, f"/r/{gA[1]}/halsning", {"name": "Någon annan", "greeting": "Vi älskar er!"})
+gb = q("SELECT name, text, hidden FROM greetings ORDER BY id")
+ok([tuple(x) for x in gb] == [("Moster Berit", "Grattis <3", 0), ("Familjen Andersson", "Vi älskar er!", 0)],
+   "gästbok: sparas (gästportalen med gästens namn)")
+ok("Skriv en hälsning först" in html(req(client(), f"/p/{ptok}/halsning", {"greeting": "   "}))
+   and "högst 280" in html(req(client(), f"/p/{ptok}/halsning", {"greeting": "x" * 281})), "gästbok: tom och för lång nekas")
+ok(req(client(), f"/p/{'y' * 24}/halsning", {"greeting": "hej"})[0] == 404, "gästbok: fel token 404")
+sj = json.loads(req(a, "/photos/bildspel.json")[2])
+ok({"name": "Moster Berit", "text": "Grattis <3"} in sj["greetings"], "gästbok: hälsningen visas i bildspelet")
+gid1 = q("SELECT id FROM greetings ORDER BY id LIMIT 1")[0][0]
+ok(req(a, f"/photos/halsning/{gid1}", {"action": "toggle"})[0] == 403, "gästbok: godkänna kräver CSRF")
+req(a, f"/photos/halsning/{gid1}", {"csrf": c, "action": "toggle"})
+sj = json.loads(req(a, "/photos/bildspel.json")[2])
+ok(sj["greetings"] == [{"name": "Familjen Andersson", "text": "Vi älskar er!"}], "gästbok: dold hälsning syns inte i bildspelet")
+ok("Grattis &lt;3" in html(req(a, "/photos")), "gästbok: escapas i adminvyn")
+req(a, f"/photos/halsning/{gid1}", {"csrf": c, "action": "delete"})
+ok(not q("SELECT 1 FROM greetings WHERE id=?", gid1), "gästbok: ta bort")
+# tidskapsel
+ok("Tidskapseln" in html(req(client(), f"/p/{ptok}")) and "/tidskapsel" in html(req(p, f"/r/{gA[1]}")), "tidskapsel: på bildsidan och som flik i gästportalen")
+r = req(p, f"/r/{gA[1]}/tidskapsel", {"letter": "Kära ni,\nhoppas första året blev fint! <3"})
+ok("Brevet ligger i tidskapseln" in html(r) and "lagt 1 brev" in html(r), "tidskapsel: brev från gästportalen")
+req(client(), f"/p/{ptok}/tidskapsel", {"name": "Moster Berit", "letter": "Hemligt brev"})
+ok(tuple(q("SELECT name, text FROM capsule ORDER BY id")[0]) == ("Familjen Andersson", "Kära ni,\nhoppas första året blev fint! <3")
+   and q("SELECT COUNT(*) FROM capsule")[0][0] == 2, "tidskapsel: sparas med gästens namn, även via QR-sidan")
+h = html(req(a, "/mail"))
+ok("2 brev väntar" in h and "Hemligt brev" not in h and "hoppas första" not in h, "tidskapsel: brudparet ser bara antalet")
+ok("högst 2000" in html(req(p, f"/r/{gA[1]}/tidskapsel", {"letter": "x" * 2001})), "tidskapsel: för långt brev nekas")
+ok(req(client(), f"/p/{'z' * 24}/tidskapsel", {"letter": "hej"})[0] == 404, "tidskapsel: fel token 404")
+for i in range(12): r = req(client(), f"/p/{ptok}/halsning", {"greeting": f"spam {i}"})
+ok("För många hälsningar" in html(r), "gästbok: rate limit per IP")
 ok(req(client(), f"/r/{gA[1]}/photos?ok=%C2%B2")[0] == 200 and req(client(), f"/p/{ptok}?ok=" + "9" * 5000)[0] == 200,
    "konstigt ?ok= ger ingen krasch")
 s2 = html(req(a, "/settings"))
 form = {"csrf": c, "couple_names": "Anna & Erik", "wedding_date": "2027-06-12", "wedding_time": "14:00", "venue": "Ulriksdals slott",
-        "rsvp_deadline": "2027-04-01", "photos_enabled": "on", "gallery_public": "on", "photo_moderation": "on", "photo_quota_mb": "500",
+        "rsvp_deadline": "2027-04-01", "photos_enabled": "on", "gallery_public": "on", "photo_moderation": "on", "photo_quota_mb": "500", "capsule_enabled": "on",
         "invite_subject": "Inbjudan {brudpar} {__class__}", "invite_body": "Hej {namn}! {länk} {datum} {0.__class__}",
         "reminder_subject": "Påminnelse", "reminder_body": "Svara {länk}"}
 req(a, "/settings", form)
@@ -307,10 +396,37 @@ v = client(); r = req(v, "/login", {"username": "toast", "password": "Toastmaste
 req(v, "/account/password", {"csrf": c2, "current": "Toastmaster-2027!", "new": "En-helt-annan-fras-99", "new2": "En-helt-annan-fras-99"})
 ok(req(v, "/m/speeches")[0] == 200, "läsare (toastmaster) ser talarlistan")
 ok(req(v, "/dagen")[0] == 200 and req(client(), "/dagen", follow=False)[0] == 303, "läsare ser dagen, utloggad gör det inte")
+req(a, "/m/speeches/new", {"csrf": c, "speaker": "Morbror Sten", "part": "Under varmrätten", "order_no": "1", "minutes": "4", "status": "Bekräftad"})
+sid = q("SELECT id FROM speeches WHERE speaker='Morbror Sten'")[0][0]
+ok("data-timer-start=\"4\"" in html(req(v, "/dagen")), "dagen: timer per tal")
+req(v, f"/dagen/tal/{sid}", {"csrf": c2})
+ok(q("SELECT status FROM speeches WHERE id=?", sid)[0][0] == "Hållen", "dagen: toastmastern (läsare) bockar av ett tal")
+ok("1 av" in html(req(v, "/dagen")) and "↺ Ångra" in html(req(v, "/dagen")), "dagen: hållna tal räknas och kan ångras")
+req(v, f"/dagen/tal/{sid}", {"csrf": c2})
+ok(q("SELECT status FROM speeches WHERE id=?", sid)[0][0] == "Bekräftad", "dagen: ångra hållet tal")
+ok(req(v, f"/dagen/tal/{sid}", {"csrf": "fel"})[0] == 403 and req(client(), f"/dagen/tal/{sid}", {"csrf": c2}, follow=False)[0] == 303,
+   "dagen: avbockning kräver CSRF och inloggning")
+DB.execute("UPDATE speeches SET status='Struken' WHERE id=?", (sid,)); DB.commit()
+ok(req(v, f"/dagen/tal/{sid}", {"csrf": c2})[0] == 404, "dagen: strukna tal kan inte bockas av")
+h = html(req(v, "/dagen"))
+ok('rel="manifest"' in h and "apple-touch-icon" in h, "hemskärm: manifest och ikon länkas")
+r = req(client(), "/static/manifest.json")
+ok(r[0] == 200 and json.loads(r[2])["start_url"] == "/dagen", "hemskärm: manifestet öppnar Dagen")
 ok(req(v, "/api-keys")[0] == 403 and req(v, "/mail/send", {"csrf": c2, "kind": "invite", "confirm": "on"})[0] == 403, "läsare når inte API-nycklar/utskick")
 ok(req(v, "/seating/assign", raw=b"{}", headers={"Content-Type": "application/json", "X-CSRF-Token": c2})[0] == 403, "läsare kan inte flytta gäster")
 ok('draggable' not in html(req(v, "/seating")), "läsare ser placering utan dra-funktion")
+ok(req(v, "/seating/forslag", {"csrf": c2})[0] == 403 and req(a, "/seating/forslag", {"csrf": "x"})[0] == 403,
+   "placeringsförslag kräver skrivbehörighet och CSRF")
+before = q("SELECT id, table_id FROM guests WHERE table_id IS NOT NULL")
+r = req(a, "/seating/forslag", {"csrf": c})
+ok(r[0] == 200 and "hushåll placerades" in html(r) and all(q("SELECT table_id FROM guests WHERE id=?", g)[0][0] == t for g, t in before),
+   "placeringsförslag: redan placerade flyttas inte")
+ok(req(a, "/seating?placerade=" + "9" * 5000)[0] == 200, "placering: konstiga parametrar ger ingen krasch")
 ok(req(v, f"/m/guests/{gA[0]}/people", {"csrf": c2, "name_1": "X", "coming_1": "on"})[0] == 403, "läsare kan inte ändra personer")
+ok(req(v, f"/m/questions/{q_ride}", {"csrf": c2, "label": "x", "kind": "text"})[0] == 403, "OSA-frågor: läsare kan inte ändra frågorna")
+ok(req(v, "/rapport/svar")[0] == 200, "läsare ser svaren på OSA-frågorna")
+_gid = q("SELECT id FROM greetings ORDER BY id DESC LIMIT 1")[0][0]
+ok(req(v, f"/photos/halsning/{_gid}", {"csrf": c2, "action": "delete"})[0] == 403, "läsare kan inte ta bort hälsningar")
 h = html(req(v, f"/m/guests/{gA[0]}"))
 ok("rsvplink" not in h and gA[1] not in h and "Anders" in h, "läsare ser gästen men inte OSA-länken")
 ok(gA[1] not in req(v, "/m/guests/export.csv")[2].decode("utf-8-sig"), "läsare får inte OSA-länkar i CSV-exporten")
@@ -494,6 +610,44 @@ h = html(req(a, f"/kort/{inv}/skriv-ut"))
 ok(h.count("qr-fancy") == n_households and "q-svart" in h, "rolig QR: personliga kort får dekorativ kod i vald färg")
 ok(req(a, f"/kort/{inv}", {**CARD, "qr_center": "drake"})[0] == 400, "rolig QR: okänt motiv nekas")
 ok("qr-fancy" in html(req(a, "/m/guests/qr")) and "qr-fancy" in html(req(a, "/photos/cards")), "rolig QR på OSA-kort och bordskort för bilder")
+
+# ---------------------------------------------------------------- låtönskemål
+DB.execute("UPDATE guests SET rsvp='yes', attending=1, song='Dancing Queen' WHERE name='Bertil'")
+DB.execute("UPDATE guests SET song='dancing queen!' WHERE id=?", (gA[0],))
+DB.execute("UPDATE guests SET rsvp='yes', attending=2, song='<b>September</b>' WHERE name='Cecilia & Carl'")
+DB.commit()
+h = html(req(a, "/rapport/latar"))
+ok(h.count("<li>") == 2 and "2 önskningar" in h and h.index("Dancing Queen") < h.index("September") and "&lt;b&gt;September" in h,
+   "låtönskemål: ihopslagna, mest önskad först, escapade")
+body = req(a, "/rapport/latar.csv")[2].decode("utf-8-sig")
+ok("Dancing Queen;2;" in body and "Bertil" in body and "Familjen Andersson" in body, "låtönskemål som CSV till DJ:n")
+ok(req(client(), "/rapport/latar", follow=False)[0] == 303, "låtönskemål kräver inloggning")
+
+# ---------------------------------------------------------------- import av gästlistan
+TSV = ("Namn\tE-post\tAntal\tGrupp\tSida\tGatuadress\tPostnummer\tOrt\tOkänd\n"
+       "Familjen Östberg\tost@example.se\t4\tGrannar\tpartner a\tByvägen 3\t123 45\tÅre\tx\n"
+       "Bertil\t\t1\t\t\t\t\t\t\n"
+       "Fel Persson\tinte-en-adress\t2\t\t\t\t\t\t\n"
+       "\t\t\t\t\t\t\t\t\n"
+       "=Formel AB\t\t\t\t\t\t\t\t\n")
+r = req(a, "/m/guests/import", {"csrf": c, "text": TSV}); h = html(r)
+ok(r[0] == 200 and "<strong>2</strong> av 4" in h and "Finns redan" in h and "ogiltig e-postadress" in h and "okänd" in h,
+   "import: förhandsvisning med dubblett, fel och okänd kolumn")
+ok(not q("SELECT 1 FROM guests WHERE name='Familjen Östberg'"), "import: förhandsvisningen sparar inget")
+ok(req(a, "/m/guests/import/spara", {"csrf": "fel", "text": TSV})[0] == 403
+   and req(v, "/m/guests/import/spara", {"csrf": c2, "text": TSV})[0] == 403, "import kräver CSRF och skrivbehörighet")
+r = req(a, "/m/guests/import/spara", {"csrf": c, "text": TSV})
+g2 = q("SELECT invited_count, group_name, side, street, postcode, city, rsvp, rsvp_code IS NOT NULL FROM guests WHERE name='Familjen Östberg'")
+ok("2 hushåll importerades" in html(r) and g2 and tuple(g2[0]) == (4, "Grannar", "Partner A", "Byvägen 3", "123 45", "Åre", "pending", 1),
+   "import: hushåll sparas med adress, sida och egen OSA-kod")
+ok(q("SELECT COUNT(*) FROM guests WHERE name='Bertil'")[0][0] == 1 and q("SELECT invited_count FROM guests WHERE name='=Formel AB'")[0][0] == 1,
+   "import: dubbletter hoppas över, saknat antal blir 1")
+req(a, "/m/guests/import/spara", {"csrf": c, "text": TSV})
+ok(q("SELECT COUNT(*) FROM guests WHERE name='Familjen Östberg'")[0][0] == 1, "import: kan göras om utan dubbletter")
+csv_bytes = "Namn;Antal\r\nGöran Åkesson;3\r\n".encode("cp1252")
+body, hd = multipart({"csrf": c}, [("file", ("gaster.csv", csv_bytes, "text/csv"))])
+ok("Göran Åkesson" in html(req(a, "/m/guests/import", raw=body, headers=hd)), "import: CSV-fil från Excel (cp1252, semikolon)")
+ok("&lt;b&gt;" in html(req(a, "/m/guests/import", {"csrf": c, "text": "Namn\n<b>Hack</b>"})), "import: förhandsvisningen escapas")
 
 # ---------------------------------------------------------------- cache-busting av statiska filer
 import hashlib as _hl

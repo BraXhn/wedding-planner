@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Låtönskemål · {{ super() }}{% endblock %}
+{% block content %}
+<p class="crumb noprint"><a href="/m/guests">← Gäster</a></p>
+<div class="pagehead">
+  <h1>Låtönskemål <small class="muted">{{ songs|length }}</small></h1>
+  <div class="actions noprint"><a class="btn" href="/rapport/latar.csv">Exportera CSV</a><a class="btn primary" href="#" data-print>Skriv ut</a></div>
+</div>
+<p class="hint">”Låten som får dig upp på dansgolvet” från OSA-svaren, mest önskad först. Skriv ut eller mejla CSV:n till DJ:n eller bandet.</p>
+{% if songs %}
+<ol class="song-list">
+  {% for s in songs %}<li><strong>{{ s.song }}</strong>{% if s.by|length > 1 %} <span class="pill yes">{{ s.by|length }} önskningar</span>{% endif %}
+    <small class="muted">– {{ s.by|join(', ') }}</small></li>{% endfor %}
+</ol>
+{% else %}<div class="card empty"><p class="muted">Inga låtönskemål än.</p></div>{% endif %}
+{% endblock %}

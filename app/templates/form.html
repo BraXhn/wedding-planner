@@ -51,6 +51,12 @@
   {% endif %}
 </form>
 
+{% if qa %}
+<section class="card">
+  <h2>Svar på OSA-frågor</h2>
+  <ul class="report-list">{% for r in qa %}<li><strong>{{ r.label }}</strong> {{ r.value }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
 {% if people %}
 <section class="card" id="personer">
   <h2>Personer</h2>

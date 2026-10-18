@@ -5,6 +5,8 @@
 {% if msg == 'confirm' %}<p class="alert warn">Kryssa i bekräftelserutan för att skicka.</p>{% endif %}
 {% if msg == 'busy' %}<p class="alert warn">Ett utskick pågår redan.</p>{% endif %}
 {% if msg == 'test_ok' %}<p class="alert ok">Testmejlet är skickat.</p>{% endif %}
+{% if msg == 'digest_ok' %}<p class="alert ok">Veckobrevet är skickat.</p>{% endif %}
+{% if msg == 'digest_fail' %}<p class="alert error">Veckobrevet kunde inte skickas – se loggen nedan.</p>{% endif %}
 {% if msg == 'test_fail' %}<p class="alert error">Testmejlet kunde inte skickas – se loggen nedan.</p>{% endif %}
 
 {% if not configured %}
@@ -56,6 +58,17 @@
       <input type="email" name="to" placeholder="din@adress.se" required maxlength="200">
       <button class="btn">Skicka test</button>
     </form>
+    <hr>
+    <h2>Veckobrev</h2>
+    <p class="muted small">Går ut måndag morgon till adresserna under Inställningar → Aviseringar.</p>
+    <form method="post" action="/mail/veckobrev">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}">
+      <button class="btn">Skicka veckobrevet nu</button>
+    </form>
+    <hr>
+    <h2>Tidskapsel</h2>
+    <p class="muted small">{{ capsule_count }} brev väntar{% if capsule_date %} och mejlas på ettårsdagen, {{ sv_date(capsule_date) }}{% endif %}.
+    {% if settings.capsule_sent == '1' %}Breven är skickade.{% elif settings.capsule_enabled != '1' %}Tidskapseln är avstängd under Inställningar.{% endif %}</p>
   </section>
 </div>
 {% endif %}
@@ -73,7 +86,7 @@
     <thead><tr><th>Tid (UTC)</th><th>Typ</th><th>Mottagare</th><th>Status</th></tr></thead>
     <tbody>
     {% for m in mlog %}
-      <tr><td class="primary" data-label="Tid (UTC)">{{ m.created_at }}</td><td data-label="Typ">{{ {'invite': 'Inbjudan', 'reminder': 'Påminnelse', 'test': 'Test', 'notify': 'OSA-avisering'}.get(m.kind, m.kind) }}</td>
+      <tr><td class="primary" data-label="Tid (UTC)">{{ m.created_at }}</td><td data-label="Typ">{{ {'invite': 'Inbjudan', 'reminder': 'Påminnelse', 'test': 'Test', 'notify': 'OSA-avisering', 'digest': 'Veckobrev', 'capsule': 'Tidskapsel'}.get(m.kind, m.kind) }}</td>
         <td data-label="Mottagare">{{ m.name or m.recipient or '–' }}</td>
         <td data-label="Status">{% if m.ok %}<span class="pill yes">Skickat</span>{% else %}<span class="pill no">Fel</span> <small class="muted">{{ m.error }}</small>{% endif %}</td></tr>
     {% endfor %}

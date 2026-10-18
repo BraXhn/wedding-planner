@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Importera gäster · {{ super() }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/m/guests">← Gäster</a></p>
+<h1>Importera gäster</h1>
+{% if rows is not defined %}
+<p class="hint">Markera gästlistan i Excel, Numbers eller Google Kalkylark (med rubrikraden) och klistra in den här – eller ladda upp en CSV-fil.
+Första raden ska vara rubriker. Ni får se resultatet innan något sparas, och hushåll som redan finns hoppas över.</p>
+<form method="post" enctype="multipart/form-data" class="card">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  <label class="field"><span>Klistra in</span><textarea name="text" rows="10" placeholder="Namn&#9;E-post&#9;Antal&#9;Grupp&#10;Anna &amp; Erik Svensson&#9;anna@exempel.se&#9;2&#9;Vänner"></textarea></label>
+  <label class="field"><span>… eller välj en CSV-fil</span><input type="file" name="file" accept=".csv,.txt,text/csv"></label>
+  <button class="btn primary">Förhandsvisa</button>
+</form>
+<section class="card">
+  <h2>Kolumner som känns igen</h2>
+  <ul class="report-list small">
+    {% for field, names in aliases.items() %}<li><strong>{{ ENTITIES.guests.by_name[field].label }}</strong>: {{ names|join(', ') }}</li>{% endfor %}
+  </ul>
+  <p class="muted small">Stor eller liten bokstav spelar ingen roll. Saknas antal blir det 1. Sida kan vara Gemensam, Partner A eller Partner B.</p>
+</section>
+{% else %}
+{% for w in warnings %}<p class="alert warn-note">{{ w }}</p>{% endfor %}
+{% if rows %}
+<p class="hint"><strong>{{ ok_count }}</strong> av {{ rows|length }} rader importeras.
+{% if rows|selectattr('duplicate')|list %} Hushåll som redan finns hoppas över.{% endif %}
+{% if rows|selectattr('errors')|list %} Rader med fel hoppas över – rätta dem i kalkylarket och klistra in igen, eller lägg till dem för hand.{% endif %}</p>
+<div class="table-wrap">
+<table class="responsive">
+  <thead><tr><th>Rad</th><th>Namn</th><th>E-post</th><th>Adress</th><th class="num">Antal</th><th>Grupp</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr class="{{ 'done' if r.errors or r.duplicate }}">
+    <td data-label="Rad">{{ r.line }}</td>
+    <td class="primary" data-label="Namn">{{ r.vals.name }}</td>
+    <td data-label="E-post">{{ r.vals.email }}</td>
+    <td data-label="Adress">{{ r.vals.street }}{% if r.vals.postcode or r.vals.city %}, {{ r.vals.postcode }} {{ r.vals.city }}{% endif %}</td>
+    <td class="num" data-label="Antal">{{ r.vals.invited_count }}</td>
+    <td data-label="Grupp">{{ r.vals.group_name }}</td>
+    <td data-label="Status">{% if r.errors %}<span class="pill no">{{ r.errors|join(' ') }}</span>{% elif r.duplicate %}<span class="pill">Finns redan</span>{% else %}<span class="pill yes">Importeras</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+<div class="form-actions">
+  {% if ok_count %}
+  <form method="post" action="/m/guests/import/spara" class="inline">
+    <input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <textarea name="text" hidden>{{ text }}</textarea>
+    <button class="btn primary">Importera {{ ok_count }} hushåll</button>
+  </form>
+  {% endif %}
+  <a class="btn" href="/m/guests/import">Börja om</a>
+</div>
+{% endif %}
+{% endblock %}
