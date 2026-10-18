@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% from "_field.html" import field %}
 {% block content %}
-<h1>Inställningar</h1>
+<div class="pagehead"><h1>Inställningar</h1>
+  <div class="actions"><a class="btn" href="/m/faq">Frågor och svar</a><a class="btn" href="/m/questions">OSA-frågor</a></div></div>
 {% if saved %}<p class="alert ok">Sparat.{% if moved %} {{ moved }} deadlines flyttades till det nya bröllopsdatumet.{% endif %}{% if filled %} {{ filled }} deadlines i att göra-listan fylldes i utifrån bröllopsdatumet.{% endif %}</p>{% endif %}
 {% if errors %}<div class="alert error"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 <form method="post" class="card form-grid">

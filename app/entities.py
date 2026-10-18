@@ -218,6 +218,19 @@ ENTITIES["questions"] = {
     "sum": [],
     "filters": [],
 }
+ENTITIES["faq"] = {
+    "title": "Frågor och svar", "singular": "fråga", "nav": False,
+    "order": "sort_no, id",
+    "fields": [
+        F("question", "Fråga", required=True, help="t.ex. ”Får barn följa med?”, ”Finns det parkering?”, ”Vad ska vi ge i present?”"),
+        F("answer", "Svar", "textarea", required=True),
+        F("sort_no", "Ordning", "int", default=0, min=0, max=999),
+    ],
+    "list": ["question", "sort_no"],
+    "search": ["question", "answer"],
+    "sum": [],
+    "filters": [],
+}
 QUESTION_SEED = [
     ("Behöver ni skjuts från stationen?", "yesno", ""),
     ("Var bor ni under helgen?", "choice", "Hemma / hos släkt\nHotellet vi tipsat om\nAnnat boende\nVet inte än"),

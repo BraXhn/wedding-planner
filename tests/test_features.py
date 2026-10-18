@@ -140,6 +140,15 @@ ok(req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, "name_1": "Anders"})[0] == 40
 ok(req(a, f"/m/guests/{gA[0]}/people", {"name_1": "X", "coming_1": "on"})[0] == 403, "personer kräver CSRF")
 req(a, f"/m/guests/{gA[0]}/people", {"csrf": c, **{k: v for k, v in FAM.items() if k != "answer"}, "allergy_2": "Gluten, nötter", "allergy_3": "<i>Soja"})
 
+# ---------------------------------------------------------------- frågor och svar i gästportalen
+ok("Frågor och svar" not in html(req(p, f"/r/{gA[1]}/info")), "FAQ: inget avsnitt när listan är tom")
+req(a, "/m/faq/new", {"csrf": c, "question": "Får barn följa med?", "answer": "Ja, alla barn är välkomna.\nSäg till om barnstol.", "sort_no": "1"})
+req(a, "/m/faq/new", {"csrf": c, "question": "<b>Parkering?</b>", "answer": "Finns vid slottet.", "sort_no": "0"})
+h = html(req(p, f"/r/{gA[1]}/info"))
+ok("Frågor och svar" in h and h.index("Parkering") < h.index("Får barn") and "&lt;b&gt;Parkering" in h,
+   "FAQ: frågorna visas i gästportalen, sorterade och escapade")
+ok(req(a, "/m/faq/new", {"csrf": c, "question": "Utan svar"})[0] == 400, "FAQ: svar krävs")
+
 # ---------------------------------------------------------------- egna OSA-frågor
 qid = {r[0]: r[1] for r in q("SELECT label, id FROM questions")}
 q_ride, q_stay, q_chair = qid["Behöver ni skjuts från stationen?"], qid["Var bor ni under helgen?"], qid["Behöver ni barnstol?"]

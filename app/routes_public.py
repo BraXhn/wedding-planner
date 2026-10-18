@@ -169,7 +169,9 @@ def _notify_rsvp(request: Request, g, answer: str, count: int, people, speech: i
 # ======================================================================= information
 async def info(request: Request):
     g = guest_by_token(request)
-    return render(request, "portal_info.html", **_portal_ctx(g, "info"))
+    with dbm.db() as c:
+        faq = c.execute("SELECT question, answer FROM faq ORDER BY sort_no, id").fetchall()
+    return render(request, "portal_info.html", faq=faq, **_portal_ctx(g, "info"))
 
 
 # ======================================================================= önskelista

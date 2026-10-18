@@ -21,5 +21,11 @@
   {% if settings.info_text %}<section class="card"><h2>Välkommen</h2><p class="prewrap">{{ settings.info_text }}</p></section>{% endif %}
   {% if settings.directions %}<section class="card"><h2>Hitta hit</h2><p class="prewrap">{{ settings.directions }}</p></section>{% endif %}
   {% if settings.accommodation %}<section class="card"><h2>Boende</h2><p class="prewrap">{{ settings.accommodation }}</p></section>{% endif %}
+  {% if faq %}
+  <section class="card">
+    <h2>Frågor och svar</h2>
+    {% for f in faq %}<details class="faq"><summary>{{ f.question }}</summary><p class="prewrap">{{ f.answer }}</p></details>{% endfor %}
+  </section>
+  {% endif %}
 </div>
 {% endblock %}
