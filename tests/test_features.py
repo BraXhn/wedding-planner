@@ -495,6 +495,32 @@ ok(h.count("qr-fancy") == n_households and "q-svart" in h, "rolig QR: personliga
 ok(req(a, f"/kort/{inv}", {**CARD, "qr_center": "drake"})[0] == 400, "rolig QR: okänt motiv nekas")
 ok("qr-fancy" in html(req(a, "/m/guests/qr")) and "qr-fancy" in html(req(a, "/photos/cards")), "rolig QR på OSA-kort och bordskort för bilder")
 
+# ---------------------------------------------------------------- import av gästlistan
+TSV = ("Namn\tE-post\tAntal\tGrupp\tSida\tGatuadress\tPostnummer\tOrt\tOkänd\n"
+       "Familjen Östberg\tost@example.se\t4\tGrannar\tpartner a\tByvägen 3\t123 45\tÅre\tx\n"
+       "Bertil\t\t1\t\t\t\t\t\t\n"
+       "Fel Persson\tinte-en-adress\t2\t\t\t\t\t\t\n"
+       "\t\t\t\t\t\t\t\t\n"
+       "=Formel AB\t\t\t\t\t\t\t\t\n")
+r = req(a, "/m/guests/import", {"csrf": c, "text": TSV}); h = html(r)
+ok(r[0] == 200 and "<strong>2</strong> av 4" in h and "Finns redan" in h and "ogiltig e-postadress" in h and "okänd" in h,
+   "import: förhandsvisning med dubblett, fel och okänd kolumn")
+ok(not q("SELECT 1 FROM guests WHERE name='Familjen Östberg'"), "import: förhandsvisningen sparar inget")
+ok(req(a, "/m/guests/import/spara", {"csrf": "fel", "text": TSV})[0] == 403
+   and req(v, "/m/guests/import/spara", {"csrf": c2, "text": TSV})[0] == 403, "import kräver CSRF och skrivbehörighet")
+r = req(a, "/m/guests/import/spara", {"csrf": c, "text": TSV})
+g2 = q("SELECT invited_count, group_name, side, street, postcode, city, rsvp, rsvp_code IS NOT NULL FROM guests WHERE name='Familjen Östberg'")
+ok("2 hushåll importerades" in html(r) and g2 and tuple(g2[0]) == (4, "Grannar", "Partner A", "Byvägen 3", "123 45", "Åre", "pending", 1),
+   "import: hushåll sparas med adress, sida och egen OSA-kod")
+ok(q("SELECT COUNT(*) FROM guests WHERE name='Bertil'")[0][0] == 1 and q("SELECT invited_count FROM guests WHERE name='=Formel AB'")[0][0] == 1,
+   "import: dubbletter hoppas över, saknat antal blir 1")
+req(a, "/m/guests/import/spara", {"csrf": c, "text": TSV})
+ok(q("SELECT COUNT(*) FROM guests WHERE name='Familjen Östberg'")[0][0] == 1, "import: kan göras om utan dubbletter")
+csv_bytes = "Namn;Antal\r\nGöran Åkesson;3\r\n".encode("cp1252")
+body, hd = multipart({"csrf": c}, [("file", ("gaster.csv", csv_bytes, "text/csv"))])
+ok("Göran Åkesson" in html(req(a, "/m/guests/import", raw=body, headers=hd)), "import: CSV-fil från Excel (cp1252, semikolon)")
+ok("&lt;b&gt;" in html(req(a, "/m/guests/import", {"csrf": c, "text": "Namn\n<b>Hack</b>"})), "import: förhandsvisningen escapas")
+
 # ---------------------------------------------------------------- cache-busting av statiska filer
 import hashlib as _hl
 from pathlib import Path as _P

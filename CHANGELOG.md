@@ -1,5 +1,7 @@
 # Ändringslogg
 
+## Ej släppt
+
 ## 1.3.0 – 2026-10-18
 - **Roligare QR-koder.** Trycksakernas QR-kod kan ritas med prickar, rundade rutor, små hjärtan eller romber, med matchande hörnmarkeringar, och med ett hjärta, två ringar, era initialer eller en kamera i mitten – i kortets färg eller svart. Koden använder då högsta felkorrigeringen, så motivet i mitten tar inte bort något. OSA-korten får prickar med hjärta och bordskorten för bilder rundade rutor med en kamera. Alla 400 kombinationer av stil, motiv, färg och länktyp är provlästa med en QR-avkodare.
 - **Trycksaker: sju nya designer** – minimal, monogram (initialerna i en cirkel), art déco, akvarell, krans (initialerna i en lagerkrans), båge och rustik – och tre nya färger (salvia, terrakotta, lavendel). Designen väljs genom att klicka på små förhandsvisningar.
