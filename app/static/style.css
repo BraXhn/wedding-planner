@@ -628,3 +628,6 @@ button.chip { font: inherit; font-size: .8rem; cursor: pointer; margin: 2px 0; }
 .speech-timer[hidden] { display: none; }
 .speech-timer b { font-size: 1.6rem; font-variant-numeric: tabular-nums; margin-left: auto; }
 .speech-timer.over { background: var(--err); }
+.song-list { padding-left: 1.6em; columns: 2 360px; column-gap: 40px; }
+.song-list li { margin: 0 0 10px; break-inside: avoid; }
+.song-list small { display: block; }

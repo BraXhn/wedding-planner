@@ -611,6 +611,18 @@ ok(h.count("qr-fancy") == n_households and "q-svart" in h, "rolig QR: personliga
 ok(req(a, f"/kort/{inv}", {**CARD, "qr_center": "drake"})[0] == 400, "rolig QR: okänt motiv nekas")
 ok("qr-fancy" in html(req(a, "/m/guests/qr")) and "qr-fancy" in html(req(a, "/photos/cards")), "rolig QR på OSA-kort och bordskort för bilder")
 
+# ---------------------------------------------------------------- låtönskemål
+DB.execute("UPDATE guests SET rsvp='yes', attending=1, song='Dancing Queen' WHERE name='Bertil'")
+DB.execute("UPDATE guests SET song='dancing queen!' WHERE id=?", (gA[0],))
+DB.execute("UPDATE guests SET rsvp='yes', attending=2, song='<b>September</b>' WHERE name='Cecilia & Carl'")
+DB.commit()
+h = html(req(a, "/rapport/latar"))
+ok(h.count("<li>") == 2 and "2 önskningar" in h and h.index("Dancing Queen") < h.index("September") and "&lt;b&gt;September" in h,
+   "låtönskemål: ihopslagna, mest önskad först, escapade")
+body = req(a, "/rapport/latar.csv")[2].decode("utf-8-sig")
+ok("Dancing Queen;2;" in body and "Bertil" in body and "Familjen Andersson" in body, "låtönskemål som CSV till DJ:n")
+ok(req(client(), "/rapport/latar", follow=False)[0] == 303, "låtönskemål kräver inloggning")
+
 # ---------------------------------------------------------------- import av gästlistan
 TSV = ("Namn\tE-post\tAntal\tGrupp\tSida\tGatuadress\tPostnummer\tOrt\tOkänd\n"
        "Familjen Östberg\tost@example.se\t4\tGrannar\tpartner a\tByvägen 3\t123 45\tÅre\tx\n"

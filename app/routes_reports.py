@@ -137,7 +137,41 @@ async def answers_csv(request: Request):
                     headers={"Content-Disposition": f'attachment; filename="osa-svar-{today().isoformat()}.csv"'})
 
 
+def song_list(c) -> list[dict]:
+    """Låtönskemål från dem som kommer, ihopslagna oberoende av stora/små bokstäver och skiljetecken."""
+    groups = {}
+    for g in c.execute("SELECT name, song FROM guests WHERE rsvp = 'yes' AND TRIM(COALESCE(song,'')) <> '' "
+                       "ORDER BY rsvp_at, id"):
+        key = re.sub(r"[\W_]+", " ", g["song"].casefold()).strip()
+        item = groups.setdefault(key, {"song": g["song"].strip(), "by": []})
+        item["by"].append(g["name"])
+    return sorted(groups.values(), key=lambda s: (-len(s["by"]), s["song"].casefold()))
+
+
+async def songs_report(request: Request):
+    user = auth(request)
+    with dbm.db() as c:
+        songs = song_list(c)
+    return render(request, "report_songs.html", user, songs=songs, active="guests")
+
+
+async def songs_csv(request: Request):
+    user = auth(request)
+    with dbm.db() as c:
+        songs = song_list(c)
+    buf = io.StringIO()
+    w = csv.writer(buf, delimiter=";")
+    w.writerow(["Låt", "Antal önskningar", "Önskad av"])
+    for s in songs:
+        w.writerow([csv_cell(s["song"]), len(s["by"]), csv_cell(", ".join(s["by"]))])
+    log.info("export songs by=%s", user["username"])
+    return Response("\ufeff" + buf.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="latonskemal-{today().isoformat()}.csv"'})
+
+
 routes = [
+    Route("/rapport/latar", songs_report),
+    Route("/rapport/latar.csv", songs_csv),
     Route("/rapport/svar", answers_report),
     Route("/rapport/svar.csv", answers_csv),
     Route("/rapport/mat", food_report),
