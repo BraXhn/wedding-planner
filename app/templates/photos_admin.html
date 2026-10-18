@@ -61,4 +61,25 @@
 {% else %}
 <div class="card empty"><p class="muted">Inga bilder än. Dela länken eller skriv ut bordskort.</p></div>
 {% endif %}
+
+<section class="card" id="halsningar">
+  <h2>Gästboken <small class="muted">{{ greetings|length }}</small></h2>
+  <p class="muted small">Hälsningar som gästerna skrivit på bildsidan. De visas i bildspelet{% if flag(settings, 'photo_moderation') %} när ni godkänt dem (granskning är påslagen){% endif %}.</p>
+  {% if greetings %}
+  <ul class="report-list greetings">
+    {% for g in greetings %}
+    <li class="{{ 'is-hidden' if g.hidden }}">
+      <p><strong>{{ g.name or 'Anonym' }}</strong>{% if g.hidden %} · <strong class="warn">dold</strong>{% endif %}<br>{{ g.text }}</p>
+      {% if can_write %}
+      <form method="post" action="/photos/halsning/{{ g.id }}" class="inline">
+        <input type="hidden" name="csrf" value="{{ user.csrf }}">
+        <button class="linklike small" name="action" value="toggle">{{ 'Visa' if g.hidden else 'Dölj' }}</button>
+        <button class="linklike small danger-text" name="action" value="delete" data-confirm="Ta bort hälsningen?">Ta bort</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">Inga hälsningar än.</p>{% endif %}
+</section>
 {% endblock %}

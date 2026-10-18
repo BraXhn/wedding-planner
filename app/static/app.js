@@ -183,16 +183,30 @@ if (show) {
     try {
       const r = await fetch("/photos/bildspel.json", { credentials: "same-origin" });
       if (!r.ok) return;
-      photos = (await r.json()).photos;  // nyast först
+      const data = await r.json();
+      photos = data.photos;  // nyast först
+      greetings = data.greetings || [];
       if (seen) {  // bilder som tillkommit sedan förra hämtningen visas härnäst, äldst först
         queue.push(...photos.filter((p) => !seen.has(p.id)).reverse());
       }
       seen = new Set(photos.map((p) => p.id));
-      empty.hidden = photos.length > 0;
+      empty.hidden = photos.length > 0 || greetings.length > 0;
     } catch { /* nätverksfel: försök igen nästa gång */ }
   };
 
+  let greetings = [], gpos = 0, tick = 0;
+  const greetBox = show.querySelector("[data-show-greeting]");
   const next = () => {
+    tick += 1;
+    // var fjärde gång: en hälsning ur gästboken ovanpå bilden
+    if (greetBox && greetings.length && (tick % 4 === 0 || !photos.length)) {
+      const g = greetings[gpos++ % greetings.length];
+      greetBox.querySelector("[data-greeting-text]").textContent = g.text;
+      greetBox.querySelector("[data-greeting-name]").textContent = g.name ? "– " + g.name : "";
+      greetBox.hidden = false; empty.hidden = true;
+      return;
+    }
+    if (greetBox) greetBox.hidden = true;
     if (!photos.length) return;
     const p = queue.shift() || photos[pos++ % photos.length];
     const img = imgs[1 - front];

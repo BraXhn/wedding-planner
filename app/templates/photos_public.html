@@ -23,6 +23,19 @@
     {% else %}<p>Bilduppladdning är inte öppen just nu.</p>{% endif %}
   </section>
 
+  {% if flag(settings, 'photos_enabled') %}
+  <section class="card" id="gastbok">
+    <h2>Gästboken ✍️</h2>
+    <p class="muted small">Skriv en hälsning till brudparet – den visas på storbildsskärmen under kvällen{% if flag(settings, 'photo_moderation') %} när brudparet godkänt den{% endif %}.</p>
+    {% if greeting == 'ok' %}<p class="alert ok">Tack för hälsningen!</p>{% elif greeting %}<p class="alert error">{{ greeting_results[greeting] }}</p>{% endif %}
+    <form method="post" action="{{ base }}/halsning">
+      {% if not guest %}<label class="field"><span>Ditt namn</span><input name="name" maxlength="60" autocomplete="name"></label>{% endif %}
+      <label class="field"><span>Hälsning</span><textarea name="greeting" rows="3" maxlength="{{ greeting_max }}" required></textarea></label>
+      <button class="btn">Skicka hälsningen</button>
+    </form>
+  </section>
+  {% endif %}
+
   {% if challenges %}
   <section class="card">
     <h2>Fotoutmaningar 🎯</h2>

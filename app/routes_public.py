@@ -18,7 +18,7 @@ from .people import parse_people, people_for, save_people
 from .questions import answers_for, enabled_questions, parse_answers, save_answers
 from .routes_mail import notify_couple
 from .security import RateLimiter, normalize_code
-from .routes_photos import active_challenges, handle_upload, saved_count, serve_photo, visible_photos
+from .routes_photos import GREETING_MAX, GREETING_RESULTS, active_challenges, handle_upload, save_greeting, saved_count, serve_photo, visible_photos
 
 
 def guest_by_token(request: Request):
@@ -238,8 +238,16 @@ async def photos(request: Request):
         saved, errors = await handle_upload(request, guest=g)
         if saved and not errors:
             return RedirectResponse(f"/r/{g['rsvp_token']}/photos?ok={saved}", 303)
+    gr = request.query_params.get("halsning")
     return render(request, "photos_public.html", saved=saved or saved_count(request), errors=errors, challenges=active_challenges(),
+                  greeting=gr if gr in GREETING_RESULTS else None, greeting_results=GREETING_RESULTS, greeting_max=GREETING_MAX,
                   photos=visible_photos() if flag(ctx["settings"], "gallery_public") else [], max_mb=MAX_UPLOAD_MB, **ctx)
+
+
+async def greeting(request: Request):
+    g = guest_by_token(request)
+    result = await save_greeting(request, guest=g)
+    return RedirectResponse(f"/r/{g['rsvp_token']}/photos?halsning={result}#gastbok", 303)
 
 
 async def photo_img(request: Request):
@@ -257,4 +265,5 @@ routes = [
     Route("/r/{token}/gifts", gifts, methods=["GET", "POST"]),
     Route("/r/{token}/photos", photos, methods=["GET", "POST"]),
     Route("/r/{token}/img/{file}", photo_img),
+    Route("/r/{token}/halsning", greeting, methods=["POST"]),
 ]

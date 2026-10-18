@@ -289,6 +289,29 @@ ok(sj["photos"] and all(p["src"].startswith("/photos/img/") for p in sj["photos"
 ok(req(client(), "/photos/bildspel.json", follow=False)[0] == 303, "bildspel kräver inloggning")
 ok(any(p_["caption"] == "Bästa dansmovet" for p_ in sj["photos"]), "bildspel: utmaningen följer med som bildtext")
 ok("🎯 Bästa dansmovet" in html(req(a, "/photos")), "fotoutmaning syns i admin")
+
+# gästbok
+r = req(client(), f"/p/{ptok}/halsning", {"name": "Moster Berit", "greeting": "  Grattis <3  "})
+ok("Tack för hälsningen" in html(r), "gästbok: hälsning via QR-sidan")
+req(p, f"/r/{gA[1]}/halsning", {"name": "Någon annan", "greeting": "Vi älskar er!"})
+gb = q("SELECT name, text, hidden FROM greetings ORDER BY id")
+ok([tuple(x) for x in gb] == [("Moster Berit", "Grattis <3", 0), ("Familjen Andersson", "Vi älskar er!", 0)],
+   "gästbok: sparas (gästportalen med gästens namn)")
+ok("Skriv en hälsning först" in html(req(client(), f"/p/{ptok}/halsning", {"greeting": "   "}))
+   and "högst 280" in html(req(client(), f"/p/{ptok}/halsning", {"greeting": "x" * 281})), "gästbok: tom och för lång nekas")
+ok(req(client(), f"/p/{'y' * 24}/halsning", {"greeting": "hej"})[0] == 404, "gästbok: fel token 404")
+sj = json.loads(req(a, "/photos/bildspel.json")[2])
+ok({"name": "Moster Berit", "text": "Grattis <3"} in sj["greetings"], "gästbok: hälsningen visas i bildspelet")
+gid1 = q("SELECT id FROM greetings ORDER BY id LIMIT 1")[0][0]
+ok(req(a, f"/photos/halsning/{gid1}", {"action": "toggle"})[0] == 403, "gästbok: godkänna kräver CSRF")
+req(a, f"/photos/halsning/{gid1}", {"csrf": c, "action": "toggle"})
+sj = json.loads(req(a, "/photos/bildspel.json")[2])
+ok(sj["greetings"] == [{"name": "Familjen Andersson", "text": "Vi älskar er!"}], "gästbok: dold hälsning syns inte i bildspelet")
+ok("Grattis &lt;3" in html(req(a, "/photos")), "gästbok: escapas i adminvyn")
+req(a, f"/photos/halsning/{gid1}", {"csrf": c, "action": "delete"})
+ok(not q("SELECT 1 FROM greetings WHERE id=?", gid1), "gästbok: ta bort")
+for i in range(12): r = req(client(), f"/p/{ptok}/halsning", {"greeting": f"spam {i}"})
+ok("För många hälsningar" in html(r), "gästbok: rate limit per IP")
 ok(req(client(), f"/r/{gA[1]}/photos?ok=%C2%B2")[0] == 200 and req(client(), f"/p/{ptok}?ok=" + "9" * 5000)[0] == 200,
    "konstigt ?ok= ger ingen krasch")
 s2 = html(req(a, "/settings"))
@@ -375,6 +398,8 @@ ok(req(a, "/seating?placerade=" + "9" * 5000)[0] == 200, "placering: konstiga pa
 ok(req(v, f"/m/guests/{gA[0]}/people", {"csrf": c2, "name_1": "X", "coming_1": "on"})[0] == 403, "läsare kan inte ändra personer")
 ok(req(v, f"/m/questions/{q_ride}", {"csrf": c2, "label": "x", "kind": "text"})[0] == 403, "OSA-frågor: läsare kan inte ändra frågorna")
 ok(req(v, "/rapport/svar")[0] == 200, "läsare ser svaren på OSA-frågorna")
+_gid = q("SELECT id FROM greetings ORDER BY id DESC LIMIT 1")[0][0]
+ok(req(v, f"/photos/halsning/{_gid}", {"csrf": c2, "action": "delete"})[0] == 403, "läsare kan inte ta bort hälsningar")
 h = html(req(v, f"/m/guests/{gA[0]}"))
 ok("rsvplink" not in h and gA[1] not in h and "Anders" in h, "läsare ser gästen men inte OSA-länken")
 ok(gA[1] not in req(v, "/m/guests/export.csv")[2].decode("utf-8-sig"), "läsare får inte OSA-länkar i CSV-exporten")
