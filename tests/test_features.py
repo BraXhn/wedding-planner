@@ -57,7 +57,7 @@ SET = {"csrf": c, "couple_names": "Anna & Erik", "wedding_date": "2027-06-12", "
      "photos_enabled": "on", "photo_quota_mb": "500",
      "invite_subject": "Inbjudan {brudpar} {__class__}", "invite_body": "Hej {namn}! {länk} {datum} {0.__class__}",
      "reminder_subject": "Påminnelse", "reminder_body": "Svara {länk}", "notify_email": "louise@example.se; anton@example.se",
-       "swish_number": "+46 70-123 45 67", "swish_message": "Bröllopsgåva"}
+       "swish_number": "+46 70-123 45 67", "swish_message": "Bröllopsgåva", "capsule_enabled": "on", "digest_enabled": "on"}
 r = req(a, "/settings", SET)
 h = html(r); ok("Sparat" in h and "deadlines" in h, "inställningar sparas + deadlines fylls i")
 ok(q("SELECT value FROM settings WHERE key='notify_email'")[0][0] == "louise@example.se, anton@example.se", "aviseringsadresser normaliseras")
@@ -310,13 +310,24 @@ ok(sj["greetings"] == [{"name": "Familjen Andersson", "text": "Vi älskar er!"}]
 ok("Grattis &lt;3" in html(req(a, "/photos")), "gästbok: escapas i adminvyn")
 req(a, f"/photos/halsning/{gid1}", {"csrf": c, "action": "delete"})
 ok(not q("SELECT 1 FROM greetings WHERE id=?", gid1), "gästbok: ta bort")
+# tidskapsel
+ok("Tidskapseln" in html(req(client(), f"/p/{ptok}")) and "/tidskapsel" in html(req(p, f"/r/{gA[1]}")), "tidskapsel: på bildsidan och som flik i gästportalen")
+r = req(p, f"/r/{gA[1]}/tidskapsel", {"letter": "Kära ni,\nhoppas första året blev fint! <3"})
+ok("Brevet ligger i tidskapseln" in html(r) and "lagt 1 brev" in html(r), "tidskapsel: brev från gästportalen")
+req(client(), f"/p/{ptok}/tidskapsel", {"name": "Moster Berit", "letter": "Hemligt brev"})
+ok(tuple(q("SELECT name, text FROM capsule ORDER BY id")[0]) == ("Familjen Andersson", "Kära ni,\nhoppas första året blev fint! <3")
+   and q("SELECT COUNT(*) FROM capsule")[0][0] == 2, "tidskapsel: sparas med gästens namn, även via QR-sidan")
+h = html(req(a, "/mail"))
+ok("2 brev väntar" in h and "Hemligt brev" not in h and "hoppas första" not in h, "tidskapsel: brudparet ser bara antalet")
+ok("högst 2000" in html(req(p, f"/r/{gA[1]}/tidskapsel", {"letter": "x" * 2001})), "tidskapsel: för långt brev nekas")
+ok(req(client(), f"/p/{'z' * 24}/tidskapsel", {"letter": "hej"})[0] == 404, "tidskapsel: fel token 404")
 for i in range(12): r = req(client(), f"/p/{ptok}/halsning", {"greeting": f"spam {i}"})
 ok("För många hälsningar" in html(r), "gästbok: rate limit per IP")
 ok(req(client(), f"/r/{gA[1]}/photos?ok=%C2%B2")[0] == 200 and req(client(), f"/p/{ptok}?ok=" + "9" * 5000)[0] == 200,
    "konstigt ?ok= ger ingen krasch")
 s2 = html(req(a, "/settings"))
 form = {"csrf": c, "couple_names": "Anna & Erik", "wedding_date": "2027-06-12", "wedding_time": "14:00", "venue": "Ulriksdals slott",
-        "rsvp_deadline": "2027-04-01", "photos_enabled": "on", "gallery_public": "on", "photo_moderation": "on", "photo_quota_mb": "500",
+        "rsvp_deadline": "2027-04-01", "photos_enabled": "on", "gallery_public": "on", "photo_moderation": "on", "photo_quota_mb": "500", "capsule_enabled": "on",
         "invite_subject": "Inbjudan {brudpar} {__class__}", "invite_body": "Hej {namn}! {länk} {datum} {0.__class__}",
         "reminder_subject": "Påminnelse", "reminder_body": "Svara {länk}"}
 req(a, "/settings", form)

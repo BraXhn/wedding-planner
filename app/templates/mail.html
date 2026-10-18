@@ -65,6 +65,10 @@
       <input type="hidden" name="csrf" value="{{ user.csrf }}">
       <button class="btn">Skicka veckobrevet nu</button>
     </form>
+    <hr>
+    <h2>Tidskapsel</h2>
+    <p class="muted small">{{ capsule_count }} brev väntar{% if capsule_date %} och mejlas på ettårsdagen, {{ sv_date(capsule_date) }}{% endif %}.
+    {% if settings.capsule_sent == '1' %}Breven är skickade.{% elif settings.capsule_enabled != '1' %}Tidskapseln är avstängd under Inställningar.{% endif %}</p>
   </section>
 </div>
 {% endif %}

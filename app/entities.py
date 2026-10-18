@@ -281,6 +281,7 @@ SETTINGS_DEFAULTS = {
     "osa_card_footer": "Svara senast {osa_senast}",
     "swish_message": "Bröllopsgåva",
     "digest_enabled": "1",
+    "capsule_enabled": "1",
 }
 
 SETTINGS_FIELDS = [
@@ -300,6 +301,9 @@ SETTINGS_FIELDS = [
     F("gift_info", "Presenter", "textarea", help="t.ex. bidrag till bröllopsresan. Visas ovanför önskelistan."),
     F("swish_number", "Swish-nummer", help="Mobilnummer eller Swish-nummer. Gästerna får en QR-kod att skanna med Swish under Önskelista."),
     F("swish_message", "Meddelande i Swish", help="Förifyllt i Swish, t.ex. ”Bröllopsgåva”. Högst 50 tecken, gästen kan ändra det."),
+    F("capsule_enabled", "Tidskapsel", "bool",
+      help="Gästerna kan skriva brev till er i gästportalen och via QR-koden på borden. Breven mejlas till adresserna "
+           "under Aviseringar på er ettårsdag – ni ser bara antalet innan dess."),
     S("Bilder"),
     F("photos_enabled", "Låt gäster ladda upp bilder", "bool"),
     F("gallery_public", "Gäster får se alla uppladdade bilder", "bool"),

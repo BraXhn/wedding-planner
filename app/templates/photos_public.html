@@ -36,6 +36,19 @@
   </section>
   {% endif %}
 
+  {% if not guest and capsule_open %}
+  <section class="card" id="tidskapsel">
+    <h2>Tidskapseln 💌</h2>
+    <p class="muted small">Skriv ett brev till brudparet. Det hålls hemligt och mejlas till dem på ettårsdagen{% if capsule_date %}, {{ sv_date(capsule_date) }}{% endif %}.</p>
+    {% if capsule_result == 'ok' %}<p class="alert ok">Tack! Brevet ligger i tidskapseln.</p>{% elif capsule_result %}<p class="alert error">{{ capsule_results[capsule_result] }}</p>{% endif %}
+    <form method="post" action="{{ base }}/tidskapsel">
+      <label class="field"><span>Från</span><input name="name" maxlength="60" autocomplete="name"></label>
+      <label class="field"><span>Brev</span><textarea name="letter" rows="5" maxlength="{{ capsule_max }}" required></textarea></label>
+      <button class="btn">Lägg i tidskapseln</button>
+    </form>
+  </section>
+  {% endif %}
+
   {% if challenges %}
   <section class="card">
     <h2>Fotoutmaningar 🎯</h2>

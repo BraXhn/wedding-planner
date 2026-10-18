@@ -191,7 +191,9 @@ async def mail_view(request: Request):
     preview = {k: fill(s.get(f"invite_{k}", ""), _values(s, None, public_base(request))) for k in ("subject", "body")}
     with _job_lock:
         job = dict(_job)
+    from . import capsule as cap
     return render(request, "mail.html", user, settings=s, stats=stats, mlog=mlog, job=job, preview=preview,
+                  capsule_count=cap.count(), capsule_date=cap.open_date(),
                   configured=configured(), smtp=SMTP, can_write=user["role"] != "viewer", active="mail",
                   msg=request.query_params.get("msg"))
 

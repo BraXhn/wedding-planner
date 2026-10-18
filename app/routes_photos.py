@@ -106,6 +106,13 @@ def visible_greetings(limit: int = 300):
         return c.execute("SELECT name, text FROM greetings WHERE hidden = 0 ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
 
 
+def _capsule_ctx(request: Request, s: dict) -> dict:
+    from . import capsule as cap
+    res = request.query_params.get("brev")
+    return {"capsule_open": cap.is_open(s), "capsule_result": res if res in cap.RESULTS else None,
+            "capsule_results": cap.RESULTS, "capsule_max": cap.CAPSULE_MAX, "capsule_date": cap.open_date()}
+
+
 def active_challenges():
     with dbm.db() as c:
         return c.execute("SELECT id, text FROM challenges WHERE enabled = 1 ORDER BY sort_no, id").fetchall()
@@ -217,7 +224,7 @@ async def public_upload(request: Request):
                   guest=None, wedding_date=parse_date(s.get("wedding_date")),
                   saved=saved or saved_count(request), errors=errors, programme=_public_programme(), challenges=active_challenges(),
                   greeting=request.query_params.get("halsning") if request.query_params.get("halsning") in GREETING_RESULTS else None,
-                  greeting_results=GREETING_RESULTS, greeting_max=GREETING_MAX,
+                  greeting_results=GREETING_RESULTS, greeting_max=GREETING_MAX, **_capsule_ctx(request, s),
                   photos=visible_photos() if flag(s, "gallery_public") else [], max_mb=MAX_UPLOAD_MB)
 
 
@@ -225,6 +232,13 @@ async def public_greeting(request: Request):
     _check_photo_token(request)
     result = await save_greeting(request)
     return RedirectResponse(f"/p/{request.path_params['token']}?halsning={result}#gastbok", 303)
+
+
+async def public_capsule(request: Request):
+    from .capsule import save_letter
+    _check_photo_token(request)
+    result = save_letter(await read_form(request), client_ip(request))
+    return RedirectResponse(f"/p/{request.path_params['token']}?brev={result}#tidskapsel", 303)
 
 
 async def public_img(request: Request):
@@ -358,6 +372,7 @@ routes = [
     Route("/p/{token}", public_upload, methods=["GET", "POST"]),
     Route("/p/{token}/img/{file}", public_img),
     Route("/p/{token}/halsning", public_greeting, methods=["POST"]),
+    Route("/p/{token}/tidskapsel", public_capsule, methods=["POST"]),
     Route("/photos", admin_photos),
     Route("/photos/img/{file}", admin_img),
     Route("/photos/{photo_id:id}", admin_photo_action, methods=["POST"]),

@@ -143,5 +143,22 @@ used = {t: 0 for t in (t1, t2)}
 need = {k1: 2, k2: 2, fam: 3, ex: 1}
 for g, t in plan: used[t] += need[g]
 ok(used[t1] <= 5 and used[t2] <= 5, "placering: bord fylls aldrig över antal platser")
+
+# --- tidskapsel
+import logging  # noqa: E402
+from app import capsule  # noqa: E402
+set_settings({"wedding_date": "2025-06-01", "capsule_enabled": "1", "capsule_sent": ""})
+with dbm.db() as c:
+    c.execute("DELETE FROM capsule")
+ok(not capsule.capsule_due(), "tidskapsel: inget skickas utan brev")
+with dbm.db() as c:
+    c.execute("INSERT INTO capsule (name, text) VALUES ('Moster', 'Grattis!')")
+ok(capsule.capsule_due() and not capsule.is_open(), "tidskapsel: ett år efter bröllopet är det dags och kapseln stängd")
+subj, body = capsule.build_letters()
+ok("Tidskapseln" in subj and "Från Moster:" in body and "Grattis!" in body, "tidskapsel: alla brev i ett mejl")
+set_settings({"wedding_date": "2099-06-01"})
+ok(not capsule.capsule_due() and capsule.is_open(), "tidskapsel: före ettårsdagen skickas inget")
+set_settings({"wedding_date": "2025-06-01", "capsule_sent": "1"})
+ok(not capsule.capsule_due(), "tidskapsel: skickas bara en gång")
 print(f"\n{len(fails)} fel")
 sys.exit(1 if fails else 0)

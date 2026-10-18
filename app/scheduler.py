@@ -30,8 +30,6 @@ def run_jobs(log) -> None:
         from .capsule import capsule_due, send_capsule
         if capsule_due():
             send_capsule(log)
-    except ImportError:
-        pass
     except Exception as e:  # noqa: BLE001
         log.error("capsule_failed error=%s: %s", type(e).__name__, e)
 

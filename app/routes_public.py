@@ -88,7 +88,8 @@ def _portal_ctx(g, tab: str) -> dict:
                      or bool(s.get("swish_number")))
         programme = c.execute(f"SELECT time, title, location FROM timeline WHERE public = 1 ORDER BY {TIMELINE_ORDER}").fetchall()
     deadline = parse_date(s.get("rsvp_deadline"))
-    return dict(settings=s, guest=g, tab=tab, base=f"/r/{g['rsvp_token']}", has_gifts=has_gifts,
+    from .capsule import is_open
+    return dict(settings=s, guest=g, tab=tab, base=f"/r/{g['rsvp_token']}", has_gifts=has_gifts, has_capsule=is_open(s),
                 has_photos=flag(s, "photos_enabled"), programme=programme,
                 wedding_date=parse_date(s.get("wedding_date")), deadline=deadline,
                 closed=bool(deadline and today() > deadline), max_count=g["invited_count"] or 1)
@@ -250,6 +251,22 @@ async def greeting(request: Request):
     return RedirectResponse(f"/r/{g['rsvp_token']}/photos?halsning={result}#gastbok", 303)
 
 
+async def capsule(request: Request):
+    from . import capsule as cap
+    g = guest_by_token(request)
+    ctx = _portal_ctx(g, "capsule")
+    if request.method == "POST":
+        result = cap.save_letter(await read_form(request), client_ip(request), guest=g)
+        return RedirectResponse(f"/r/{g['rsvp_token']}/tidskapsel?brev={result}", 303)
+    if not ctx["has_capsule"]:
+        raise HTTPException(404)
+    with dbm.db() as c:
+        mine = c.execute("SELECT COUNT(*) FROM capsule WHERE guest_id = ?", (g["id"],)).fetchone()[0]
+    res = request.query_params.get("brev")
+    return render(request, "portal_capsule.html", result=res if res in cap.RESULTS else None, results=cap.RESULTS,
+                  mine=mine, open_date=cap.open_date(), max_len=cap.CAPSULE_MAX, **ctx)
+
+
 async def photo_img(request: Request):
     guest_by_token(request)
     if not flag(get_settings(), "gallery_public"):
@@ -266,4 +283,5 @@ routes = [
     Route("/r/{token}/photos", photos, methods=["GET", "POST"]),
     Route("/r/{token}/img/{file}", photo_img),
     Route("/r/{token}/halsning", greeting, methods=["POST"]),
+    Route("/r/{token}/tidskapsel", capsule, methods=["GET", "POST"]),
 ]
