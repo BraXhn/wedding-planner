@@ -11,19 +11,24 @@ En självhostad bröllopsplanerare för Unraid. Den är liten (fem Python-beroen
 |---|---|
 | **Översikt** | Nedräkning, OSA-status, budget, försenade uppgifter, obetalda räkningar, tal, önskelista och bilder |
 | **Gäster** | Ett hushåll per rad: antal, grupp/sida, bord, e-post, postadress och låtönskemål. Under **Personer** står namn, om personen kommer och allergier per person. |
+| **Importera** | Klistra in gästlistan från Excel, Numbers eller Google Kalkylark – eller ladda upp en CSV-fil. Förhandsvisning först; dubbletter och rader med fel hoppas över. |
+| **OSA-frågor** | Egna frågor i OSA-formuläret – ja/nej, val bland alternativ eller fritext – som kan stängas av var för sig. Förslag: skjuts från stationen, boende och barnstol. Svaren sammanställs med antal personer och kan exporteras. |
 | **Till cateringen** | Antal som kommer, allergier per person och per bord och en sammanställning (t.ex. ”2 × nötter”). Kan skrivas ut eller exporteras som CSV. |
-| **Placering** | Bord med antal platser. Dra hushåll till ett bord, eller tryck på hushållet och sedan på bordet i mobilen. Fulla bord markeras i rött och det finns en utskriftsvy. **Bordskort** med namn (ett per person, 8 per A4) och en **placeringslista** i bokstavsordning till entrén. |
+| **Placering** | Bord med antal platser. Dra hushåll till ett bord, eller tryck på hushållet och sedan på bordet i mobilen. Fulla bord markeras i rött och det finns en utskriftsvy. **Bordskort** med namn (ett per person, 8 per A4) och en **placeringslista** i bokstavsordning till entrén. **Föreslå placering** fyller borden med dem som saknar plats: grupper hålls ihop och ingen hamnar vid samma bord som den inte ska sitta med. |
 | **Att göra** | Förifylld svensk checklista med 38 punkter. **Deadlines räknas ut automatiskt** från bröllopsdatumet, till exempel hindersprövning en månad före. Ändras datumet flyttas de uträknade deadlines med; egna datum rörs inte. |
 | **Budget** | Budgeterat mot faktiskt, betalt, förfallodatum och summering |
 | **Leverantörer** | Status från förfrågan till bokad, kontaktuppgifter och pris. En bokad leverantör läggs in i budgeten med priset som budgeterat belopp. |
 | **Körschema** | Dagen minut för minut. Punkter markerade *Visa för gäster* syns i gästportalen. Tider före 06:00 räknas som natten efter. |
-| **Dagen** | För toastmaster och brudpar i mobilen på bröllopsdagen: vad som händer nu och härnäst, hela körschemat och talen per del av middagen. |
+| **Dagen** | För toastmaster och brudpar i mobilen på bröllopsdagen: vad som händer nu och härnäst, hela körschemat och talen per del av middagen. Toastmastern bockar av tal som hållits och har en timer per tal. Lägg sidan på hemskärmen så öppnas den som en app. |
 | **Tal** | Talarlista för toastmaster. Gäster som anmäler tal i OSA-formuläret hamnar här automatiskt. Visar total talartid. |
 | **Önskelista** | Gästerna reserverar presenter. Ni ser hur många som är reserverade, men inte av vem. |
-| **Bilder** | Gästernas bilder i ett galleri, med valfri granskning innan de visas, nedladdning som zip, utskrivbara **bordskort med QR-kod** och ett **bildspel** för projektor som visar nya bilder direkt |
+| **Bilder** | Gästernas bilder i ett galleri, med valfri granskning innan de visas, nedladdning som zip, utskrivbara **bordskort med QR-kod** och ett **bildspel** för projektor som visar nya bilder direkt. **Fotoutmaningar** (t.ex. ”Bästa dansmovet”) väljs vid uppladdning och syns som bildtext, och gästernas hälsningar i **gästboken** rullar mellan bilderna. |
 | **OSA-kort med QR** | För inbjudningar som skickas med posten: en QR-kod och en kort kod per hushåll, utskriftsark (8 kort per A4) och zip med PNG/SVG + CSV för dokumentkoppling i Word, InDesign eller Canva |
 | **Utskick** | E-post med personlig länk till varje hushåll, påminnelser till dem som inte svarat, redigerbara mallar och testutskick. Ni kan också få ett mejl varje gång någon svarar på OSA (Inställningar → Aviseringar). |
 | **Trycksaker** | Färdiga förslag på save the date, inbjudan, tackkort, meny, program och välkomstskylt. Ändra text, design (elva stycken, från klassisk och botanisk till monogram, art déco, krans och båge), färg och format (A6, A5, A4) med förhandsvisning direkt. Skriver ni ut på **färgat papper** väljer ni papperets färg – då skrivs ingen bakgrund ut, och förhandsvisningen visar hur det blir. Lång text krymps automatiskt så att den får plats. **QR-koden** kan vara prickar, rundade rutor, små hjärtan eller romber, med ett hjärta, två ringar, era initialer eller en kamera i mitten, i kortets färg eller svart. Platshållare som `{namn}`, `{datum}` och `{kod}` fylls i. Inbjudan och tackkort skrivs ut ett per hushåll med namn och egen OSA-QR. |
+| **Veckobrev** | Ett mejl varje måndag morgon med nya svar, vilka som inte svarat, uppgifter och räkningar som närmar sig. |
+| **Tidskapsel** | Gästerna skriver brev till er som mejlas ut på er ettårsdag. Ni ser bara antalet innan dess. |
+| **Låtönskemål** | Gästernas låtar samlade och sorterade efter antal önskningar – skriv ut eller skicka CSV:n till DJ:n. |
 | **Tackkort** | Efter bröllopet: vilken present varje hushåll gav, adress för kuvertet och avbockning när tackkortet är skickat |
 | **Kalender** | Personlig prenumerationslänk (.ics) med bröllopet, körschemat, deadlines och räkningar |
 | **API** | Nedräkningen (och valfri statistik) som JSON för t.ex. **Hemmahub** |
@@ -33,7 +38,8 @@ En självhostad bröllopsplanerare för Unraid. Den är liten (fem Python-beroen
 
 ### För gästerna (personlig länk, inget konto)
 - **OSA**: kommer eller inte, namn och allergier för var och en som kommer, talanmälan, låtönskemål och hälsning. Svaret kan ändras fram till OSA-deadline.
-- **Information**: när och var, program, hitta hit, boende och knappen *Lägg till i kalendern*.
+- **Information**: när och var, program, hitta hit, boende, **frågor och svar** och knappen *Lägg till i kalendern*.
+- **Tidskapsel**: ett brev till brudparet som de får på ettårsdagen.
 - **Önskelista** med reservation, och en **Swish-QR** för penninggåvor om ni angett ett Swish-nummer.
 - **Bilder**: uppladdning och galleri, om ni har slagit på det.
 

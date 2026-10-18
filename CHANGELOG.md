@@ -1,6 +1,17 @@
 # Ändringslogg
 
 ## Ej släppt
+- **Importera gästlistan** från Excel, Numbers eller Google Kalkylark (klistra in) eller en CSV-fil, med förhandsvisning. Kända rubriker känns igen, dubbletter och felaktiga rader hoppas över.
+- **Egna OSA-frågor** – ja/nej, val bland alternativ eller fritext – som kan stängas av var för sig. Förslag: skjuts från stationen, boende och barnstol. Sammanställning under Gäster → OSA-frågor, svaren på gästsidan och i mejlet när någon svarar.
+- **Frågor och svar** i gästportalen under Information (Inställningar → Frågor och svar).
+- **Veckobrev** till er varje måndag morgon: nya svar, vilka som inte svarat, uppgifter och räkningar som närmar sig. Kan stängas av; går också att skicka direkt under Utskick.
+- **Föreslå placering:** fyller borden med hushåll som saknar plats. Grupper hålls ihop, nytt fält ”Ska inte sitta vid samma bord som” respekteras och inget bord överfylls. Knapp för att tömma alla bord.
+- **Fotoutmaningar** på bildsidan, valbara vid uppladdning och som bildtext i bildspelet.
+- **Gästbok på storbildsskärmen:** hälsningar från bildsidan rullar i bildspelet och följer granskningsinställningen.
+- **Dagen:** toastmastern kan bocka av tal som hållits (även med läsarinloggning), starta en timer per tal och lägga sidan på hemskärmen.
+- **Tidskapsel:** gästerna skriver brev som mejlas till er på ettårsdagen. Ni ser bara antalet innan dess.
+- **Låtönskemål** sammanställda till DJ:n, med utskrift och CSV.
+- Imagen bygger nu på Python 3.13.
 
 ## 1.3.0 – 2026-10-18
 - **Roligare QR-koder.** Trycksakernas QR-kod kan ritas med prickar, rundade rutor, små hjärtan eller romber, med matchande hörnmarkeringar, och med ett hjärta, två ringar, era initialer eller en kamera i mitten – i kortets färg eller svart. Koden använder då högsta felkorrigeringen, så motivet i mitten tar inte bort något. OSA-korten får prickar med hjärta och bordskorten för bilder rundade rutor med en kamera. Alla 400 kombinationer av stil, motiv, färg och länktyp är provlästa med en QR-avkodare.
