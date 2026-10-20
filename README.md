@@ -20,6 +20,7 @@ En självhostad bröllopsplanerare för Unraid. Den är liten (fem Python-beroen
 | **Leverantörer** | Status från förfrågan till bokad, kontaktuppgifter och pris. En bokad leverantör läggs in i budgeten med priset som budgeterat belopp. |
 | **Körschema** | Dagen minut för minut. Punkter markerade *Visa för gäster* syns i gästportalen. Tider före 06:00 räknas som natten efter. |
 | **Dagen** | För toastmaster och brudpar i mobilen på bröllopsdagen: vad som händer nu och härnäst, hela körschemat och talen per del av middagen. Toastmastern bockar av tal som hållits och har en timer per tal. Lägg sidan på hemskärmen så öppnas den som en app. |
+| **Appar i mobilen** | Två små appar för iPhone (och Android) som läggs på hemskärmen: **Toastmaster** på `/tm` – nästa tal med stor timer och ✓ Hållet, talen per del som kan bockas av, flyttas upp/ner, ändras och läggas till, samt programmet – och **Planering** på `/plan` – att göra-listan grupperad efter deadline med snabbtillägg och avbockning, programmet och det som är klart. I programmet skjuts en punkt och allt efter den ±5–30 minuter med ett tryck. Öppna adressen i Safari → Dela → *Lägg till på hemskärmen*; den som inte är inloggad hamnar på inloggningen och sedan tillbaka i appen. |
 | **Tal** | Talarlista för toastmaster. Gäster som anmäler tal i OSA-formuläret hamnar här automatiskt. Visar total talartid. |
 | **Önskelista** | Gästerna reserverar presenter. Ni ser hur många som är reserverade, men inte av vem. |
 | **Bilder** | Gästernas bilder i ett galleri, med valfri granskning innan de visas, nedladdning som zip, utskrivbara **bordskort med QR-kod** och ett **bildspel** för projektor som visar nya bilder direkt. **Fotoutmaningar** (t.ex. ”Bästa dansmovet”) väljs vid uppladdning och syns som bildtext, och gästernas hälsningar i **gästboken** rullar mellan bilderna. |
@@ -32,7 +33,7 @@ En självhostad bröllopsplanerare för Unraid. Den är liten (fem Python-beroen
 | **Tackkort** | Efter bröllopet: vilken present varje hushåll gav, adress för kuvertet och avbockning när tackkortet är skickat |
 | **Kalender** | Personlig prenumerationslänk (.ics) med bröllopet, körschemat, deadlines och räkningar |
 | **API** | Nedräkningen (och valfri statistik) som JSON för t.ex. **Hemmahub** |
-| **Roller** | Administratör, Redigerare och Läsare. Läsare passar t.ex. toastmaster – de ser allt men inte gästernas OSA-länkar och koder. |
+| **Roller** | Administratör, Redigerare, Toastmaster och Läsare. Toastmaster och Läsare ser allt men inte gästernas OSA-länkar och koder; Toastmaster får dessutom ändra tal och körschema. Alla inloggade kan bocka av tal som hållna. |
 | **Backup** | En kopia av databasen varje dygn (de senaste 14 sparas) och nedladdning för administratörer |
 | **CSV-export** | Alla listor kan exporteras till Excel |
 

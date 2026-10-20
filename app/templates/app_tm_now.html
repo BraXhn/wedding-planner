@@ -1,0 +1,40 @@
+{% extends "app_base.html" %}
+{% block content %}
+<p class="muted small" {% if not preview %}data-autorefresh="60"{% endif %}>
+  {% if preview %}Förhandsvisning kl. {{ preview }} · <a href="/tm">visa nu</a>{% else %}kl. {{ now.strftime('%H:%M') }}{% if wedding_date %} · {{ sv_date(wedding_date) }}{% endif %}{% endif %}</p>
+<p class="speech-timer" data-timer hidden><span data-timer-name></span> <b data-timer-left></b> <button type="button" class="btn" data-timer-stop>Stoppa</button></p>
+
+{% if live %}
+<section class="app-card now">
+  <p class="eyebrow">Nu</p>
+  {% if current %}<p class="app-big">{{ current.title }}</p>
+  <p class="muted">sedan {{ current.time }}{% if current.location %} · {{ current.location }}{% endif %}</p>
+  {% else %}<p class="app-big">Snart börjar det!</p>{% endif %}
+</section>
+<section class="app-card">
+  <p class="eyebrow">Härnäst</p>
+  {% for t in upcoming %}<p class="app-next"><b>{{ t.time }}</b> {{ t.title }} <span class="muted small">om {% if t.in_min >= 60 %}{{ t.in_min // 60 }} h {{ t.in_min % 60 }} min{% else %}{{ t.in_min }} min{% endif %}</span></p>
+  {% else %}<p class="muted">Inget mer i programmet.</p>{% endfor %}
+</section>
+{% elif not wedding_date %}
+<p class="app-card muted">Bröllopsdatumet är inte satt ännu.</p>
+{% else %}
+<p class="app-card muted">På bröllopsdagen visar fliken vad som händer nu och härnäst.
+  Förhandsvisa: <a href="/tm?tid=15:00">kl. 15</a> · <a href="/tm?tid=19:30">kl. 19.30</a></p>
+{% endif %}
+
+<section class="app-card">
+  <p class="eyebrow">Nästa tal {% if n_speeches %}<span class="muted">· {{ held }} av {{ n_speeches }} hållna</span>{% endif %}</p>
+  {% if next_speech %}
+  <p class="app-big">{{ next_speech.speaker }}</p>
+  <p class="muted">{{ next_speech.part }} · {{ next_speech.minutes }} min{% if next_speech.topic %} · {{ next_speech.topic }}{% endif %}</p>
+  {% if next_speech.notes %}<p class="small">{{ next_speech.notes }}</p>{% endif %}
+  <div class="app-actions">
+    <button type="button" class="btn big" data-timer-start="{{ next_speech.minutes or 5 }}" data-timer-label="{{ next_speech.speaker }}">⏱ Starta timer</button>
+    <form method="post" action="/tm/tal/{{ next_speech.id }}/hallen?fran=nu"><input type="hidden" name="csrf" value="{{ user.csrf }}">
+      <button class="btn primary big">✓ Hållet</button></form>
+  </div>
+  {% elif n_speeches %}<p class="app-big">Alla tal är hållna 🎉</p>
+  {% else %}<p class="muted">Inga tal anmälda.</p>{% endif %}
+</section>
+{% endblock %}

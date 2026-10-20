@@ -1,0 +1,17 @@
+{% extends "app_base.html" %}
+{% from "_field.html" import field %}
+{% block heading %}<a class="app-back" href="{{ back }}" aria-label="Tillbaka">‹</a> {{ title }}{% endblock %}
+{% block content %}
+{% if errors %}<div class="alert error" role="alert">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+{% if not can_edit %}<p class="app-card muted small">Du kan läsa men inte ändra här.</p>{% endif %}
+<form method="post" class="app-form">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  {% for f in fields %}{{ field(f, vals.get(f.name), disabled=not can_edit) }}{% endfor %}
+  {% if hint %}<p class="muted small">{{ hint }}</p>{% endif %}
+  {% if can_edit %}<button class="btn primary big">Spara</button>{% endif %}
+</form>
+{% if can_edit and delete_url %}
+<form method="post" action="{{ delete_url }}" class="app-delete" data-confirm="Ta bort ”{{ title }}”?">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="btn danger">Ta bort</button></form>
+{% endif %}
+{% endblock %}

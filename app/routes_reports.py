@@ -118,7 +118,7 @@ async def answers_report(request: Request):
         questions = _answer_rows(c)
         coming = c.execute("SELECT COUNT(*) FROM guests WHERE rsvp = 'yes'").fetchone()[0]
     return render(request, "report_answers.html", user, questions=questions, coming=coming,
-                  can_write=user["role"] != "viewer", active="guests")
+                  can_write=not user["readonly"], active="guests")
 
 
 async def answers_csv(request: Request):

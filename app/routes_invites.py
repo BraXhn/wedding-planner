@@ -83,7 +83,7 @@ async def qr_sheet(request: Request):
               "qr": Markup(qr_svg_fancy(code_url(request, g["rsvp_code"]), "prickar", "hjarta"))} for g in _guests(scope) if g["rsvp_code"]]
     return render(request, "invite_cards.html", user, status=400 if error else 200, settings=s, cards=cards,
                   scope=scope, host=short_host(request), footer=footer, common=common, saved=saved, error=error,
-                  footer_max=FOOTER_MAX, can_write=user["role"] != "viewer", active="guests")
+                  footer_max=FOOTER_MAX, can_write=not user["readonly"], active="guests")
 
 
 async def qr_zip(request: Request):

@@ -1,6 +1,8 @@
 # Ändringslogg
 
 ## Ej släppt
+- **Två appar för mobilen** att lägga på hemskärmen: **Toastmaster** (`/tm`) med nästa tal, timer, avbockning, talarordning och programmet, och **Planering** (`/plan`) med att göra-listan och programmet. Programpunkter kan skjutas ±5–30 minuter tillsammans med allt som kommer efter.
+- **Ny roll Toastmaster:** som Läsare men får ändra tal och körschema.
 - **Importera gästlistan** från Excel, Numbers eller Google Kalkylark (klistra in) eller en CSV-fil, med förhandsvisning. Kända rubriker känns igen, dubbletter och felaktiga rader hoppas över.
 - **Egna OSA-frågor** – ja/nej, val bland alternativ eller fritext – som kan stängas av var för sig. Förslag: skjuts från stationen, boende och barnstol. Sammanställning under Gäster → OSA-frågor, svaren på gästsidan och i mejlet när någon svarar.
 - **Frågor och svar** i gästportalen under Information (Inställningar → Frågor och svar).

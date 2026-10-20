@@ -1,0 +1,16 @@
+{
+  "name": "Toastmaster",
+  "short_name": "Toastmaster",
+  "description": "Tal och program på bröllopsdagen",
+  "id": "/tm",
+  "start_url": "/tm",
+  "scope": "/tm",
+  "display": "standalone",
+  "background_color": "#f7f3ec",
+  "theme_color": "#2f4a3e",
+  "lang": "sv",
+  "icons": [
+    { "src": "/static/icon-tm-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/static/icon-tm-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

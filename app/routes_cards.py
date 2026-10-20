@@ -50,7 +50,7 @@ async def cards_list(request: Request):
         values = _sample(c, request)
     items = [{"card": r, "texts": _texts(r, values), "qr": _qr(r, _sample_url(request), values) if r["show_qr"] else None}
              for r in rows]
-    return render(request, "cards.html", user, cards=items, kinds=cm.KINDS, can_write=user["role"] != "viewer",
+    return render(request, "cards.html", user, cards=items, kinds=cm.KINDS, can_write=not user["readonly"],
                   active="cards")
 
 
@@ -115,7 +115,7 @@ async def card_edit(request: Request):
                   texts=_texts(card, values), values=values, qr=qr, qr_styles=QR_STYLES, qr_centers=QR_CENTERS,
                   qr_colors=cm.QR_COLORS, errors=errors, saved=request.query_params.get("sparat") == "1",
                   designs=cm.DESIGNS, colors=cm.COLORS, papers=cm.PAPERS, sizes=cm.SIZES, audiences=cm.AUDIENCES,
-                  placeholders=cm.PLACEHOLDERS, limits=cm.LIMITS, can_write=user["role"] != "viewer", active="cards")
+                  placeholders=cm.PLACEHOLDERS, limits=cm.LIMITS, can_write=not user["readonly"], active="cards")
 
 
 async def card_delete(request: Request):
@@ -133,7 +133,7 @@ async def card_print(request: Request):
     with dbm.db() as c:
         card = _get(c, request.path_params["card_id"])
         personal = card["audience"] != "none"
-        if personal and card["show_qr"] and user["role"] == "viewer":
+        if personal and card["show_qr"] and user["readonly"]:
             raise HTTPException(403)  # personliga QR-koder ger skrivrätt till gästens OSA-svar
         common = cm.common_values(get_settings(), public_base(request), cm.programme_text(c))
         guests = cm.recipients(c, card["audience"]) if personal else []

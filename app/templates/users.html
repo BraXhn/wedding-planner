@@ -28,7 +28,8 @@
     <input type="hidden" name="csrf" value="{{ user.csrf }}">
     <label class="field"><span>Användarnamn</span><input name="username" pattern="[A-Za-z0-9_.\-]{3,32}" required autocomplete="off"></label>
     <label class="field"><span>Tillfälligt lösenord</span><input type="password" name="password" minlength="12" required autocomplete="new-password"><small>Byts vid första inloggning.</small></label>
-    <label class="field"><span>Roll</span><select name="role">{% for v, l in roles %}<option value="{{ v }}" {{ 'selected' if v == 'editor' }}>{{ l }}</option>{% endfor %}</select></label>
+    <label class="field"><span>Roll</span><select name="role">{% for v, l in roles %}<option value="{{ v }}" {{ 'selected' if v == 'editor' }}>{{ l }}</option>{% endfor %}</select>
+      <small>Redigerare ändrar allt utom användare och API. Toastmaster ser allt (utom gästernas OSA-koder) och får ändra tal och program – passar appen <a href="/tm">/tm</a>. Läsare ser men ändrar inget.</small></label>
     <div class="form-actions wide"><button class="btn primary">Skapa</button></div>
   </form>
 </section>

@@ -9,7 +9,7 @@ from starlette.routing import Route
 
 from . import db as dbm
 from .core import (
-    LOGIN_IP, LOGIN_USER, ROLES, auth, client_ip, create_session, csrf_form,
+    APP_PATH, LOGIN_IP, LOGIN_USER, ROLES, auth, client_ip, create_session, csrf_form,
     cookie_name, cookie_secure, get_session, log, public_base, read_form, render, safe_log, set_session_cookie,
 )
 from .qr import qr_svg
@@ -22,11 +22,18 @@ USERNAME_RE = re.compile(r"[A-Za-z0-9_.-]{3,32}")
 
 
 # ======================================================================= login / logout
+def _safe_next(raw) -> str | None:
+    """Bara apparnas egna sökvägar (/tm, /plan …) – ingen öppen redirect."""
+    raw = str(raw or "")
+    return raw if APP_PATH.fullmatch(raw) else None
+
+
 async def login(request: Request):
     if request.method == "GET":
+        nxt = _safe_next(request.query_params.get("next"))
         if get_session(request):
-            return RedirectResponse("/", 303)
-        return render(request, "login.html", insecure=request.url.scheme != "https")
+            return RedirectResponse(nxt or "/", 303)
+        return render(request, "login.html", insecure=request.url.scheme != "https", next=nxt)
 
     form = await read_form(request)
     username = str(form.get("username", ""))[:64].strip()
@@ -36,7 +43,8 @@ async def login(request: Request):
 
     if LOGIN_IP.blocked(ip) or LOGIN_USER.blocked(ukey):
         log.warning("login_blocked ip=%s user=%s", ip, safe_log(username))
-        return render(request, "login.html", error="För många misslyckade försök. Vänta 15 minuter.", status=429)
+        return render(request, "login.html", error="För många misslyckade försök. Vänta 15 minuter.", status=429,
+                      next=_safe_next(form.get("next")))
 
     with dbm.db() as c:
         u = c.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
@@ -50,7 +58,8 @@ async def login(request: Request):
             LOGIN_IP.hit(ip)
             LOGIN_USER.hit(ukey)
             log.warning("login_failed ip=%s user=%s", ip, safe_log(username))
-            return render(request, "login.html", error="Fel användarnamn, lösenord eller kod.", status=401)
+            return render(request, "login.html", error="Fel användarnamn, lösenord eller kod.", status=401,
+                          next=_safe_next(form.get("next")))
 
         if needs_rehash(u["pw_hash"]):
             c.execute("UPDATE users SET pw_hash = ? WHERE id = ?", (hash_pw(password), u["id"]))
@@ -61,7 +70,7 @@ async def login(request: Request):
 
     LOGIN_USER.reset(ukey)
     log.info("login_ok ip=%s user=%s", ip, safe_log(username))
-    resp = RedirectResponse("/account" if u["must_change_pw"] else "/", 303)
+    resp = RedirectResponse("/account" if u["must_change_pw"] else (_safe_next(form.get("next")) or "/"), 303)
     set_session_cookie(resp, token, request)
     return resp
 

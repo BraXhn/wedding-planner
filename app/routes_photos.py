@@ -262,7 +262,7 @@ async def admin_photos(request: Request):
         greetings = c.execute("SELECT * FROM greetings ORDER BY hidden DESC, id DESC").fetchall()
     return render(request, "photos_admin.html", user, settings=s, photos=photos, upload_url=url, greetings=greetings,
                   qr=Markup(qr_svg(url, "Q")), used_mb=round(used / 1024 / 1024, 1),
-                  quota_mb=int(s.get("photo_quota_mb") or 5000), can_write=user["role"] != "viewer", active="photos")
+                  quota_mb=int(s.get("photo_quota_mb") or 5000), can_write=not user["readonly"], active="photos")
 
 
 async def admin_img(request: Request):

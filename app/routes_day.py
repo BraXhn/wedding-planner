@@ -17,8 +17,8 @@ def _at(wd: dt.date, time: str) -> dt.datetime:
     return dt.datetime.combine(day, dt.time.fromisoformat(time))
 
 
-async def day_view(request: Request):
-    user = auth(request)
+def day_context(request: Request) -> dict:
+    """Allt som behövs för att visa dagen: körschema med nu/härnäst och talen per del. Används av /dagen och /tm."""
     s = get_settings()
     wd = parse_date(s.get("wedding_date"))
     now = dt.datetime.now().replace(second=0, microsecond=0)
@@ -49,10 +49,26 @@ async def day_view(request: Request):
         rows = [sp for sp in speeches if sp["part"] == part]
         if rows:
             parts.append({"part": part, "speeches": rows, "minutes": sum(sp["minutes"] or 0 for sp in rows)})
-    return render(request, "day.html", user, schedule=items, current=current, upcoming=upcoming, live=live,
-                  parts=parts, total_minutes=sum(sp["minutes"] or 0 for sp in speeches), now=now,
-                  held=sum(1 for sp in speeches if sp["status"] == "Hållen"), n_speeches=len(speeches),
-                  wedding_date=wd, preview=preview, active="day")
+    next_speech = next((sp for sp in speeches if sp["status"] != "Hållen"), None)
+    return dict(schedule=items, current=current, upcoming=upcoming, live=live, parts=parts,
+                total_minutes=sum(sp["minutes"] or 0 for sp in speeches), now=now, next_speech=next_speech,
+                held=sum(1 for sp in speeches if sp["status"] == "Hållen"), n_speeches=len(speeches),
+                wedding_date=wd, preview=preview)
+
+
+async def day_view(request: Request):
+    user = auth(request)
+    return render(request, "day.html", user, active="day", **day_context(request))
+
+
+def toggle_held(sid: int) -> str:
+    with dbm.db() as c:
+        sp = c.execute("SELECT status FROM speeches WHERE id = ?", (sid,)).fetchone()
+        if not sp or sp["status"] == "Struken":
+            raise HTTPException(404)
+        new = "Bekräftad" if sp["status"] == "Hållen" else "Hållen"
+        c.execute("UPDATE speeches SET status = ? WHERE id = ?", (new, sid))
+    return new
 
 
 async def speech_done(request: Request):
@@ -61,12 +77,7 @@ async def speech_done(request: Request):
     user = auth(request)
     await csrf_form(request, user)
     sid = request.path_params["speech_id"]
-    with dbm.db() as c:
-        sp = c.execute("SELECT status FROM speeches WHERE id = ?", (sid,)).fetchone()
-        if not sp or sp["status"] == "Struken":
-            raise HTTPException(404)
-        new = "Bekräftad" if sp["status"] == "Hållen" else "Hållen"
-        c.execute("UPDATE speeches SET status = ? WHERE id = ?", (new, sid))
+    new = toggle_held(sid)
     log.info("speech_status id=%s status=%s by=%s", sid, new, user["username"])
     return RedirectResponse(f"/dagen#tal{sid}", 303)
 

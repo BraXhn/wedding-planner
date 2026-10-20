@@ -194,7 +194,7 @@ async def mail_view(request: Request):
     from . import capsule as cap
     return render(request, "mail.html", user, settings=s, stats=stats, mlog=mlog, job=job, preview=preview,
                   capsule_count=cap.count(), capsule_date=cap.open_date(),
-                  configured=configured(), smtp=SMTP, can_write=user["role"] != "viewer", active="mail",
+                  configured=configured(), smtp=SMTP, can_write=not user["readonly"], active="mail",
                   msg=request.query_params.get("msg"))
 
 

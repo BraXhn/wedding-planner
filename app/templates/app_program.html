@@ -1,0 +1,28 @@
+{% extends "app_base.html" %}
+{% block headaction %}{% if can_edit %}<a class="app-headbtn" href="/{{ app.key }}/program/ny">+ Ny</a>{% endif %}{% endblock %}
+{% block content %}
+{% if can_edit and schedule %}<p class="muted small">Blir något försenat? Tryck på <b>±</b> vid en punkt för att skjuta den och allt efter.</p>{% endif %}
+<ul class="app-list program">
+  {% for t in schedule %}
+  <li id="p{{ t.id }}" class="{{ 'done' if t.past }} {{ 'current' if current and t.id == current.id }}">
+    <b class="app-time">{{ t.time }}</b>
+    <a class="app-row" href="/{{ app.key }}/program/{{ t.id }}">
+      <b>{{ t.title }}</b>
+      {% if t.location or t.responsible %}<small class="muted">{{ t.location or '' }}{% if t.location and t.responsible %} · {% endif %}{{ t.responsible or '' }}</small>{% endif %}
+    </a>
+    {% if can_edit %}
+    <details class="app-shift">
+      <summary aria-label="Skjut tiden">±</summary>
+      <form method="post" action="/{{ app.key }}/program/forskjut"><input type="hidden" name="csrf" value="{{ user.csrf }}">
+        <input type="hidden" name="fran" value="{{ t.id }}">
+        <span class="small muted">Flytta denna och allt efter (minuter):</span>
+        {% for m in (-15, -5, 5, 10, 15, 30) %}<button class="btn" name="minuter" value="{{ m }}">{{ "%+d"|format(m) }}</button>{% endfor %}
+      </form>
+    </details>
+    {% endif %}
+  </li>
+  {% else %}
+  <li class="muted">Programmet är tomt.{% if can_edit %} <a href="/{{ app.key }}/program/ny">Lägg till en punkt</a>.{% endif %}</li>
+  {% endfor %}
+</ul>
+{% endblock %}
