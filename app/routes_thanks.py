@@ -18,7 +18,7 @@ async def thanks_view(request: Request):
     flt = request.query_params.get("f", "")
     shown = [r for r in rows if not (flt == "kvar" and r["thanks_sent"])]
     return render(request, "thanks.html", user, rows=shown, total=len(rows), sent=sum(1 for r in rows if r["thanks_sent"]),
-                  flt=flt, can_write=user["role"] != "viewer", active="guests")
+                  flt=flt, can_write=not user["readonly"], active="guests")
 
 
 async def thanks_save(request: Request):

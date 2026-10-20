@@ -49,7 +49,9 @@ BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 MAX_BODY = 256 * 1024
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "20"))       # per bild
 MAX_UPLOAD_BODY = int(os.environ.get("MAX_UPLOAD_REQUEST_MB", "120")) * 1024 * 1024  # per förfrågan
-ROLES = [("admin", "Administratör"), ("editor", "Redigerare"), ("viewer", "Läsare")]
+ROLES = [("admin", "Administratör"), ("editor", "Redigerare"), ("toastmaster", "Toastmaster"), ("viewer", "Läsare")]
+READONLY_ROLES = ("viewer", "toastmaster")       # ser allt utom gästernas OSA-länkar/koder, ändrar inget …
+TOASTMASTER_AREAS = ("speeches", "timeline")     # … utom att toastmastern får ändra tal och program
 
 LOGIN_IP = RateLimiter(10, 15 * 60)      # misslyckade inloggningar per IP
 LOGIN_USER = RateLimiter(5, 15 * 60)     # misslyckade inloggningar per användarnamn
@@ -186,6 +188,7 @@ def asset(path: str) -> str:
 
 
 templates.env.globals.update(asset=asset)
+templates.env.globals.update(can_write_area=lambda user, area=None: bool(user) and can_write(user, area))
 templates.env.globals.update(display=display, kr=kr, sv_date=sv_date, ENTITIES=ENTITIES, flag=flag,
                              APP_VERSION=APP_VERSION)
 
@@ -291,16 +294,27 @@ def get_session(request: Request) -> dict | None:
             return None
         if now - row["last_seen"] > 60:
             c.execute("UPDATE sessions SET last_seen = ? WHERE token_hash = ?", (now, th))
-        return dict(row)
+        s = dict(row)
+        s["readonly"] = s["role"] in READONLY_ROLES
+        return s
 
 
-def auth(request: Request, write: bool = False, admin: bool = False) -> dict:
+def can_write(user: dict, area: str | None = None) -> bool:
+    """Får användaren ändra i området (entitetens namn, t.ex. "speeches")?"""
+    return not user["readonly"] or (user["role"] == "toastmaster" and area in TOASTMASTER_AREAS)
+
+
+APP_PATH = re.compile(r"/(tm|plan)(/[A-Za-z0-9/_-]*)?")  # mobilapparna – tillbaka dit efter inloggning
+
+
+def auth(request: Request, write: bool = False, admin: bool = False, area: str | None = None) -> dict:
     s = get_session(request)
     if not s:
-        raise Redirect("/login")
+        path = request.url.path
+        raise Redirect(f"/login?next={path}" if APP_PATH.fullmatch(path) else "/login")
     if s["must_change_pw"] and request.url.path not in ("/account", "/account/password", "/logout"):
         raise Redirect("/account")
-    if (write and s["role"] == "viewer") or (admin and s["role"] != "admin"):
+    if (write and not can_write(s, area)) or (admin and s["role"] != "admin"):
         raise HTTPException(403)
     return s
 

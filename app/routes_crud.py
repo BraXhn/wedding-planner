@@ -8,7 +8,7 @@ from starlette.routing import Route
 
 from . import db as dbm
 from .core import (
-    SWISH_MSG_RE, auth, csrf_form, display, fill_task_deadlines, normalize_swish, get_settings, load_refs, log, move_task_deadlines, parse_date, parse_form,
+    SWISH_MSG_RE, auth, can_write, csrf_form, display, fill_task_deadlines, normalize_swish, get_settings, load_refs, log, move_task_deadlines, parse_date, parse_form,
     public_base, render, set_settings, sync_speech_from_guest, today,
 )
 from .entities import ENTITIES, SETTINGS_FIELDS
@@ -140,13 +140,13 @@ async def list_view(request: Request):
     if ent == "speeches":
         totals["minutes"] = sum((r["minutes"] or 0) for r in rows if r["status"] != "Struken")
     return render(request, "list.html", user, ent=ent, spec=spec, rows=rows, q=q, flt=flt, totals=totals,
-                  refs=load_refs(spec), can_write=user["role"] != "viewer", today=today().isoformat(), active=ent)
+                  refs=load_refs(spec), can_write=can_write(user, ent), today=today().isoformat(), active=ent)
 
 
 async def item_form(request: Request):
     ent, spec = get_spec(request)
     item_id = request.path_params.get("item_id")
-    user = auth(request, write=request.method == "POST")
+    user = auth(request, write=request.method == "POST", area=ent)
     refs = load_refs(spec)
     row, link = None, ""
     if item_id is not None:
@@ -155,7 +155,7 @@ async def item_form(request: Request):
         if ent == "guests":
             link = rsvp_link(request, row["rsvp_token"])
     qr = code = None
-    if user["role"] == "viewer":
+    if user["readonly"]:
         link = ""  # läsare (t.ex. toastmaster) ska inte kunna svara i gästernas namn
     elif ent == "guests" and row is not None and row["rsvp_code"]:
         from markupsafe import Markup
@@ -177,7 +177,7 @@ async def item_form(request: Request):
                                            (row["id"],)).fetchone()
     if request.method == "GET":
         vals = dict(row) if row else {f["name"]: f.get("default") for f in spec["fields"]}
-        return render(request, "form.html", user, vals=vals, can_write=user["role"] != "viewer", **ctx)
+        return render(request, "form.html", user, vals=vals, can_write=can_write(user, ent), **ctx)
 
     form = await csrf_form(request, user)
     vals, errors = parse_form(spec["fields"], form, refs)
@@ -228,7 +228,7 @@ def delete_cleanup(c, ent: str, item_id: int) -> None:
 
 async def item_delete(request: Request):
     ent, spec = get_spec(request)
-    user = auth(request, write=True)
+    user = auth(request, write=True, area=ent)
     await csrf_form(request, user)
     item_id = request.path_params["item_id"]
     with dbm.db() as c:
@@ -304,7 +304,7 @@ async def export_csv(request: Request):
         rows = c.execute(f"SELECT *{extra} FROM {ent} ORDER BY {spec['order']}").fetchall()
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";")
-    with_links = ent == "guests" and user["role"] != "viewer"  # läsare får inte gästernas OSA-länkar
+    with_links = ent == "guests" and not user["readonly"]  # läsare får inte gästernas OSA-länkar
     w.writerow([f["label"] for f in spec["fields"]] + [lab for _, lab, _ in spec["computed"]]
                + (["OSA-länk", "OSA-kod", "QR-länk"] if with_links else []))
     for r in rows:
@@ -326,7 +326,7 @@ async def settings_view(request: Request):
     user = auth(request, write=write)
     if not write:
         return render(request, "settings.html", user, fields=SETTINGS_FIELDS, vals=get_settings(),
-                      can_write=user["role"] != "viewer", active="settings")
+                      can_write=not user["readonly"], active="settings")
     form = await csrf_form(request, user)
     vals, errors = parse_form(SETTINGS_FIELDS, form)
     addrs, addr_err = parse_addresses(vals.get("notify_email") or "")

@@ -60,7 +60,7 @@
     <ul class="checklist">
       {% for task in upcoming %}
       <li>
-        {% if user.role != 'viewer' %}
+        {% if not user.readonly %}
         <form method="post" action="/m/tasks/{{ task.id }}/toggle" class="inline">
           <input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="next" value="/">
           <button class="check" title="Markera som klar" aria-label="Markera som klar"></button>

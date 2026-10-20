@@ -40,7 +40,7 @@ async def seating(request: Request):
     nums = [qp.get("placerade", ""), qp.get("kvar", "0")]
     result = tuple(int(x) for x in nums) if all(re.fullmatch(r"[0-9]{1,4}", x) for x in nums) else None
     return render(request, "seating.html", user, tables=tables, unseated=unseated, total_seats=total_seats, result=result,
-                  total_need=total_need, can_write=user["role"] != "viewer", active="seating",
+                  total_need=total_need, can_write=not user["readonly"], active="seating",
                   print_mode=request.query_params.get("print") == "1")
 
 
