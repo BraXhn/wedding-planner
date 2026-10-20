@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}{{ app.name }}{% endblock %}</title>
+<link rel="stylesheet" href="{{ asset('style.css') }}">
+<link rel="manifest" href="{{ asset(app.manifest) }}">
+<link rel="apple-touch-icon" href="{{ asset(app.icon) }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="{{ app.name }}">
+<meta name="theme-color" content="#2f4a3e">
+<script src="{{ asset('app.js') }}" defer></script>
+</head>
+<body class="appshell app-{{ app.key }}">
+<header class="app-head">
+  <span class="app-title">{% block heading %}{{ app.name }}{% endblock %}</span>
+  {% block headaction %}{% endblock %}
+</header>
+<main class="app-main">
+{% block content %}{% endblock %}
+<p class="app-foot muted small">Inloggad som {{ user.username }} · <a href="/">Hela planeraren</a></p>
+</main>
+<nav class="app-tabs" aria-label="Flikar">
+  {% for key, href, label, icon in app.tabs %}<a href="{{ href }}" class="{{ 'active' if tab == key }}" {% if tab == key %}aria-current="page"{% endif %}><span aria-hidden="true">{{ icon }}</span>{{ label }}</a>{% endfor %}
+</nav>
+</body>
+</html>

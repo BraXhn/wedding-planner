@@ -631,3 +631,61 @@ button.chip { font: inherit; font-size: .8rem; cursor: pointer; margin: 2px 0; }
 .song-list { padding-left: 1.6em; columns: 2 360px; column-gap: 40px; }
 .song-list li { margin: 0 0 10px; break-inside: avoid; }
 .song-list small { display: block; }
+
+/* Mobilapparna /tm och /plan – läggs på hemskärmen, flikrad nertill */
+body.appshell { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+.app-head { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; background: var(--accent); color: #fff;
+  padding: calc(10px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left)); }
+.app-title { font-family: var(--serif); font-size: 1.25rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-back { color: #fff; text-decoration: none; font-size: 1.6rem; line-height: 1; padding-right: 4px; }
+.app-headbtn { color: #fff; text-decoration: none; font-weight: 600; border: 1px solid rgba(255,255,255,.5); border-radius: 999px; padding: 4px 12px; }
+.app-main { max-width: 640px; margin: 0 auto; padding: 12px max(16px, env(safe-area-inset-left)) 24px; }
+.app-foot { text-align: center; margin-top: 32px; }
+.app-tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; background: var(--card); border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom); }
+.app-tabs a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 6px; font-size: .75rem; color: var(--muted); text-decoration: none; }
+.app-tabs a span { font-size: 1.3rem; line-height: 1; filter: grayscale(1); opacity: .6; }
+.app-tabs a.active { color: var(--accent); font-weight: 600; }
+.app-tabs a.active span { filter: none; opacity: 1; }
+.app-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 0 0 12px; }
+.app-card.now { border-color: var(--accent); }
+.app-big { font-family: var(--serif); font-size: 1.6rem; line-height: 1.2; margin: 0 0 4px; }
+.app-next { margin: 4px 0; }
+.app-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.app-actions form { display: contents; }
+.btn.big { padding: 14px 16px; font-size: 1.05rem; font-weight: 600; width: 100%; }
+.app-section { font-size: 1.05rem; margin: 18px 0 6px; }
+.app-section.late { color: var(--err); }
+.app-list { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.app-list > li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--line); min-height: 56px; }
+.app-list > li:first-child { border-top: 0; }
+.app-list > li.done .app-row b { text-decoration: line-through; color: var(--muted); }
+.app-list > li.current { background: var(--soft); }
+.app-list > li:target { background: var(--warn-bg); }
+.app-row { flex: 1; min-width: 0; display: flex; flex-direction: column; color: var(--ink); text-decoration: none; padding: 4px 0; }
+.app-row b { font-weight: 500; overflow-wrap: anywhere; }
+.app-time { font-variant-numeric: tabular-nums; min-width: 3.2em; }
+.app-check { margin: 0; }
+.app-check button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--accent); background: var(--card); color: #fff; font-size: 1rem; cursor: pointer; }
+.app-list li.done .app-check button { background: var(--accent); }
+.app-check button:disabled { opacity: .5; }
+.app-tools { display: flex; gap: 4px; align-items: center; }
+.app-tools form { display: flex; gap: 4px; margin: 0; }
+.app-icon { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-size: 1.05rem; cursor: pointer; }
+.app-icon:disabled { opacity: .3; }
+.program > li { flex-wrap: wrap; position: relative; padding-right: 60px; }
+.app-shift summary { position: absolute; top: 10px; right: 12px; list-style: none; cursor: pointer; width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 10px; font-weight: 600; }
+.app-shift summary::-webkit-details-marker { display: none; }
+.app-shift[open] { flex-basis: 100%; }
+.app-shift[open] summary { background: var(--soft); }
+.app-shift form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px 0 4px; margin-right: -48px; }
+.app-shift form span { grid-column: 1 / -1; }
+.app-shift .btn { padding: 10px 0; }
+.app-quick { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; margin-bottom: 8px; }
+.app-quick input[name=title] { width: 100%; font-size: 1.05rem; }
+.app-quick-more { display: flex; gap: 6px; margin-top: 8px; }
+.app-quick-more select, .app-quick-more input { flex: 1; min-width: 0; }
+.app-form { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.app-form input, .app-form select, .app-form textarea, .app-quick input, .app-quick select { font-size: 16px; } /* annars zoomar iOS */
+.app-delete { margin-top: 16px; text-align: center; }
+.appshell .speech-timer { top: calc(56px + env(safe-area-inset-top)); }

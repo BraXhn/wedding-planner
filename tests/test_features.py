@@ -434,6 +434,102 @@ ok(gA[1] in req(a, "/m/guests/export.csv")[2].decode("utf-8-sig"), "redigerare f
 ok(all(req(v, u)[0] == 403 for u in ("/m/guests/qr", "/m/guests/qr.zip", f"/m/guests/{gA[0]}/qr.svg")),
    "läsare når inte OSA-kort och QR-koder")
 
+# ---------------------------------------------------------------- mobilapparna /tm och /plan + rollen toastmaster
+req(a, "/users", {"csrf": c, "username": "tmaster", "password": "Mikrofon-och-Glas-1", "role": "toastmaster"})
+t = client(); r = req(t, "/login", {"username": "tmaster", "password": "Mikrofon-och-Glas-1"}); c3 = csrf(html(r))
+req(t, "/account/password", {"csrf": c3, "current": "Mikrofon-och-Glas-1", "new": "Talare-Skål-Tårta-77", "new2": "Talare-Skål-Tårta-77"})
+r = req(client(), "/tm/tal", follow=False)
+ok(r[0] == 303 and r[1]["location"] == "/login?next=/tm/tal", "appar: utloggad skickas till inloggning med väg tillbaka")
+r = req(client(), "/login?next=/tm/tal", {"username": "tmaster", "password": "Talare-Skål-Tårta-77", "next": "/tm/tal"}, follow=False)
+ok(r[0] == 303 and r[1]["location"] == "/tm/tal", "appar: inloggning går tillbaka till appen")
+r = req(client(), "/login", {"username": "tmaster", "password": "Talare-Skål-Tårta-77", "next": "https://evil.example/"}, follow=False)
+ok(r[0] == 303 and r[1]["location"] == "/", "appar: next till annan sajt ignoreras")
+h = html(req(t, "/tm"))
+ok("manifest-tm.json" in h and "icon-tm-180.png" in h and "apple-mobile-web-app-capable" in h, "toastmasterappen: egen hemskärmsikon och manifest")
+m = json.loads(req(client(), "/static/manifest-tm.json")[2]); m2 = json.loads(req(client(), "/static/manifest-plan.json")[2])
+ok(m["start_url"] == "/tm" and m["scope"] == "/tm" and m2["start_url"] == "/plan", "manifesten öppnar rätt app")
+ok(req(client(), m["icons"][0]["src"])[0] == 200 and req(client(), m2["icons"][1]["src"])[0] == 200, "appikonerna finns")
+req(t, "/tm/tal/ny", {"csrf": c3, "speaker": "Kusin <Vera>", "part": "Under förrätten", "order_no": "5", "minutes": "3", "status": "Bekräftad"})
+vera = q("SELECT id FROM speeches WHERE speaker='Kusin <Vera>'")
+ok(bool(vera), "toastmaster lägger till tal i appen"); vera = vera[0][0]
+req(t, "/tm/tal/ny", {"csrf": c3, "speaker": "Moster Ulla", "part": "Under förrätten", "order_no": "6", "minutes": "4", "status": "Bekräftad"})
+ulla = q("SELECT id FROM speeches WHERE speaker='Moster Ulla'")[0][0]
+h = html(req(t, "/tm/tal"))
+ok("Kusin &lt;Vera&gt;" in h and "<Vera>" not in h and 'data-timer-start="3"' in h, "taltlistan: escapas och har timer")
+req(t, f"/tm/tal/{ulla}/flytta", {"csrf": c3, "riktning": "upp"})
+o = dict(q("SELECT id, order_no FROM speeches WHERE id IN (?, ?)", vera, ulla))
+ok(o[ulla] < o[vera], "tal flyttas upp i ordningen")
+ok(req(t, f"/tm/tal/{ulla}/flytta", {"csrf": "fel", "riktning": "ner"})[0] == 403, "flytta tal kräver CSRF")
+r = req(t, f"/tm/tal/{vera}", {"csrf": c3, "speaker": "Kusin Vera", "part": "Under förrätten", "order_no": "5", "minutes": "abc", "status": "Bekräftad"})
+ok(r[0] == 400, "tal: felaktigt formulär ger 400")
+req(t, f"/tm/tal/{vera}", {"csrf": c3, "speaker": "Kusin Vera", "part": "Under förrätten", "order_no": "5", "minutes": "6", "status": "Bekräftad"})
+ok(q("SELECT speaker, minutes FROM speeches WHERE id=?", vera)[0][:] == ("Kusin Vera", 6), "toastmaster ändrar ett tal")
+h = html(req(t, "/tm"))
+ok("Nästa tal" in h and "✓ Hållet" in h, "Nu-fliken visar nästa tal")
+r = req(t, f"/tm/tal/{ulla}/hallen?fran=nu", {"csrf": c3}, follow=False)
+ok(r[0] == 303 and r[1]["location"] == "/tm" and q("SELECT status FROM speeches WHERE id=?", ulla)[0][0] == "Hållen", "tal bockas av från Nu-fliken")
+req(v, f"/tm/tal/{ulla}/hallen", {"csrf": c2})
+ok(q("SELECT status FROM speeches WHERE id=?", ulla)[0][0] == "Bekräftad", "läsare får också bocka av tal i appen")
+ok(req(v, f"/tm/tal/{ulla}", {"csrf": c2, "speaker": "x", "part": "Under förrätten", "minutes": "1", "status": "Bekräftad"})[0] == 403
+   and req(v, f"/tm/tal/{ulla}/flytta", {"csrf": c2, "riktning": "upp"})[0] == 403, "läsare kan inte ändra eller flytta tal")
+h = html(req(v, "/tm/tal")); ok("/flytta" not in h and "+ Nytt" not in h, "läsare ser inga ändringsknappar")
+# programmet
+_tl = [dict(x) for x in q("SELECT * FROM timeline")]
+DB.execute("DELETE FROM timeline"); DB.executemany("INSERT INTO timeline (time, title) VALUES (?, ?)",
+    [("15:00", "Vigsel"), ("18:00", "Middag"), ("23:50", "Tårta"), ("01:00", "Nattmacka")]); DB.commit()
+mid = q("SELECT id FROM timeline WHERE title='Middag'")[0][0]
+h = html(req(t, "/tm/program"))
+ok(h.index("Tårta") < h.index("Nattmacka") and "/tm/program/forskjut" in h, "programmet i appen: natten sist + flytta-knappar")
+req(t, "/tm/program/forskjut", {"csrf": c3, "fran": mid, "minuter": "15"})
+ok(dict(q("SELECT title, time FROM timeline")) == {"Vigsel": "15:00", "Middag": "18:15", "Tårta": "00:05", "Nattmacka": "01:15"},
+   "skjut programmet: punkten och allt efter flyttas, även över midnatt")
+req(t, "/tm/program/forskjut", {"csrf": c3, "fran": mid, "minuter": "-15"})
+ok(q("SELECT time FROM timeline WHERE title='Tårta'")[0][0] == "23:50", "och tillbaka igen")
+ok(req(t, "/tm/program/forskjut", {"csrf": c3, "fran": mid, "minuter": "999"})[0] == 400
+   and req(t, "/tm/program/forskjut", {"csrf": c3, "fran": "x", "minuter": "5"})[0] == 400
+   and req(t, "/tm/program/forskjut", {"csrf": c3, "fran": "999999", "minuter": "5"})[0] == 404, "skjut programmet: rimliga värden krävs")
+ok(req(v, "/tm/program/forskjut", {"csrf": c2, "fran": mid, "minuter": "5"})[0] == 403
+   and req(t, "/tm/program/forskjut", {"csrf": "fel", "fran": mid, "minuter": "5"})[0] == 403, "skjut programmet: roll och CSRF")
+req(t, "/plan/program/ny", {"csrf": c3, "time": "21:00", "title": "Första dansen"})
+dans = q("SELECT id FROM timeline WHERE title='Första dansen'")
+ok(bool(dans), "ny programpunkt från appen"); dans = dans[0][0]
+req(t, f"/plan/program/{dans}", {"csrf": c3, "time": "21:30", "title": "Första dansen"})
+ok(q("SELECT time FROM timeline WHERE id=?", dans)[0][0] == "21:30", "programpunkt ändras i appen")
+req(t, f"/plan/program/{dans}/ta-bort", {"csrf": c3})
+ok(not q("SELECT id FROM timeline WHERE id=?", dans), "programpunkt tas bort i appen")
+DB.execute("DELETE FROM timeline")  # tillbaka till körschemat som senare tester räknar med
+for x in _tl: DB.execute(f"INSERT INTO timeline ({', '.join(x)}) VALUES ({', '.join('?' * len(x))})", list(x.values()))
+DB.commit()
+# toastmastern når inget annat
+ok(req(t, "/m/guests/new", {"csrf": c3, "name": "X"})[0] == 403 and req(t, "/m/tasks/new", {"csrf": c3, "title": "X"})[0] == 403,
+   "toastmaster kan inte ändra gäster eller att göra")
+h = html(req(t, f"/m/guests/{gA[0]}"))
+ok("rsvplink" not in h and gA[1] not in h, "toastmaster ser inte OSA-länkar")
+ok(all(req(t, u)[0] == 403 for u in ("/m/guests/qr", "/users", "/backup")), "toastmaster når inte QR, användare eller kopior")
+ok(req(t, "/m/speeches/new", {"csrf": c3, "speaker": "Via listan", "part": "Under förrätten", "minutes": "2", "status": "Bekräftad"})[0] == 200
+   and bool(q("SELECT id FROM speeches WHERE speaker='Via listan'")), "toastmaster kan ändra tal även i vanliga listan")
+# planeringsappen
+r = req(t, "/plan/uppgift/ny", {"csrf": c3, "title": "Hack"}); ok(r[0] == 403, "toastmaster kan inte lägga till uppgifter")
+h = html(req(t, "/plan")); ok("/plan/uppgift/ny" not in h and "manifest-plan.json" in h, "planeringsappen: läsläge för toastmaster")
+req(a, "/plan/uppgift/ny", {"csrf": c, "title": "Köp <ringkuddar>", "due_date": "2026-01-01"})
+tid = q("SELECT id FROM tasks WHERE title='Köp <ringkuddar>'")[0][0]
+h = html(req(a, "/plan"))
+ok("Köp &lt;ringkuddar&gt;" in h and "Försenade" in h, "planering: snabbtillägg, escapas, försenade grupperas")
+req(a, "/plan/uppgift/ny", {"csrf": c, "title": "Utan datum", "period": "1–3 mån före"})
+ok(bool(q("SELECT due_date FROM tasks WHERE title='Utan datum'")[0][0]), "planering: deadline räknas ut när datum saknas")
+req(a, f"/plan/uppgift/{tid}/klar", {"csrf": c})
+ok(q("SELECT done FROM tasks WHERE id=?", tid)[0][0] == 1 and "Köp &lt;ringkuddar&gt;" in html(req(a, "/plan/klart")), "planering: bocka av")
+r = req(a, f"/plan/uppgift/{tid}/klar?fran=klart", {"csrf": c}, follow=False)
+ok(r[1]["location"].startswith("/plan/klart") and q("SELECT done FROM tasks WHERE id=?", tid)[0][0] == 0, "planering: ångra från Klart")
+req(a, f"/plan/uppgift/{tid}", {"csrf": c, "title": "Köp ringkuddar", "period": "1–3 mån före", "due_date": "2027-05-01", "assignee": "Louise"})
+ok(tuple(q("SELECT title, assignee FROM tasks WHERE id=?", tid)[0]) == ("Köp ringkuddar", "Louise"), "planering: ändra uppgift")
+ok(req(a, f"/plan/uppgift/{tid}/klar", {"csrf": "fel"})[0] == 403 and req(v, f"/plan/uppgift/{tid}/klar", {"csrf": c2})[0] == 403,
+   "planering: avbockning kräver CSRF och skrivbehörighet")
+ok(req(a, "/plan/uppgift/ny", {"csrf": c, "title": ""})[0] == 400, "planering: tom uppgift nekas")
+req(a, f"/plan/uppgift/{tid}/ta-bort", {"csrf": c})
+ok(not q("SELECT id FROM tasks WHERE id=?", tid), "planering: ta bort uppgift")
+ok(req(a, "/plan/uppgift/999999")[0] == 404 and req(a, "/tm/tal/999999")[0] == 404, "appar: okända poster ger 404")
+
 # ---------------------------------------------------------------- säkerhetskopior
 ok(req(v, "/backup")[0] == 403 and req(v, "/backup/now.db")[0] == 403, "läsare når inte säkerhetskopior")
 h = html(req(a, "/backup")); m = re.search(r'href="/backup/files/(wedding-[0-9-]+\.db)"', h)

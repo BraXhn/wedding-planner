@@ -1,0 +1,35 @@
+{% extends "app_base.html" %}
+{% block headaction %}{% if can_edit %}<a class="app-headbtn" href="/tm/tal/ny">+ Nytt</a>{% endif %}{% endblock %}
+{% block content %}
+<p class="muted small">{{ n_speeches }} tal · {{ total_minutes }} min{% if held %} · {{ held }} hållna{% endif %}</p>
+<p class="speech-timer" data-timer hidden><span data-timer-name></span> <b data-timer-left></b> <button type="button" class="btn" data-timer-stop>Stoppa</button></p>
+{% for p in parts %}
+<h2 class="app-section">{{ p.part }} <small class="muted">{{ p.minutes }} min</small></h2>
+<ul class="app-list">
+  {% for sp in p.speeches %}
+  <li id="tal{{ sp.id }}" class="{{ 'done' if sp.status == 'Hållen' }}">
+    <form method="post" action="/tm/tal/{{ sp.id }}/hallen" class="app-check"><input type="hidden" name="csrf" value="{{ user.csrf }}">
+      <button aria-label="{{ 'Ångra hållet' if sp.status == 'Hållen' else 'Markera som hållet' }}">{{ '✓' if sp.status == 'Hållen' else '' }}</button></form>
+    <a class="app-row" href="/tm/tal/{{ sp.id }}">
+      <b>{{ sp.speaker }}</b>
+      <small class="muted">{{ sp.minutes }} min{% if sp.topic %} · {{ sp.topic }}{% endif %}{% if sp.status == 'Anmäld' %} · ej bekräftat{% endif %}</small>
+    </a>
+    <span class="app-tools">
+      {% if sp.status != 'Hållen' %}<button type="button" class="app-icon" data-timer-start="{{ sp.minutes or 5 }}" data-timer-label="{{ sp.speaker }}" aria-label="Starta timer">⏱</button>{% endif %}
+      {% if can_edit %}
+      <form method="post" action="/tm/tal/{{ sp.id }}/flytta"><input type="hidden" name="csrf" value="{{ user.csrf }}">
+        <button class="app-icon" name="riktning" value="upp" aria-label="Flytta upp" {{ 'disabled' if loop.first }}>↑</button><button class="app-icon" name="riktning" value="ner" aria-label="Flytta ner" {{ 'disabled' if loop.last }}>↓</button></form>
+      {% endif %}
+    </span>
+  </li>
+  {% endfor %}
+</ul>
+{% if can_edit %}<p><a class="small" href="/tm/tal/ny?del={{ p.part|urlencode }}">+ Nytt tal {{ p.part|lower }}</a></p>{% endif %}
+{% else %}
+<p class="app-card muted">Inga tal anmälda ännu.{% if can_edit %} <a href="/tm/tal/ny">Lägg till det första</a>.{% endif %}</p>
+{% endfor %}
+{% if struck %}
+<h2 class="app-section">Strukna</h2>
+<ul class="app-list">{% for sp in struck %}<li class="done"><a class="app-row" href="/tm/tal/{{ sp.id }}"><b>{{ sp.speaker }}</b><small class="muted">Struken</small></a></li>{% endfor %}</ul>
+{% endif %}
+{% endblock %}

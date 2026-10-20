@@ -19,6 +19,7 @@ Starlette (inte FastAPI) + Jinja2 + SQLite. Kryptot (scrypt, TOTP, tokens) bygge
 - `app/qr.py` – egen QR-generator. `qr_svg()` ger en vanlig kod (admin, nedladdning); `qr_svg_fancy()` ritar dekorativa moduler, hörn och ett motiv i mitten med `currentColor` och felkorrigering H när motiv finns. Ändras ritningen: provläs alla stilar × motiv med en avkodare (t.ex. zxing-cpp utanför repot) innan merge.
 - `app/scheduler.py` – bakgrundstråd som en gång i timmen kör daglig säkerhetskopia (`backup.py`), veckobrevet (`digest.py`) och tidskapseln (`capsule.py`). Ett fel i ett jobb får aldrig stoppa de andra.
 - `app/questions.py` – egna OSA-frågor (entitet `questions`, svar i `answers`); `app/seating_plan.py` – förslag på bordsplacering; `app/routes_import.py` – import av gästlistan.
+- `app/routes_apps.py` – mobilapparna `/tm` (toastmaster) och `/plan` (planering) med egna manifest/ikoner och mallar `app_*.html` (`app_base.html` är ett eget skal utan huvudmenyn). Inloggningen skickar tillbaka till `next` bara om den matchar `APP_PATH`.
 - `app/backup.py` – daglig SQLite-kopia i `DATA_DIR/backups` (bakgrundstråd som startas i `lifespan`).
 - `app/routes_*.py` – en modul per område; registreras i `app/main.py` (ordningen spelar roll där specifika sökvägar krockar med `/m/{ent}/...`).
 - `app/templates/`, `app/static/app.js`, `app/static/style.css` – all JS och CSS ligger i filerna (CSP tillåter inget inline).
@@ -27,7 +28,7 @@ Starlette (inte FastAPI) + Jinja2 + SQLite. Kryptot (scrypt, TOTP, tokens) bygge
 
 Appen ligger ute på internet; varje ändring håller dessa:
 
-- Inloggade vyer anropar `auth(request, write=…, admin=…)`; roller: admin, editor, viewer. Läsare får aldrig se gästernas OSA-länkar, koder eller QR (de ger skrivrätt till gästens svar). Enda skrivundantaget för läsare: bocka av tal som hållna på `/dagen` (toastmastern har oftast en läsarinloggning).
+- Inloggade vyer anropar `auth(request, write=…, admin=…, area=…)`; roller: admin, editor, toastmaster, viewer. Toastmaster är läsare (`user["readonly"]`) som får skriva i områdena `TOASTMASTER_AREAS` (tal, körschema) – skrivande vyer anger därför `area`. Läsare och toastmaster får aldrig se gästernas OSA-länkar, koder eller QR (de ger skrivrätt till gästens svar); kontrollera `user["readonly"]`, inte rollnamnet. Enda skrivundantaget för läsare: bocka av tal som hållna (`/dagen`, `/tm`).
 - Varje POST verifierar CSRF: `csrf_form()` för formulär, `csrf_header()` för `fetch()`-anrop med JSON.
 - Publika token-sidor (`/r/`, `/p/`, `/o/`, `/osa`, `/cal/`, `/api/`) anropar `public_rate_limit()` eller en egen `RateLimiter`, validerar token/nyckel mot ett strikt mönster (`TOKEN_RE`, `KEY_RE`, `normalize_code`) och svarar 404/401 utan att avslöja om den finns.
 - SQL är parametriserad; tabell- och kolumnnamn kommer bara från `ENTITIES` (vitlista).
