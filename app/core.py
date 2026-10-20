@@ -413,6 +413,16 @@ def move_task_deadlines(old: dt.date, new: dt.date) -> int:
     return n
 
 
+def speech_token(c, sid: int) -> str:
+    """Talarens länk (/t/…). Skapas första gången den behövs – tal som lagts till via listan saknar den."""
+    row = c.execute("SELECT token FROM speeches WHERE id = ?", (sid,)).fetchone()
+    if row["token"]:
+        return row["token"]
+    tok = new_token(24)
+    c.execute("UPDATE speeches SET token = ? WHERE id = ?", (tok, sid))
+    return tok
+
+
 def sync_speech_from_guest(c, guest_id: int) -> None:
     """Gäst som anmält tal via OSA → rad i talarlistan (och tvärtom stryks om de ångrar sig)."""
     g = c.execute("SELECT id, name, speech, rsvp FROM guests WHERE id = ?", (guest_id,)).fetchone()
@@ -421,8 +431,8 @@ def sync_speech_from_guest(c, guest_id: int) -> None:
     existing = c.execute("SELECT id, status FROM speeches WHERE guest_id = ?", (guest_id,)).fetchone()
     wants = bool(g["speech"]) and g["rsvp"] != "no"
     if wants and not existing:
-        c.execute("INSERT INTO speeches (speaker, guest_id, part, order_no, minutes, status) "
-                  "VALUES (?, ?, 'Under varmrätten', 0, 5, 'Anmäld')", (g["name"], guest_id))
+        c.execute("INSERT INTO speeches (speaker, guest_id, part, order_no, minutes, status, token) "
+                  "VALUES (?, ?, 'Under varmrätten', 0, 5, 'Anmäld', ?)", (g["name"], guest_id, new_token(24)))
     elif wants and existing and existing["status"] == "Struken":
         c.execute("UPDATE speeches SET status = 'Anmäld' WHERE id = ?", (existing["id"],))
     elif not wants and existing and existing["status"] == "Anmäld":

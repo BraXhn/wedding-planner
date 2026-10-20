@@ -1,0 +1,20 @@
+{% extends "guest_base.html" %}
+{% block portal %}
+<div class="card narrow">
+  <h2>Hej {{ sp.speaker }}!</h2>
+  <p>Du håller tal <strong>{{ sp.part|lower }}</strong>{% if total > 1 %}, som nummer {{ place }} av {{ total }}{% endif %}.
+    {% if sp.status == 'Anmäld' %}Toastmastern har inte bekräftat ordningen än.{% endif %}</p>
+  {% if saved %}<p class="alert ok">Tack! Toastmastern ser ändringen direkt.</p>{% endif %}
+  {% if errors %}<div class="alert error"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+  {% if locked %}<p class="alert ok">Ditt tal är markerat som hållet – tack!</p>
+  {% else %}
+  <form method="post">
+    <label class="field"><span>Vad handlar talet om, och vem är du för brudparet?</span><input name="topic" maxlength="200" value="{{ sp.topic or '' }}" placeholder="t.ex. Brudens bror – minnen från uppväxten"></label>
+    <label class="field"><span>Ungefär hur många minuter?</span><input type="number" name="minutes" min="1" max="{{ max_minutes }}" value="{{ sp.minutes or 5 }}" required>
+      <small>Tre till fem minuter brukar vara lagom.</small></label>
+    <label class="field"><span>Behöver du något?</span><textarea name="notes" rows="3" maxlength="2000" placeholder="Mikrofon, projektor, musik, en sång alla sjunger …">{{ sp.notes or '' }}</textarea></label>
+    <button class="btn primary wide">Spara</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

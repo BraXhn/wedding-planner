@@ -6,21 +6,28 @@
 Samma data och behörigheter som resten av appen: tal och program får ändras av admin, redigerare och
 toastmaster; att göra-listan av admin och redigerare. Alla inloggade får bocka av tal som hållna."""
 import datetime as dt
+import json
 
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from starlette.routing import Route
 
 from . import db as dbm
-from .core import auth, can_write, csrf_form, fill_task_deadlines, log, parse_date, parse_form, render, today
-from .entities import ENTITIES, NIGHT_CUTOFF, PERIODS, SPEECH_PARTS, TIMELINE_ORDER
+from . import push
+from .core import (BASE, auth, can_write, csrf_form, csrf_header, fill_task_deadlines, get_settings, log, parse_form,
+                   public_base, render, speech_token, today)
+from .entities import CATEGORIES, ENTITIES, NIGHT_CUTOFF, PACK_CATEGORIES, PERIODS, SPEECH_PARTS, TIMELINE_ORDER
+from .people import coming_people
+from .receipts import receipt_path, save_receipt
 from .routes_day import day_context, toggle_held
+from .weather import forecast
 
 TM = {"key": "tm", "name": "Toastmaster", "manifest": "manifest-tm.json", "icon": "icon-tm-180.png",
       "tabs": [("nu", "/tm", "Nu", "⏱"), ("tal", "/tm/tal", "Tal", "🎤"), ("program", "/tm/program", "Program", "🗓")]}
 PLAN = {"key": "plan", "name": "Planering", "manifest": "manifest-plan.json", "icon": "icon-plan-180.png",
-        "tabs": [("todo", "/plan", "Att göra", "✓"), ("program", "/plan/program", "Program", "🗓"),
+        "tabs": [("todo", "/plan", "Att göra", "✓"), ("packa", "/plan/packa", "Packa", "🧳"),
+                 ("utgift", "/plan/utgifter", "Utgifter", "🧾"), ("program", "/plan/program", "Program", "🗓"),
                  ("klart", "/plan/klart", "Klart", "☑")]}
 APPS = {"tm": TM, "plan": PLAN}
 SPEECH_FIELDS = [f for f in ENTITIES["speeches"]["fields"] if f["name"] != "guest_id"]
@@ -33,13 +40,13 @@ def _app(request: Request) -> dict:
 
 
 def _render(request: Request, name: str, user, tab: str, **ctx):
-    return render(request, name, user, app=_app(request), tab=tab, public_page=True, **ctx)
+    return render(request, name, user, app=_app(request), tab=tab, public_page=True, push_key=push.public_key(), **ctx)
 
 
 # ======================================================================= Toastmaster: nu
 async def tm_now(request: Request):
     user = auth(request)
-    return _render(request, "app_tm_now.html", user, "nu", **day_context(request))
+    return _render(request, "app_tm_now.html", user, "nu", weather=forecast(), **day_context(request))
 
 
 # ======================================================================= Toastmaster: tal
@@ -106,10 +113,28 @@ async def tm_speech_form(request: Request):
                                         list(vals.values())).lastrowid
             log.info("speech_saved id=%s by=%s app=tm", item_id, user["username"])
             return RedirectResponse(f"/tm/tal#tal{item_id}", 303)
+    link = None
+    if row and can_write(user, "speeches") and row["status"] != "Struken":  # länken ger skrivrätt till talet
+        with dbm.db() as c:
+            link = f"{public_base(request)}/t/{speech_token(c, item_id)}"
     return _render(request, "app_form.html", user, "tal", status=400 if errors else 200, fields=SPEECH_FIELDS, vals=vals,
                    errors=errors, title=row["speaker"] if row else "Nytt tal", back="/tm/tal",
-                   can_edit=can_write(user, "speeches"),
+                   can_edit=can_write(user, "speeches"), share_link=link,
+                   share_help="Skicka länken till talaren – där kan hen själv ändra ämne, längd och önskemål." if link else None,
                    hint="Stryk ett tal genom att sätta status till Struken – det går att ångra." if row else None)
+
+
+# ======================================================================= Toastmaster: pärm att skriva ut
+async def tm_binder(request: Request):
+    user = auth(request)
+    from .routes_reports import _by_table
+    ctx = day_context(request)
+    with dbm.db() as c:
+        vendors = c.execute("SELECT name, category, contact, phone, email FROM vendors WHERE status = 'Bokad' "
+                            "ORDER BY category, name COLLATE NOCASE").fetchall()
+        tables = _by_table(coming_people(c))
+    return render(request, "app_binder.html", user, public_page=True, vendors=vendors, tables=tables,
+                  printed=dt.datetime.now(), **ctx)
 
 
 # ======================================================================= program (båda apparna)
@@ -283,6 +308,149 @@ async def plan_task_delete(request: Request):
     return RedirectResponse("/plan", 303)
 
 
+# ======================================================================= Planering: packlista
+async def plan_packing(request: Request):
+    user = auth(request)
+    with dbm.db() as c:
+        rows = c.execute(f"SELECT * FROM packing ORDER BY {ENTITIES['packing']['order']}").fetchall()
+    groups = [(cat, [r for r in rows if r["category"] == cat]) for cat in PACK_CATEGORIES]
+    other = [r for r in rows if r["category"] not in PACK_CATEGORIES]
+    groups = [(cat, items) for cat, items in groups + [("Övrigt", other)] if items]
+    return _render(request, "app_packing.html", user, "packa", groups=groups, categories=PACK_CATEGORIES,
+                   left=sum(not r["done"] for r in rows), total=len(rows), can_edit=can_write(user, "packing"))
+
+
+async def plan_pack_add(request: Request):
+    user = auth(request, write=True, area="packing")
+    form = await csrf_form(request, user)
+    vals, errors = parse_form(ENTITIES["packing"]["fields"], {"title": form.get("title", ""), "category": form.get("category", "")})
+    if errors:
+        raise HTTPException(400, " ".join(errors))
+    with dbm.db() as c:
+        c.execute(f"INSERT INTO packing ({', '.join(vals)}) VALUES ({', '.join('?' * len(vals))})", list(vals.values()))
+    return RedirectResponse("/plan/packa", 303)
+
+
+async def plan_pack_toggle(request: Request):
+    user = auth(request, write=True, area="packing")
+    await csrf_form(request, user)
+    pid = request.path_params["item_id"]
+    with dbm.db() as c:
+        if not c.execute("UPDATE packing SET done = 1 - COALESCE(done, 0) WHERE id = ?", (pid,)).rowcount:
+            raise HTTPException(404)
+    return RedirectResponse(f"/plan/packa#k{pid}", 303)
+
+
+# ======================================================================= Planering: utgifter med kvitto
+async def plan_expenses(request: Request):
+    user = auth(request)
+    errors, vals = [], {"category": "Övrigt", "paid": 1}
+    if request.method == "POST":
+        user = auth(request, write=True, area="budget")
+        form = await request.form(max_files=1, max_fields=10, max_part_size=16 * 1024)
+        await csrf_form(request, user, form)
+        vals, errors = parse_form(ENTITIES["budget"]["fields"], {
+            "item": form.get("item", ""), "category": form.get("category", ""), "actual": form.get("actual", ""),
+            "paid": form.get("paid", ""), "notes": form.get("notes", "")})
+        if not errors and not vals.get("actual"):
+            errors.append("Ange beloppet.")
+        receipt = None
+        if not errors:
+            receipt, err = await save_receipt(form.get("receipt"))
+            if err:
+                errors.append(err)
+        if not errors:
+            vals["receipt"] = receipt
+            with dbm.db() as c:
+                c.execute(f"INSERT INTO budget ({', '.join(vals)}) VALUES ({', '.join('?' * len(vals))})", list(vals.values()))
+            log.info("expense_added by=%s receipt=%s app=plan", user["username"], bool(receipt))
+            return RedirectResponse("/plan/utgifter?ok=1", 303)
+    with dbm.db() as c:
+        recent = c.execute("SELECT id, item, category, actual, paid, receipt, created_at FROM budget "
+                           "WHERE COALESCE(actual, 0) <> 0 ORDER BY id DESC LIMIT 30").fetchall()
+        spent = c.execute("SELECT COALESCE(SUM(actual), 0) FROM budget").fetchone()[0]
+    return _render(request, "app_expenses.html", user, "utgift", status=400 if errors else 200, errors=errors, vals=vals,
+                   recent=recent, spent=spent, total=get_settings().get("total_budget"), categories=CATEGORIES,
+                   can_edit=can_write(user, "budget"), saved=request.query_params.get("ok") == "1")
+
+
+async def plan_receipt(request: Request):
+    auth(request)
+    with dbm.db() as c:
+        row = c.execute("SELECT receipt FROM budget WHERE id = ?", (request.path_params["item_id"],)).fetchone()
+    path = receipt_path(row["receipt"] if row else None, thumb=request.query_params.get("liten") == "1")
+    if not path:
+        raise HTTPException(404)
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+
+
+# ======================================================================= Planering: kalender
+async def plan_calendar(request: Request):
+    """Prenumerera på deadlines och räkningar i telefonens kalender (samma länk som under Konto)."""
+    user = auth(request)
+    url = None
+    if request.method == "POST":
+        await csrf_form(request, user)
+        from .routes_account import create_ics_token
+        token = create_ics_token(user)
+        url = f"{public_base(request)}/cal/{token}.ics"
+    return _render(request, "app_calendar.html", user, "todo", ics_url=url,
+                   webcal=url.replace("https://", "webcal://").replace("http://", "webcal://") if url else None)
+
+
+# ======================================================================= push och service worker
+SW_JS = (BASE / "static" / "sw.js")
+
+
+async def service_worker(request: Request):
+    """Service workern måste ligga under /tm resp. /plan för att få styra appen (scope)."""
+    return Response(SW_JS.read_bytes(), media_type="text/javascript",
+                    headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": f"/{_app(request)['key']}"})
+
+
+async def push_subscribe(request: Request):
+    user = auth(request)
+    csrf_header(request, user)
+    app = _app(request)["key"]
+    try:
+        body = json.loads(await request.body())
+        endpoint, keys = str(body["endpoint"]), body["keys"]
+        p256dh, secret = str(keys["p256dh"]), str(keys["auth"])
+        if len(push.b64u_dec(p256dh)) != 65 or len(push.b64u_dec(secret)) != 16:
+            raise ValueError
+    except (ValueError, KeyError, TypeError):
+        raise HTTPException(400)
+    if not push.endpoint_ok(endpoint):
+        log.warning("push_endpoint_rejected user=%s", user["username"])
+        raise HTTPException(400, "Okänd push-tjänst.")
+    with dbm.db() as c:
+        c.execute("DELETE FROM push_subs WHERE endpoint = ?", (endpoint,))
+        c.execute("INSERT INTO push_subs (user_id, app, endpoint, p256dh, auth) VALUES (?, ?, ?, ?, ?)",
+                  (user["user_id"], app, endpoint, p256dh, secret))
+    log.info("push_subscribed user=%s app=%s", user["username"], app)
+    return JSONResponse({"ok": True})
+
+
+async def push_unsubscribe(request: Request):
+    user = auth(request)
+    csrf_header(request, user)
+    try:
+        endpoint = str(json.loads(await request.body())["endpoint"])
+    except (ValueError, KeyError, TypeError):
+        raise HTTPException(400)
+    with dbm.db() as c:
+        c.execute("DELETE FROM push_subs WHERE endpoint = ? AND user_id = ?", (endpoint, user["user_id"]))
+    return JSONResponse({"ok": True})
+
+
+async def push_test(request: Request):
+    user = auth(request)
+    csrf_header(request, user)
+    app = _app(request)
+    push.send(app["key"], app["name"], "Aviseringarna fungerar 🎉", f"/{app['key']}", user_id=user["user_id"])
+    return JSONResponse({"ok": True})
+
+
 routes = [
     Route("/tm", tm_now),
     Route("/tm/tal", tm_speeches),
@@ -290,12 +458,19 @@ routes = [
     Route("/tm/tal/{item_id:id}", tm_speech_form, methods=["GET", "POST"]),
     Route("/tm/tal/{item_id:id}/hallen", tm_speech_held, methods=["POST"]),
     Route("/tm/tal/{item_id:id}/flytta", tm_speech_move, methods=["POST"]),
+    Route("/tm/parm", tm_binder),
     Route("/plan", plan_tasks),
     Route("/plan/klart", plan_done),
     Route("/plan/uppgift/ny", plan_task_quick, methods=["POST"]),
     Route("/plan/uppgift/{item_id:id}", plan_task_form, methods=["GET", "POST"]),
     Route("/plan/uppgift/{item_id:id}/klar", plan_task_toggle, methods=["POST"]),
     Route("/plan/uppgift/{item_id:id}/ta-bort", plan_task_delete, methods=["POST"]),
+    Route("/plan/packa", plan_packing),
+    Route("/plan/packa/ny", plan_pack_add, methods=["POST"]),
+    Route("/plan/packa/{item_id:id}", plan_pack_toggle, methods=["POST"]),
+    Route("/plan/utgifter", plan_expenses, methods=["GET", "POST"]),
+    Route("/plan/kvitto/{item_id:id}", plan_receipt),
+    Route("/plan/kalender", plan_calendar, methods=["GET", "POST"]),
 ]
 for _p in ("tm", "plan"):
     routes += [
@@ -304,4 +479,8 @@ for _p in ("tm", "plan"):
         Route(f"/{_p}/program/forskjut", programme_shift, methods=["POST"]),
         Route(f"/{_p}/program/{{item_id:id}}", programme_form, methods=["GET", "POST"]),
         Route(f"/{_p}/program/{{item_id:id}}/ta-bort", programme_delete, methods=["POST"]),
+        Route(f"/{_p}/sw.js", service_worker),
+        Route(f"/{_p}/push", push_subscribe, methods=["POST"]),
+        Route(f"/{_p}/push/av", push_unsubscribe, methods=["POST"]),
+        Route(f"/{_p}/push/test", push_test, methods=["POST"]),
     ]

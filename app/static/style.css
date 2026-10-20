@@ -627,7 +627,10 @@ button.chip { font: inherit; font-size: .8rem; cursor: pointer; margin: 2px 0; }
                 padding: 10px 14px; border-radius: 12px; margin: 0 0 12px; }
 .speech-timer[hidden] { display: none; }
 .speech-timer b { font-size: 1.6rem; font-variant-numeric: tabular-nums; margin-left: auto; }
-.speech-timer.over { background: var(--err); }
+.speech-timer.warn { background: #c98a12; }
+.speech-timer.over { background: var(--err); animation: timer-flash 1s steps(2, start) infinite; }
+@keyframes timer-flash { 50% { background: #e2574f; } }
+@media (prefers-reduced-motion: reduce) { .speech-timer.over { animation: none; } }
 .song-list { padding-left: 1.6em; columns: 2 360px; column-gap: 40px; }
 .song-list li { margin: 0 0 10px; break-inside: avoid; }
 .song-list small { display: block; }
@@ -689,3 +692,51 @@ body.appshell { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .app-form input, .app-form select, .app-form textarea, .app-quick input, .app-quick select { font-size: 16px; } /* annars zoomar iOS */
 .app-delete { margin-top: 16px; text-align: center; }
 .appshell .speech-timer { top: calc(56px + env(safe-area-inset-top)); }
+.ride-row { border-bottom: 1px solid var(--line); padding: 6px 0 10px; }
+.ride-row p { margin: 0 0 6px; }
+.inline-form { display: flex; gap: 8px; }
+.inline-form select { flex: 1; min-width: 0; }
+.portal-extras .card { margin-bottom: 12px; }
+.weather { display: flex; gap: 14px; align-items: center; }
+.weather p { margin: 0; }
+.weather-icon { font-size: 2.4rem; line-height: 1; }
+
+/* apparna: mörkt läge (följer telefonen, eller ◐ i huvudet) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .appshell {
+    --bg: #141a17; --card: #1d2420; --ink: #e8ece9; --muted: #9aa69f; --line: #2e3833; --soft: #233029;
+    --accent: #6fa08a; --accent-ink: #0f1512; --gold: #d1b07a; --warn-bg: #3a2f17; --err-bg: #3a1f1d; --ok-bg: #1d3326;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] .appshell {
+  --bg: #141a17; --card: #1d2420; --ink: #e8ece9; --muted: #9aa69f; --line: #2e3833; --soft: #233029;
+  --accent: #6fa08a; --accent-ink: #0f1512; --gold: #d1b07a; --warn-bg: #3a2f17; --err-bg: #3a1f1d; --ok-bg: #1d3326;
+  color-scheme: dark;
+}
+.appshell input, .appshell select, .appshell textarea { background: var(--card); color: var(--ink); border-color: var(--line); }
+.appshell .app-head { background: #2f4a3e; }
+.app-theme { background: none; border: 0; color: #fff; font-size: 1.3rem; padding: 4px; cursor: pointer; }
+.app-offline { position: sticky; top: calc(52px + env(safe-area-inset-top)); z-index: 19; margin: 0; padding: 8px 16px; background: var(--warn-bg); color: var(--warn); font-size: .85rem; text-align: center; }
+.app-offline[hidden] { display: none; }
+.app-foot p { margin: 0 0 10px; }
+.app-push[hidden], .app-push-ios[hidden], [data-push-state][hidden], [data-push-on][hidden] { display: none; }
+.app-intro { background: var(--soft); border-radius: 10px; padding: 10px 12px; margin: 8px 0; font-size: 1.05rem; }
+.app-intro-short { color: var(--muted); font-style: italic; }
+.app-thumb { width: 44px; height: 44px; border-radius: 8px; overflow: hidden; flex: none; display: grid; place-items: center; background: var(--soft); }
+.app-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.app-amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.app-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* toastmasterns pärm */
+.binder-sec { break-inside: avoid-page; margin: 0 0 28px; }
+.binder-table { width: 100%; border-collapse: collapse; }
+.binder-table th, .binder-table td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.binder-table th { width: 7em; font-variant-numeric: tabular-nums; }
+.binder-speeches li { margin: 0 0 12px; break-inside: avoid; }
+.binder-speeches p { margin: 4px 0; }
+.binder-box { display: block; font-size: .85rem; color: var(--muted); }
+.binder-tables { columns: 2 260px; column-gap: 32px; }
+.binder-tables > div { break-inside: avoid; }
+.binder-tables h3 { margin: 10px 0 2px; }
+@media print { body.binder { background: #fff; font-size: 11pt; } .binder h2 { border-bottom: 1px solid #999; } }

@@ -50,6 +50,15 @@
       {% endfor %}
     </fieldset>
     {% endif %}
+    {% if settings.rideshare_enabled == '1' %}
+    <fieldset class="people" data-yes-only>
+      <legend>Samåkning</legend>
+      <p class="muted small">Vi försöker para ihop den som har plats i bilen med den som behöver skjuts.</p>
+      <label class="field"><span>Bil</span><select name="ride">{% for v, lab in ride_options %}<option value="{{ v }}" {{ 'selected' if (guest.ride or '') == v }}>{{ lab if v else 'Nej tack / ordnar själva' }}</option>{% endfor %}</select></label>
+      <label class="field"><span>Lediga platser (om ni har plats)</span><input type="number" name="ride_seats" min="0" max="8" value="{{ guest.ride_seats or 0 }}"></label>
+      <label class="field"><span>Ni åker från</span><input name="ride_from" maxlength="80" value="{{ guest.ride_from or '' }}" placeholder="t.ex. Uppsala"></label>
+    </fieldset>
+    {% endif %}
     <label class="field checkbox"><span>Jag/vi vill hålla tal eller göra ett framträdande<small>Toastmaster hör av sig om tid och ordning.</small></span><input type="checkbox" name="speech" {{ 'checked' if guest.speech }}></label>
     <label class="field"><span>Låten som får dig upp på dansgolvet</span><input name="song" maxlength="200" value="{{ guest.song or '' }}"></label>
     <label class="field"><span>Hälsning till brudparet</span><textarea name="message" rows="3" maxlength="2000">{{ guest.message or '' }}</textarea></label>

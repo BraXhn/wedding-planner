@@ -1,4 +1,4 @@
-import email.policy, re, sys, io, json, time, uuid, sqlite3, urllib.request, urllib.parse, http.cookiejar
+import base64, os, email.policy, re, sys, io, json, time, uuid, sqlite3, urllib.request, urllib.parse, http.cookiejar
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
 from app.security import format_code, totp_now
 from PIL import Image
@@ -529,6 +529,137 @@ ok(req(a, "/plan/uppgift/ny", {"csrf": c, "title": ""})[0] == 400, "planering: t
 req(a, f"/plan/uppgift/{tid}/ta-bort", {"csrf": c})
 ok(not q("SELECT id FROM tasks WHERE id=?", tid), "planering: ta bort uppgift")
 ok(req(a, "/plan/uppgift/999999")[0] == 404 and req(a, "/tm/tal/999999")[0] == 404, "appar: okända poster ger 404")
+
+# ---------------------------------------------------------------- talarens länk, fusklapp, pärm
+req(t, f"/tm/tal/{vera}", {"csrf": c3, "speaker": "Kusin Vera", "part": "Under förrätten", "order_no": "5", "minutes": "6",
+                          "status": "Bekräftad", "pronunciation": "Ve-ra", "intro": "Brudens kusin <3 – sommarlov på Öland"})
+h = html(req(t, f"/tm/tal/{vera}")); m = re.search(r'id="sharelink" value="[^"]*/t/([A-Za-z0-9_-]+)"', h)
+ok(m is not None and q("SELECT token FROM speeches WHERE id=?", vera)[0][0] == m.group(1), "talarens länk visas för toastmastern")
+vtok = m.group(1)
+ok("sharelink" not in html(req(v, f"/tm/tal/{vera}")), "läsare ser inte talarens länk")
+h = html(req(client(), f"/t/{vtok}"))
+ok("Kusin Vera" in h and "under förrätten" in h and "nummer" in h, "talarens sida: när och i vilken ordning")
+r = req(client(), f"/t/{vtok}", {"topic": "Minnen <från> Öland", "minutes": "4", "notes": "Mikrofon"})
+ok(r[0] == 200 and tuple(q("SELECT topic, minutes, notes, status FROM speeches WHERE id=?", vera)[0]) == ("Minnen <från> Öland", 4, "Mikrofon", "Bekräftad"),
+   "talaren ändrar ämne, längd och önskemål – men inte status")
+ok("Minnen &lt;från&gt; Öland" in html(req(client(), f"/t/{vtok}")), "talarens sida escapas")
+ok(req(client(), f"/t/{vtok}", {"topic": "x", "minutes": "45"})[0] == 400, "talaren kan inte boka 45 minuter")
+ok(req(client(), "/t/" + "A" * 32)[0] == 404 and req(client(), "/t/kort")[0] == 404, "okänd talarlänk → 404")
+h = html(req(t, "/tm/tal")); ok("Uttalas: Ve-ra" in h and "&lt;3" in h, "fusklapp och uttal i tallistan (escapat)")
+DB.execute("UPDATE speeches SET status='Hållen' WHERE status NOT IN ('Struken','Hållen') AND id <> ?", (vera,)); DB.commit()
+h = html(req(t, "/tm")); ok("Uttalas: <b>Ve-ra</b>" in h and "sommarlov på Öland" in h, "Nu-fliken visar fusklappen för nästa tal")
+DB.execute("UPDATE speeches SET status='Bekräftad' WHERE status='Hållen'"); DB.commit()
+h = html(req(v, "/tm/parm"))
+ok(r_ := ("Toastmasterns pärm" in h and "Kusin Vera" in h and "Ve-ra" in h and "Placering" in h and "Kontakter" in h), "pärmen: program, tal, kontakter, placering")
+ok(gA[1] not in h and "rsvp" not in h, "pärmen visar inga OSA-länkar")
+ok(req(client(), "/tm/parm", follow=False)[0] == 303, "pärmen kräver inloggning")
+DB.execute("UPDATE speeches SET status='Struken' WHERE id=?", (vera,)); DB.commit()
+ok(req(client(), f"/t/{vtok}")[0] == 404, "struket tal: talarlänken slutar fungera")
+DB.execute("UPDATE speeches SET status='Bekräftad' WHERE id=?", (vera,)); DB.commit()
+
+# ---------------------------------------------------------------- apparna: tema, offline, service worker, push
+h = html(req(t, "/tm"))
+ok("theme.js" in h and "data-theme-toggle" in h and "data-offline-banner" in h and 'data-sw="/tm/sw.js"' in h, "appen: mörkt läge, offline-rad och service worker")
+ok("data-offline-toggle" in h or "Alla tal" in h, "appen: avbockning kan köas offline")
+r = req(t, "/tm/sw.js")
+ok(r[0] == 200 and "javascript" in r[1]["Content-Type"] and r[1]["Service-Worker-Allowed"] == "/tm" and b"showNotification" in r[2],
+   "service worker serveras under /tm med rätt scope")
+ok(req(t, "/plan/sw.js")[1]["Service-Worker-Allowed"] == "/plan", "service worker för planeringsappen")
+key = re.search(r'data-key="([A-Za-z0-9_-]+)"', h).group(1)
+ok(len(base64.urlsafe_b64decode(key + "==")) == 65, "push: publik VAPID-nyckel i appen")
+import base64 as _b64
+from cryptography.hazmat.primitives.asymmetric import ec as _ec
+from cryptography.hazmat.primitives import serialization as _ser
+_k = _ec.generate_private_key(_ec.SECP256R1()).public_key().public_bytes(_ser.Encoding.X962, _ser.PublicFormat.UncompressedPoint)
+SUB = {"endpoint": "https://web.push.apple.com/QTEST", "keys": {"p256dh": _b64.urlsafe_b64encode(_k).decode().rstrip("="),
+       "auth": _b64.urlsafe_b64encode(b"0123456789abcdef").decode().rstrip("=")}}
+JT = {"Content-Type": "application/json", "X-CSRF-Token": c3}
+ok(req(t, "/tm/push", raw=json.dumps(SUB).encode(), headers=JT)[0] == 200
+   and q("SELECT app FROM push_subs WHERE endpoint=?", SUB["endpoint"])[0][0] == "tm", "push: prenumeration sparas")
+ok(req(t, "/tm/push", raw=json.dumps({**SUB, "endpoint": "https://169.254.169.254/latest"}).encode(), headers=JT)[0] == 400,
+   "push: okänd push-tjänst nekas (ingen SSRF)")
+ok(req(t, "/tm/push", raw=json.dumps({**SUB, "keys": {"p256dh": "kort", "auth": "x"}}).encode(), headers=JT)[0] == 400,
+   "push: trasiga nycklar nekas")
+ok(req(t, "/tm/push", raw=json.dumps(SUB).encode(), headers={**JT, "X-CSRF-Token": "fel"})[0] == 403
+   and req(t, "/tm/push", {"csrf": c3})[0] == 415, "push: kräver CSRF-header och JSON")
+ok(req(client(), "/tm/push", raw=json.dumps(SUB).encode(), headers=JT, follow=False)[0] in (303, 403), "push: kräver inloggning")
+req(t, "/tm/push/av", raw=json.dumps({"endpoint": SUB["endpoint"]}).encode(), headers=JT)
+ok(not q("SELECT 1 FROM push_subs WHERE endpoint=?", SUB["endpoint"]), "push: avprenumeration")
+
+# ---------------------------------------------------------------- packlista
+h = html(req(a, "/plan/packa")); ok("Ringarna" in h and "Nödkit" in h, "packlista: förslag finns från början")
+req(a, "/plan/packa/ny", {"csrf": c, "title": "Kamera <laddad>", "category": "Festen"})
+pk = q("SELECT id, category FROM packing WHERE title='Kamera <laddad>'")
+ok(bool(pk) and pk[0][1] == "Festen" and "Kamera &lt;laddad&gt;" in html(req(a, "/plan/packa")), "packlista: lägg till (escapat)")
+req(a, f"/plan/packa/{pk[0][0]}", {"csrf": c})
+ok(q("SELECT done FROM packing WHERE id=?", pk[0][0])[0][0] == 1, "packlista: bocka av")
+ok(req(t, f"/plan/packa/{pk[0][0]}", {"csrf": c3})[0] == 403 and req(a, f"/plan/packa/{pk[0][0]}", {"csrf": "x"})[0] == 403
+   and req(a, "/plan/packa/ny", {"csrf": c, "title": "x", "category": "Påhittad"})[0] == 400, "packlista: roll, CSRF och giltig kategori")
+ok(req(a, "/m/packing")[0] == 200 and "Packlista" in html(req(a, "/")), "packlistan finns också i menyn")
+
+# ---------------------------------------------------------------- utgifter med kvitto
+body, hd = multipart({"csrf": c, "item": "Handpenning <florist>", "actual": "1 500", "category": "Blommor & dekor", "paid": "on"},
+                     [("receipt", ("kvitto.jpg", jpeg_with_gps(), "image/jpeg"))])
+r = req(a, "/plan/utgifter", raw=body, headers=hd)
+e = q("SELECT id, actual, paid, receipt, category FROM budget WHERE item='Handpenning <florist>'")
+ok(r[0] == 200 and bool(e) and e[0]["actual"] == 1500 and e[0]["paid"] == 1 and bool(e[0]["receipt"]), "utgift sparas i budgeten med kvitto")
+kv = open(f"{S}/data/receipts/{e[0]['receipt']}", "rb").read()
+ok(b"SpionKamera" not in kv, "kvittot sparas utan EXIF/GPS")
+r = req(v, f"/plan/kvitto/{e[0]['id']}"); ok(r[0] == 200 and r[1]["Content-Type"] == "image/jpeg", "kvittot visas för inloggade")
+ok(req(client(), f"/plan/kvitto/{e[0]['id']}", follow=False)[0] == 303, "kvittot kräver inloggning")
+ok("Handpenning &lt;florist&gt;" in html(req(a, "/plan/utgifter")), "utgiftslistan escapas")
+body, hd = multipart({"csrf": c, "item": "Falsk", "actual": "10"}, [("receipt", ("x.jpg", b"<svg onload=alert(1)>", "image/jpeg"))])
+r = req(a, "/plan/utgifter", raw=body, headers=hd); ok(r[0] == 400 and not q("SELECT 1 FROM budget WHERE item='Falsk'"), "falskt kvitto nekas")
+body, hd = multipart({"csrf": c3, "item": "X", "actual": "10"}, [])
+ok(req(t, "/plan/utgifter", raw=body, headers=hd)[0] == 403, "toastmaster kan inte lägga in utgifter")
+body, hd = multipart({"csrf": "fel", "item": "X", "actual": "10"}, [])
+ok(req(a, "/plan/utgifter", raw=body, headers=hd)[0] == 403, "utgift kräver CSRF")
+req(a, f"/m/budget/{e[0]['id']}/delete", {"csrf": c})
+ok(not os.path.exists(f"{S}/data/receipts/{e[0]['receipt']}"), "kvittot raderas med budgetposten")
+
+# ---------------------------------------------------------------- kalender från planeringsappen
+r = req(a, "/plan/kalender", {"csrf": c}); h = html(r)
+m = re.search(r'href="webcal://[^"]+/cal/([A-Za-z0-9_-]+)\.ics"', h)
+ok(m is not None, "kalender: webcal-länk för iPhone")
+r = req(client(), f"/cal/{m.group(1)}.ics"); ok(r[0] == 200 and b"BEGIN:VCALENDAR" in r[2], "kalender: länken fungerar")
+ok(req(a, "/plan/kalender", {"csrf": "x"})[0] == 403, "kalender: kräver CSRF")
+
+# ---------------------------------------------------------------- bord, samåkning och talarlänk i gästportalen
+gR = add_guest("Rally-Rut", 2); gS = add_guest("Skjuts-Sven", 1); gT = add_guest("Taxi-Tove", 1)
+req(a, "/settings", {**SET, "show_tables": "on", "rideshare_enabled": "on"})
+YES1 = {"answer": "yes", "name_1": "X", "coming_1": "on"}
+r = req(client(), f"/r/{gR[1]}", {**YES1, "name_1": "Rut", "name_2": "Rolf", "coming_2": "on", "ride": "har", "ride_seats": "2", "ride_from": "Uppsala"})
+ok(tuple(q("SELECT ride, ride_seats, ride_from FROM guests WHERE id=?", gR[0])[0]) == ("har", 2, "Uppsala"), "OSA: har plats i bilen")
+req(client(), f"/r/{gS[1]}", {**YES1, "name_1": "Sven", "ride": "behover", "ride_from": "uppsala"})
+req(client(), f"/r/{gT[1]}", {**YES1, "name_1": "Tove", "ride": "behover", "ride_from": "Lund"})
+ok(req(client(), f"/r/{gT[1]}", {**YES1, "ride": "har", "ride_seats": "0"})[0] == 400, "OSA: bil utan lediga platser nekas")
+ok(req(client(), f"/r/{gT[1]}", {**YES1, "ride": "flyg"})[0] == 400, "OSA: okänt samåkningsval nekas")
+h = html(req(a, "/samakning")); ok("Rally-Rut" in h and "Skjuts-Sven" in h and "Spara förslaget" in h, "samåkning: översikt och förslag")
+req(a, "/samakning/forslag", {"csrf": c})
+ok(q("SELECT ride_with_id FROM guests WHERE id=?", gS[0])[0][0] == gR[0] and q("SELECT ride_with_id FROM guests WHERE id=?", gT[0])[0][0] == gR[0],
+   "samåkning: förslaget sparas (två lediga platser)")
+ok("Ni åker med <strong>Rally-Rut</strong>" in html(req(client(), f"/r/{gS[1]}/info")), "gästportalen: vem man åker med")
+ok("Skjuts-Sven" in html(req(client(), f"/r/{gR[1]}")), "gästportalen: vilka som är med i bilen")
+req(a, "/samakning/koppla", {"csrf": c, "guest": gT[0], "driver": ""})
+ok(q("SELECT ride_with_id FROM guests WHERE id=?", gT[0])[0][0] is None, "samåkning: koppla loss för hand")
+ok(req(v, "/samakning")[0] == 200 and req(v, "/samakning/forslag", {"csrf": c2})[0] == 403
+   and req(t, "/samakning/koppla", {"csrf": c3, "guest": gT[0], "driver": gR[0]})[0] == 403
+   and req(a, "/samakning/koppla", {"csrf": "x", "guest": gT[0], "driver": gR[0]})[0] == 403, "samåkning: roll och CSRF")
+ok(req(a, "/samakning/koppla", {"csrf": c, "guest": gA[0], "driver": gR[0]})[0] == 404, "samåkning: bara gäster som behöver skjuts")
+req(client(), f"/r/{gS[1]}", {**YES1, "name_1": "Sven", "ride": ""})
+ok(q("SELECT ride_with_id FROM guests WHERE id=?", gS[0])[0][0] is None, "samåkning: kopplingen tas bort när gästen inte behöver skjuts")
+tb = DB.execute("INSERT INTO tables (name, seats, shape, sort_no) VALUES ('Rosenbordet', 8, 'Runt', 9)").lastrowid
+DB.execute("UPDATE guests SET table_id=? WHERE id IN (?, ?)", (tb, gR[0], gS[0])); DB.commit()
+h = html(req(client(), f"/r/{gR[1]}"))
+tname = "Rosenbordet"
+ok("Ditt bord" in h and tname in h and "Sven" in h, "gästportalen: bordet och bordsgrannarna")
+req(a, "/settings", SET)
+ok("Ditt bord" not in html(req(client(), f"/r/{gR[1]}")) and "Samåkning" not in html(req(client(), f"/r/{gT[1]}")),
+   "bord och samåkning syns bara när det är påslaget")
+req(client(), f"/r/{gT[1]}", {**YES1, "name_1": "Tove", "speech": "on"})
+h = html(req(client(), f"/r/{gT[1]}"))
+m = re.search(r'href="/t/([A-Za-z0-9_-]+)"', h)
+ok(m is not None and q("SELECT guest_id FROM speeches WHERE token=?", m.group(1))[0][0] == gT[0], "gästportalen: länk till det egna talet")
 
 # ---------------------------------------------------------------- säkerhetskopior
 ok(req(v, "/backup")[0] == 403 and req(v, "/backup/now.db")[0] == 403, "läsare når inte säkerhetskopior")

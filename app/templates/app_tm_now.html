@@ -4,6 +4,9 @@
   {% if preview %}Förhandsvisning kl. {{ preview }} · <a href="/tm">visa nu</a>{% else %}kl. {{ now.strftime('%H:%M') }}{% if wedding_date %} · {{ sv_date(wedding_date) }}{% endif %}{% endif %}</p>
 <p class="speech-timer" data-timer hidden><span data-timer-name></span> <b data-timer-left></b> <button type="button" class="btn" data-timer-stop>Stoppa</button></p>
 
+{% if weather %}<section class="app-card weather"><span class="weather-icon" aria-hidden="true">{{ weather.icon }}</span>
+  <div><p class="eyebrow">Väder {{ sv_date(weather.date, false) }} · SMHI</p>
+  <p><b>{{ weather.text }}, {{ weather.temp }}°</b> <span class="muted small">{{ weather.min }}–{{ weather.max }}°{% if weather.rain %} · {{ weather.rain }} mm{% endif %} · vind {{ weather.wind }} m/s</span></p></div></section>{% endif %}
 {% if live %}
 <section class="app-card now">
   <p class="eyebrow">Nu</p>
@@ -27,11 +30,13 @@
   <p class="eyebrow">Nästa tal {% if n_speeches %}<span class="muted">· {{ held }} av {{ n_speeches }} hållna</span>{% endif %}</p>
   {% if next_speech %}
   <p class="app-big">{{ next_speech.speaker }}</p>
+  {% if next_speech.pronunciation %}<p class="small">Uttalas: <b>{{ next_speech.pronunciation }}</b></p>{% endif %}
   <p class="muted">{{ next_speech.part }} · {{ next_speech.minutes }} min{% if next_speech.topic %} · {{ next_speech.topic }}{% endif %}</p>
-  {% if next_speech.notes %}<p class="small">{{ next_speech.notes }}</p>{% endif %}
+  {% if next_speech.intro %}<p class="app-intro prewrap">{{ next_speech.intro }}</p>{% endif %}
+  {% if next_speech.notes %}<p class="small muted">{{ next_speech.notes }}</p>{% endif %}
   <div class="app-actions">
     <button type="button" class="btn big" data-timer-start="{{ next_speech.minutes or 5 }}" data-timer-label="{{ next_speech.speaker }}">⏱ Starta timer</button>
-    <form method="post" action="/tm/tal/{{ next_speech.id }}/hallen?fran=nu"><input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <form method="post" action="/tm/tal/{{ next_speech.id }}/hallen?fran=nu" data-offline-toggle><input type="hidden" name="csrf" value="{{ user.csrf }}">
       <button class="btn primary big">✓ Hållet</button></form>
   </div>
   {% elif n_speeches %}<p class="app-big">Alla tal är hållna 🎉</p>

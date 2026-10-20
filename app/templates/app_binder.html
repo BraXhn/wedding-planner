@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Toastmasterns pärm · {{ super() }}{% endblock %}
+{% block bodyclass %}binder{% endblock %}
+{% block content %}
+<div class="pagehead noprint">
+  <h1>Toastmasterns pärm</h1>
+  <div class="actions"><a class="btn" href="/tm">← Appen</a><a class="btn primary" href="#" data-print>Skriv ut</a></div>
+</div>
+<p class="muted small">{{ settings.couple_names }}{% if wedding_date %} · {{ sv_date(wedding_date) }}{% endif %}{% if settings.venue %} · {{ settings.venue }}{% endif %} · utskriven {{ printed.strftime('%Y-%m-%d %H:%M') }}</p>
+
+<section class="binder-sec">
+  <h2>Program</h2>
+  <table class="binder-table">{% for t in schedule %}<tr><th>{{ t.time }}</th><td><b>{{ t.title }}</b>{% if t.location or t.responsible %}<br><small>{{ t.location or '' }}{% if t.location and t.responsible %} · {% endif %}{{ t.responsible or '' }}</small>{% endif %}{% if t.notes %}<br><small class="muted">{{ t.notes }}</small>{% endif %}</td></tr>
+  {% else %}<tr><td class="muted">Programmet är tomt.</td></tr>{% endfor %}</table>
+</section>
+
+<section class="binder-sec">
+  <h2>Tal <small class="muted">{{ n_speeches }} st · {{ total_minutes }} min</small></h2>
+  {% for p in parts %}
+  <h3>{{ p.part }} <small class="muted">{{ p.minutes }} min</small></h3>
+  <ol class="binder-speeches">
+    {% for sp in p.speeches %}<li><b>{{ sp.speaker }}</b>{% if sp.pronunciation %} <small>(uttalas {{ sp.pronunciation }})</small>{% endif %} · {{ sp.minutes }} min{% if sp.topic %} · {{ sp.topic }}{% endif %}
+      {% if sp.intro %}<p class="prewrap">{{ sp.intro }}</p>{% endif %}{% if sp.notes %}<p class="muted small">Behöver: {{ sp.notes }}</p>{% endif %}<span class="binder-box">☐ Hållet</span></li>{% endfor %}
+  </ol>
+  {% else %}<p class="muted">Inga tal anmälda.</p>{% endfor %}
+</section>
+
+<section class="binder-sec">
+  <h2>Kontakter</h2>
+  <table class="binder-table">{% for v in vendors %}<tr><th>{{ v.category }}</th><td><b>{{ v.name }}</b>{% if v.contact %} · {{ v.contact }}{% endif %}{% if v.phone %}<br>{{ v.phone }}{% endif %}{% if v.email %}<br><small>{{ v.email }}</small>{% endif %}</td></tr>
+  {% else %}<tr><td class="muted">Inga bokade leverantörer.</td></tr>{% endfor %}</table>
+</section>
+
+<section class="binder-sec">
+  <h2>Placering</h2>
+  <div class="binder-tables">{% for g in tables %}<div><h3>{{ g.name }} <small class="muted">{{ g.people|length }}</small></h3>
+    <p class="small">{{ g.people|map(attribute='name')|join(', ') }}</p></div>{% else %}<p class="muted">Ingen placering ännu.</p>{% endfor %}</div>
+</section>
+{% endblock %}

@@ -8,6 +8,7 @@ DATA_DIR = os.environ.get("DATA_DIR", "/data")
 DB_PATH = os.path.join(DATA_DIR, "wedding.db")
 PHOTO_DIR = os.path.join(DATA_DIR, "photos")
 TMP_DIR = os.path.join(DATA_DIR, ".tmp")
+RECEIPT_DIR = os.path.join(DATA_DIR, "receipts")
 
 _SQL_TYPE = {"int": "INTEGER", "money": "INTEGER", "bool": "INTEGER", "ref": "INTEGER"}
 
@@ -87,6 +88,15 @@ CREATE TABLE IF NOT EXISTS capsule (
     text TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS push_subs (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    app TEXT NOT NULL,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS mail_log (
     id INTEGER PRIMARY KEY,
     guest_id INTEGER,
@@ -139,6 +149,7 @@ def init_db() -> None:
         )
     os.makedirs(PHOTO_DIR, exist_ok=True)
     os.makedirs(TMP_DIR, exist_ok=True)
+    os.makedirs(RECEIPT_DIR, exist_ok=True)
     with db() as c:
         c.execute("PRAGMA journal_mode = WAL")
         c.executescript(_CORE_SCHEMA)
@@ -158,6 +169,9 @@ def init_db() -> None:
             c.execute("UPDATE guests SET rsvp_code = COALESCE(rsvp_code, ?), rsvp_token = COALESCE(rsvp_token, ?) WHERE id = ?",
                       (new_code(), new_token(24), g["id"]))
         c.execute("CREATE INDEX IF NOT EXISTS guests_table ON guests(table_id)")
+        for sp in c.execute("SELECT id FROM speeches WHERE token IS NULL").fetchall():  # talarens egen länk
+            c.execute("UPDATE speeches SET token = ? WHERE id = ?", (new_token(24), sp["id"]))
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS speeches_token ON speeches(token)")
         c.execute("""CREATE TABLE IF NOT EXISTS guest_people (
             id INTEGER PRIMARY KEY,
             guest_id INTEGER NOT NULL REFERENCES guests(id) ON DELETE CASCADE,
@@ -194,6 +208,11 @@ def init_db() -> None:
             c.executemany("INSERT INTO challenges (text, enabled, sort_no) VALUES (?, 1, ?)",
                           [(t, i) for i, t in enumerate(CHALLENGE_SEED)])
             c.execute("INSERT INTO settings (key, value) VALUES ('challenges_seeded', '1')")
+
+        if not c.execute("SELECT 1 FROM settings WHERE key='packing_seeded'").fetchone():
+            from .entities import PACK_SEED
+            c.executemany("INSERT INTO packing (title, category, done) VALUES (?, ?, 0)", [(t, cat) for cat, t in PACK_SEED])
+            c.execute("INSERT INTO settings (key, value) VALUES ('packing_seeded', '1')")
 
         from .cards import seed_cards
         seed_cards(c)

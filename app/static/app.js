@@ -340,25 +340,148 @@ if (document.querySelector(".pcard")) {
   document.addEventListener("click", (e) => { if (e.target.closest("[data-pick-design], [data-insert]")) requestAnimationFrame(fitAll); });
 }
 
-// Dagen: timer för ett tal – räknar ner och blir röd när tiden är slut
+// Dagen: timer för ett tal – räknar ner, blir gul sista minuten och röd (blinkar + ljud) när tiden är slut.
+// Skärmen hålls tänd medan timern går, och timern fortsätter om man byter flik i appen (sessionStorage).
 const timerBox = document.querySelector("[data-timer]");
 if (timerBox) {
-  let iv = null;
+  let iv = null, lock = null, audio = null, rang = false;
   const out = timerBox.querySelector("[data-timer-left]");
-  const stop = () => { clearInterval(iv); iv = null; timerBox.hidden = true; timerBox.classList.remove("over"); };
+  const store = (v) => { try { v ? sessionStorage.setItem("timer", JSON.stringify(v)) : sessionStorage.removeItem("timer"); } catch (_) { /* privat läge */ } };
+  const keepAwake = async () => {
+    try { if ("wakeLock" in navigator && document.visibilityState === "visible") lock = await navigator.wakeLock.request("screen"); } catch (_) { lock = null; }
+  };
+  const beep = () => {
+    if (!audio) return;
+    [0, 0.35, 0.7].forEach((t) => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.frequency.value = 880; g.gain.setValueAtTime(0.25, audio.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + t + 0.3);
+      o.connect(g); g.connect(audio.destination); o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.3);
+    });
+  };
+  const stop = () => {
+    clearInterval(iv); iv = null; timerBox.hidden = true; timerBox.classList.remove("over", "warn"); store(null);
+    if (lock) { lock.release().catch(() => {}); lock = null; }
+  };
+  const run = (end, label) => {
+    clearInterval(iv); rang = Date.now() > end;
+    timerBox.querySelector("[data-timer-name]").textContent = label;
+    const tickT = () => {
+      const left = Math.round((end - Date.now()) / 1000), a = Math.abs(left);
+      out.textContent = (left < 0 ? "+" : "") + Math.floor(a / 60) + ":" + String(a % 60).padStart(2, "0");
+      timerBox.classList.toggle("over", left < 0);
+      timerBox.classList.toggle("warn", left >= 0 && left <= 60);
+      if (left < 0 && !rang) { rang = true; beep(); if (navigator.vibrate) navigator.vibrate([300, 150, 300]); }
+    };
+    tickT(); iv = setInterval(tickT, 1000); timerBox.hidden = false; keepAwake();
+  };
   document.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-timer-start]");
     if (btn) {
-      stop();
-      const end = Date.now() + Number(btn.dataset.timerStart) * 60000;
-      timerBox.querySelector("[data-timer-name]").textContent = btn.dataset.timerLabel;
-      const tickT = () => {
-        const left = Math.round((end - Date.now()) / 1000), a = Math.abs(left);
-        out.textContent = (left < 0 ? "+" : "") + Math.floor(a / 60) + ":" + String(a % 60).padStart(2, "0");
-        timerBox.classList.toggle("over", left < 0);
-      };
-      tickT(); iv = setInterval(tickT, 1000); timerBox.hidden = false;
+      try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (_) { audio = null; }
+      const t = { end: Date.now() + Number(btn.dataset.timerStart) * 60000, label: btn.dataset.timerLabel };
+      store(t); run(t.end, t.label);
     }
     if (e.target.closest("[data-timer-stop]")) stop();
   });
+  document.addEventListener("visibilitychange", () => { if (iv && document.visibilityState === "visible") keepAwake(); });
+  try {
+    const saved = JSON.parse(sessionStorage.getItem("timer") || "null");
+    if (saved && Date.now() - saved.end < 30 * 60000) run(saved.end, saved.label); else store(null);
+  } catch (_) { /* inget sparat */ }
 }
+
+// Apparna /tm och /plan: service worker (offline + push), avbockning i kö utan nät, mörkt läge
+const shell = document.body.classList.contains("appshell") ? document.body : null;
+if (shell) {
+  const csrfApp = shell.dataset.csrf, appKey = shell.dataset.app;
+  const banner = document.querySelector("[data-offline-banner]");
+  const showOffline = () => { if (banner) banner.hidden = navigator.onLine; };
+  showOffline();
+
+  // mörkt läge: auto → mörkt → ljust
+  document.querySelector("[data-theme-toggle]")?.addEventListener("click", () => {
+    const html = document.documentElement;
+    const dark = html.dataset.theme ? html.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    html.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("app-theme", html.dataset.theme); } catch (_) { /* privat läge */ }
+  });
+
+  // avbockning utan nät: läggs i kö och skickas när nätet är tillbaka
+  const QKEY = "offline-queue";
+  const readQ = () => { try { return JSON.parse(localStorage.getItem(QKEY) || "[]"); } catch (_) { return []; } };
+  const writeQ = (q) => { try { localStorage.setItem(QKEY, JSON.stringify(q)); } catch (_) { /* fullt */ } };
+  const flush = async () => {
+    const q = readQ();
+    if (!q.length || !navigator.onLine) return;
+    writeQ([]);
+    const failed = [];
+    for (const item of q) {
+      try {
+        const res = await fetch(item.action, { method: "POST", credentials: "same-origin",
+          body: new URLSearchParams({ csrf: item.csrf }) });
+        if (!res.ok) failed.push(item);
+      } catch (_) { failed.push(item); }
+    }
+    writeQ(failed);
+    if (!failed.length) location.reload();
+  };
+  document.addEventListener("submit", (e) => {
+    const form = e.target.closest("[data-offline-toggle]");
+    if (!form || navigator.onLine) return;
+    e.preventDefault();
+    writeQ([...readQ(), { action: form.getAttribute("action"), csrf: form.querySelector("[name=csrf]").value }]);
+    const li = form.closest("li");
+    if (li) { li.classList.toggle("done"); const b = form.querySelector("button"); if (b) b.textContent = li.classList.contains("done") ? "✓" : ""; }
+    else { const b = form.querySelector("button"); if (b) { b.textContent = "✓ Sparas när nätet är tillbaka"; b.disabled = true; } }
+  });
+  window.addEventListener("online", () => { showOffline(); flush(); });
+  window.addEventListener("offline", showOffline);
+  flush();
+
+  // service worker + push
+  const pushBox = document.querySelector("[data-push]");
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register(shell.dataset.sw, { scope: "/" + appKey }).then(async (reg) => {
+      await navigator.serviceWorker.ready;
+      const urls = (shell.dataset.warm || "").split(" ").filter(Boolean);
+      (reg.active || navigator.serviceWorker.controller)?.postMessage({ type: "warm", urls });
+      if (!pushBox) return;
+      if (!("PushManager" in window)) {
+        if (/iPhone|iPad/.test(navigator.userAgent) && !standalone) document.querySelector("[data-push-ios]").hidden = false;
+        return;
+      }
+      pushBox.hidden = false;
+      const on = pushBox.querySelector("[data-push-on]"), state = pushBox.querySelector("[data-push-state]");
+      const render = (sub) => { on.hidden = Boolean(sub); state.hidden = !sub; };
+      const api = (path, body) => fetch(`/${appKey}/${path}`, { method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfApp }, body: JSON.stringify(body || {}) });
+      let sub = await reg.pushManager.getSubscription();
+      render(sub);
+      if (sub) api("push", sub.toJSON());  // håll servern i synk (t.ex. efter ny inloggning)
+      on.addEventListener("click", async () => {
+        try {
+          if ((await Notification.requestPermission()) !== "granted") { on.textContent = "Aviseringar är avstängda i inställningarna"; return; }
+          const key = Uint8Array.from(atob(pushBox.dataset.key.replace(/-/g, "+").replace(/_/g, "/")), (ch) => ch.charCodeAt(0));
+          sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+          const res = await api("push", sub.toJSON());
+          if (!res.ok) throw new Error(String(res.status));
+          render(sub);
+        } catch (_) { on.textContent = "Det gick inte att slå på aviseringar"; }
+      });
+      pushBox.querySelector("[data-push-test]").addEventListener("click", () => api("push/test"));
+      pushBox.querySelector("[data-push-off]").addEventListener("click", async () => {
+        if (sub) { await api("push/av", { endpoint: sub.endpoint }); await sub.unsubscribe(); sub = null; }
+        render(null);
+      });
+    }).catch(() => { /* utan service worker fungerar appen ändå, bara inte offline */ });
+  }
+}
+
+// utloggning: töm apparnas sparade sidor och kö på den här enheten
+document.addEventListener("submit", (e) => {
+  if (e.target.matches("form[action='/logout']")) {
+    try { localStorage.removeItem("offline-queue"); } catch (_) { /* privat läge */ }
+    if (window.caches) caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+  }
+});

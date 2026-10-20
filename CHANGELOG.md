@@ -1,6 +1,17 @@
 # Ändringslogg
 
 ## Ej släppt
+- **Apparna fungerar utan nät.** Sidorna sparas i telefonen; tal som bockas av offline skickas när nätet är tillbaka.
+- **Aviseringar** i apparna (iOS 16.4+ från hemskärmen): påminnelse fem minuter före varje programpunkt i toastmasterappen, nya OSA-svar i planeringsappen.
+- **Timern** håller skärmen tänd, blir gul sista minuten och blinkar röd med ett pip när tiden är slut. Den fortsätter om man byter flik.
+- **Talarens egen länk** (`/t/…`): talaren ändrar själv ämne, längd och önskemål och ser när hen talar. Gäster som anmält tal hittar länken i gästportalen.
+- **Fusklapp och uttal** per tal, synligt på Nu-fliken, i tallistan och i pärmen.
+- **Mörkt läge** i apparna, och **toastmasterns pärm** att skriva ut med program, tal, kontakter och placering.
+- **Planeringsappen:** packlista, utgifter med kvittofoto (EXIF/GPS tas bort) och deadlines i telefonens kalender.
+- **Packlista** med förslag, även i menyn.
+- **Gästportalen:** gästens bord och bordsgrannar (kan slås på), väder från SMHI de sista tio dagarna och samåkning.
+- **Samåkning:** gästerna anger plats i bilen eller behov av skjuts i OSA-svaret; förslag på vem som åker med vem under Gäster → Samåkning.
+- Nytt beroende: `cryptography` (krypteringen för aviseringar).
 - **Två appar för mobilen** att lägga på hemskärmen: **Toastmaster** (`/tm`) med nästa tal, timer, avbockning, talarordning och programmet, och **Planering** (`/plan`) med att göra-listan och programmet. Programpunkter kan skjutas ±5–30 minuter tillsammans med allt som kommer efter.
 - **Ny roll Toastmaster:** som Läsare men får ändra tal och körschema.
 - **Importera gästlistan** från Excel, Numbers eller Google Kalkylark (klistra in) eller en CSV-fil, med förhandsvisning. Kända rubriker känns igen, dubbletter och felaktiga rader hoppas över.
