@@ -19,5 +19,17 @@
   {% if has_capsule %}<a href="{{ base }}/tidskapsel" class="{{ 'on' if tab == 'capsule' }}">Tidskapsel</a>{% endif %}
 </nav>
 {% endif %}
+{% if guest and (table or driver or passengers or weather or speech_link) %}
+<div class="narrow-col portal-extras">
+  {% if weather %}<section class="card weather"><span class="weather-icon" aria-hidden="true">{{ weather.icon }}</span>
+    <div><p class="eyebrow">Väder {{ sv_date(weather.date, false) }} · SMHI</p>
+    <p><strong>{{ weather.text }}, {{ weather.temp }}°</strong> <span class="muted">({{ weather.min }}–{{ weather.max }}°{% if weather.rain %}, {{ weather.rain }} mm{% endif %}, vind upp till {{ weather.wind }} m/s)</span></p></div></section>{% endif %}
+  {% if table %}<section class="card"><p class="eyebrow">Ditt bord</p><p class="bignum">{{ table }}</p>
+    {% if mates %}<p class="muted small">Vid bordet: {{ mates|join(', ') }}</p>{% endif %}</section>{% endif %}
+  {% if driver %}<section class="card"><p class="eyebrow">Samåkning</p><p>Ni åker med <strong>{{ driver }}</strong>. Brudparet hjälper er i kontakt.</p></section>{% endif %}
+  {% if passengers %}<section class="card"><p class="eyebrow">Samåkning</p><p>Med i er bil: <strong>{{ passengers|join(', ') }}</strong>. Tack för att ni kör!</p></section>{% endif %}
+  {% if speech_link %}<section class="card"><p class="eyebrow">Ditt tal</p><p>Berätta för toastmastern vad du vill säga och hur länge: <a href="{{ speech_link }}">ditt tal</a>.</p></section>{% endif %}
+</div>
+{% endif %}
 {% block portal %}{% endblock %}
 {% endblock %}

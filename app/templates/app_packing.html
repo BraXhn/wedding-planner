@@ -1,0 +1,27 @@
+{% extends "app_base.html" %}
+{% block content %}
+<p class="muted small">{{ left }} kvar att packa av {{ total }}</p>
+{% if can_edit %}
+<form method="post" action="/plan/packa/ny" class="app-quick">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  <input name="title" placeholder="Lägg till i packlistan …" maxlength="200" required aria-label="Sak att packa">
+  <div class="app-quick-more">
+    <select name="category" aria-label="Till">{% for cat in categories %}<option>{{ cat }}</option>{% endfor %}</select>
+    <button class="btn primary">Lägg till</button>
+  </div>
+</form>
+{% endif %}
+{% for cat, rows in groups %}
+<h2 class="app-section">{{ cat }} <small class="muted">{{ rows|rejectattr('done')|list|length }} kvar</small></h2>
+<ul class="app-list">
+  {% for r in rows %}
+  <li id="k{{ r.id }}" class="{{ 'done' if r.done }}">
+    {% if can_edit %}<form method="post" action="/plan/packa/{{ r.id }}" class="app-check"><input type="hidden" name="csrf" value="{{ user.csrf }}">
+      <button aria-label="{{ 'Packa upp' if r.done else 'Markera som packad' }}">{{ '✓' if r.done }}</button></form>
+    {% else %}<span class="app-check"><button disabled>{{ '✓' if r.done }}</button></span>{% endif %}
+    <a class="app-row" href="/m/packing/{{ r.id }}"><b>{{ r.title }}</b>{% if r.responsible %}<small class="muted">{{ r.responsible }}</small>{% endif %}</a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}<p class="app-card muted">Packlistan är tom.</p>{% endfor %}
+{% endblock %}

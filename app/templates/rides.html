@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Samåkning · {{ super() }}{% endblock %}
+{% block content %}
+<p class="crumb noprint"><a href="/m/guests">← Gäster</a></p>
+<div class="pagehead"><h1>Samåkning</h1>
+  <div class="actions noprint"><a class="btn" href="#" data-print>Skriv ut</a></div></div>
+{% if not settings.rideshare_enabled == '1' %}<p class="hint">Gästerna ser inte frågan om samåkning i OSA-svaret. Slå på <a href="/settings">Samåkning i OSA</a> under Inställningar.</p>{% endif %}
+{% if proposal and can_write %}
+<section class="card">
+  <h2>Förslag</h2>
+  <ul>{% for g, d in proposal %}<li><strong>{{ g.name }}</strong>{% if g.ride_from %} ({{ g.ride_from }}){% endif %} åker med <strong>{{ d }}</strong></li>{% endfor %}</ul>
+  <form method="post" action="/samakning/forslag"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="btn primary">Spara förslaget</button></form>
+</section>
+{% endif %}
+<div class="day-cols">
+<section class="card">
+  <h2>Har plats i bilen <small class="muted">{{ drivers|length }}</small></h2>
+  {% for d in drivers %}
+  <p><strong>{{ d.name }}</strong>{% if d.ride_from %} från {{ d.ride_from }}{% endif %} · <span class="{{ 'danger-text' if d.free < 0 }}">{{ d.free }} av {{ d.ride_seats or 0 }} platser lediga</span>
+    {% if d.passengers %}<br><small class="muted">Med i bilen: {{ d.passengers|map(attribute='name')|join(', ') }}</small>{% endif %}</p>
+  {% else %}<p class="muted">Ingen har erbjudit plats ännu.</p>{% endfor %}
+</section>
+<section class="card">
+  <h2>Behöver skjuts <small class="muted">{{ needers|length }}</small></h2>
+  {% for g in needers %}
+  <div class="ride-row"><p><strong>{{ g.name }}</strong> · {{ g.need }} pers.{% if g.ride_from %} från {{ g.ride_from }}{% endif %}</p>
+    {% if can_write %}
+    <form method="post" action="/samakning/koppla" class="inline-form"><input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="guest" value="{{ g.id }}">
+      <select name="driver" aria-label="Åker med"><option value="">– ingen än –</option>{% for d in drivers %}<option value="{{ d.id }}" {{ 'selected' if g.ride_with_id == d.id }}>{{ d.name }} ({{ d.free }} lediga)</option>{% endfor %}</select>
+      <button class="btn">Spara</button></form>
+    {% else %}<p class="muted small">{% for d in drivers if d.id == g.ride_with_id %}Åker med {{ d.name }}{% else %}Ingen bil än{% endfor %}</p>{% endif %}
+  </div>
+  {% else %}<p class="muted">Ingen behöver skjuts.</p>{% endfor %}
+</section>
+</div>
+{% endblock %}

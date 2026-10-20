@@ -4,6 +4,13 @@
 {% block content %}
 {% if errors %}<div class="alert error" role="alert">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
 {% if not can_edit %}<p class="app-card muted small">Du kan läsa men inte ändra här.</p>{% endif %}
+{% if share_link %}
+<section class="app-card">
+  <p class="eyebrow">Talarens länk</p>
+  <div class="copyrow"><input id="sharelink" value="{{ share_link }}" readonly aria-label="Talarens länk"><button type="button" class="btn" data-copy="sharelink">Kopiera</button></div>
+  <p class="muted small">{{ share_help }}</p>
+</section>
+{% endif %}
 <form method="post" class="app-form">
   <input type="hidden" name="csrf" value="{{ user.csrf }}">
   {% for f in fields %}{{ field(f, vals.get(f.name), disabled=not can_edit) }}{% endfor %}

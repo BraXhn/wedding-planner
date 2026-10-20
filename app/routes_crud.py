@@ -124,7 +124,7 @@ async def list_view(request: Request):
     if ent == "guests" and flt in ("pending", "yes", "no"):
         where.append("rsvp = ?")
         params.append(flt)
-    if ent == "tasks" and flt in ("open", "done"):
+    if ent in ("tasks", "packing") and flt in ("open", "done"):
         where.append("done = ?")
         params.append(1 if flt == "done" else 0)
     if ent == "speeches" and flt == "active":
@@ -222,6 +222,10 @@ def delete_cleanup(c, ent: str, item_id: int) -> None:
         c.execute("UPDATE photos SET guest_id = NULL WHERE guest_id = ?", (item_id,))
     if ent == "wishlist":
         c.execute("DELETE FROM gift_reservations WHERE gift_id = ?", (item_id,))
+    if ent == "budget":
+        from .receipts import delete_receipt
+        row = c.execute("SELECT receipt FROM budget WHERE id = ?", (item_id,)).fetchone()
+        delete_receipt(row["receipt"] if row else None)
     if ent == "questions":
         c.execute("DELETE FROM answers WHERE question_id = ?", (item_id,))
 
@@ -305,11 +309,12 @@ async def export_csv(request: Request):
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";")
     with_links = ent == "guests" and not user["readonly"]  # läsare får inte gästernas OSA-länkar
-    w.writerow([f["label"] for f in spec["fields"]] + [lab for _, lab, _ in spec["computed"]]
+    fields = [f for f in spec["fields"] if f["type"] != "section"]
+    w.writerow([f["label"] for f in fields] + [lab for _, lab, _ in spec["computed"]]
                + (["OSA-länk", "OSA-kod", "QR-länk"] if with_links else []))
     for r in rows:
         line = [csv_cell(display(f, r[f["name"]], refs) if f["type"] in ("select", "bool", "ref") else r[f["name"]])
-                for f in spec["fields"]]
+                for f in fields]
         line += [csv_cell(r[name]) for name, _, _ in spec["computed"]]
         if with_links:
             line += [rsvp_link(request, r["rsvp_token"]), format_code(r["rsvp_code"]),

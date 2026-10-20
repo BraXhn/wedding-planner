@@ -38,6 +38,9 @@ RSVP_OPTIONS = [("pending", "Väntar"), ("yes", "Kommer"), ("no", "Kommer inte")
 
 
 # Programpunkter före 06:00 hör till natten efter bröllopsdagen (t.ex. 01:00 Nattmat) och sorteras sist.
+RIDE_OPTIONS = [("", "–"), ("har", "Har plats i bilen"), ("behover", "Behöver skjuts")]
+PACK_CATEGORIES = ["Vigseln", "Festen", "Nödkit", "Till natten och dagen efter"]
+
 NIGHT_CUTOFF = "06:00"
 TIMELINE_ORDER = f"time < '{NIGHT_CUTOFF}', time"
 
@@ -74,6 +77,11 @@ ENTITIES = {
             F("notes", "Egna anteckningar", "textarea"),
             F("gift_received", "Present från dem", help="Fylls i efter bröllopet – se Tackkort"),
             F("thanks_sent", "Tackkort skickat", "bool"),
+            S("Samåkning"),
+            F("ride", "Samåkning", "select", options=RIDE_OPTIONS, default=""),
+            F("ride_seats", "Lediga platser i bilen", "int", default=0, min=0, max=8),
+            F("ride_from", "Åker från", help="Ort, t.ex. ”Uppsala”"),
+            F("ride_with_id", "Åker med", "ref", ref="guests", help="Föreslås under Samåkning"),
         ],
         "list": ["name", "group_name", "invited_count", "rsvp", "attending", "diet", "table_id"],
         "search": ["name", "email", "group_name", "diet", "street", "city"],
@@ -114,6 +122,21 @@ ENTITIES = {
         "sum": [],
         "filters": [("", "Alla"), ("open", "Kvar"), ("done", "Klara")],
     },
+    "packing": {
+        "title": "Packlista", "singular": "sak",
+        "order": "done, " + _case("category", PACK_CATEGORIES) + ", title COLLATE NOCASE",
+        "fields": [
+            F("title", "Sak", required=True),
+            F("category", "Till", "select", options=opts(PACK_CATEGORIES), default=PACK_CATEGORIES[0]),
+            F("responsible", "Vem tar med"),
+            F("done", "Packad", "bool"),
+            F("notes", "Anteckningar", "textarea"),
+        ],
+        "list": ["done", "title", "category", "responsible"],
+        "search": ["title", "responsible", "notes"],
+        "sum": [],
+        "filters": [("", "Alla"), ("open", "Kvar"), ("done", "Packade")],
+    },
     "budget": {
         "title": "Budget", "singular": "budgetpost",
         "order": "category, item COLLATE NOCASE",
@@ -131,6 +154,7 @@ ENTITIES = {
         "search": ["item", "category", "notes"],
         "sum": ["estimated", "actual"],
         "filters": [],
+        "extra_columns": {"receipt": "TEXT"},
     },
     "vendors": {
         "title": "Leverantörer", "singular": "leverantör",
@@ -179,8 +203,11 @@ ENTITIES = {
             F("minutes", "Minuter", "int", default=5, min=1, max=60),
             F("status", "Status", "select", options=opts(["Anmäld", "Bekräftad", "Hållen", "Struken"]), default="Anmäld"),
             F("notes", "Anteckningar (t.ex. behöver mikrofon/projektor)", "textarea"),
+            F("pronunciation", "Uttal av namnet", help="t.ex. ”Ho-kan” – visas för toastmastern"),
+            F("intro", "Fusklapp för toastmastern", "textarea", help="Hur talaren presenteras: relation, en rolig detalj …"),
         ],
         "list": ["part", "order_no", "speaker", "topic", "minutes", "status"],
+        "extra_columns": {"token": "TEXT"},
         "search": ["speaker", "topic", "notes"],
         "sum": ["minutes"],
         "filters": [("", "Alla"), ("active", "Ej strukna")],
@@ -251,6 +278,17 @@ CHALLENGE_SEED = [
     "Det finaste på bordet", "Ett skratt som inte går att hålla inne", "Er bästa gruppbild",
     "Någon som gråter av glädje", "Brudparet när de inte ser det",
 ]
+PACK_SEED = [
+    ("Vigseln", "Ringarna"), ("Vigseln", "Hindersprövningsbeviset"), ("Vigseln", "Löftena utskrivna"),
+    ("Vigseln", "Brudbukett och knapphålsblomma"), ("Festen", "Tal och toastmasterns pärm"),
+    ("Festen", "Bordskort och placeringslista"), ("Festen", "Gästbok och pennor"), ("Festen", "Presentbord och kortlåda"),
+    ("Festen", "Laddare och powerbank"), ("Nödkit", "Plåster och skavsårsplåster"), ("Nödkit", "Huvudvärkstabletter"),
+    ("Nödkit", "Nål och tråd, säkerhetsnålar"), ("Nödkit", "Fläckborttagare"), ("Nödkit", "Näsdukar"),
+    ("Nödkit", "Extra strumpbyxor"), ("Nödkit", "Deodorant och tandkräm"), ("Nödkit", "Bekväma skor"),
+    ("Till natten och dagen efter", "Ombyte och necessär"), ("Till natten och dagen efter", "Laddare till telefonerna"),
+    ("Till natten och dagen efter", "Kassar för presenter och dekor"),
+]
+
 QUESTION_SEED = [
     ("Behöver ni skjuts från stationen?", "yesno", ""),
     ("Var bor ni under helgen?", "choice", "Hemma / hos släkt\nHotellet vi tipsat om\nAnnat boende\nVet inte än"),
@@ -301,6 +339,14 @@ SETTINGS_FIELDS = [
     F("gift_info", "Presenter", "textarea", help="t.ex. bidrag till bröllopsresan. Visas ovanför önskelistan."),
     F("swish_number", "Swish-nummer", help="Mobilnummer eller Swish-nummer. Gästerna får en QR-kod att skanna med Swish under Önskelista."),
     F("swish_message", "Meddelande i Swish", help="Förifyllt i Swish, t.ex. ”Bröllopsgåva”. Högst 50 tecken, gästen kan ändra det."),
+    F("show_tables", "Visa gästerna deras bord", "bool",
+      help="Gästportalen visar bordet och vilka mer som sitter där. Slå på när placeringen är klar."),
+    F("rideshare_enabled", "Samåkning i OSA", "bool",
+      help="Gästerna kan ange att de har plats i bilen eller behöver skjuts. Matchas under Gäster → Samåkning."),
+    F("weather_enabled", "Väderprognos från SMHI", "bool",
+      help="Visas i gästportalen och toastmasterappen de sista tio dagarna före bröllopet. Kräver koordinater nedan."),
+    F("venue_lat", "Platsens latitud", help="t.ex. 59.3650 – högerklicka på platsen i en karttjänst och kopiera"),
+    F("venue_lon", "Platsens longitud", help="t.ex. 18.0130"),
     F("capsule_enabled", "Tidskapsel", "bool",
       help="Gästerna kan skriva brev till er i gästportalen och via QR-koden på borden. Breven mejlas till adresserna "
            "under Aviseringar på er ettårsdag – ni ser bara antalet innan dess."),

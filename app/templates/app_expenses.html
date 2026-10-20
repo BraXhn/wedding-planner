@@ -1,0 +1,30 @@
+{% extends "app_base.html" %}
+{% block content %}
+<p class="muted small">Utgifter hittills: <b>{{ kr(spent) }}</b>{% if total %} av {{ kr(total) }}{% endif %}</p>
+{% if saved %}<p class="alert ok">Utgiften är sparad i budgeten.</p>{% endif %}
+{% if errors %}<div class="alert error" role="alert">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+{% if can_edit %}
+<form method="post" enctype="multipart/form-data" class="app-form">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  <label class="field"><span>Vad <b class="req">*</b></span><input name="item" maxlength="200" required value="{{ vals.item or '' }}" placeholder="t.ex. Handpenning florist"></label>
+  <div class="app-two">
+    <label class="field"><span>Belopp (kr) <b class="req">*</b></span><input name="actual" inputmode="decimal" required value="{{ vals.actual or '' }}"></label>
+    <label class="field"><span>Kategori</span><select name="category">{% for cat in categories %}<option {{ 'selected' if vals.category == cat }}>{{ cat }}</option>{% endfor %}</select></label>
+  </div>
+  <label class="field checkbox"><span>Betald</span><input type="checkbox" name="paid" {{ 'checked' if vals.paid }}></label>
+  <label class="field"><span>Kvitto</span><input type="file" name="receipt" accept="image/*"><small>Ta ett foto eller välj en bild. Platsdata och annan metadata tas bort.</small></label>
+  <label class="field"><span>Anteckning</span><input name="notes" maxlength="200" value="{{ vals.notes or '' }}"></label>
+  <button class="btn primary big">Spara utgift</button>
+</form>
+{% endif %}
+<h2 class="app-section">Senaste</h2>
+<ul class="app-list">
+  {% for r in recent %}
+  <li>
+    {% if r.receipt %}<a href="/plan/kvitto/{{ r.id }}" class="app-thumb"><img src="/plan/kvitto/{{ r.id }}?liten=1" alt="Kvitto" loading="lazy"></a>{% else %}<span class="app-thumb empty" aria-hidden="true">🧾</span>{% endif %}
+    <a class="app-row" href="/m/budget/{{ r.id }}"><b>{{ r.item }}</b><small class="muted">{{ r.category }}{% if not r.paid %} · ej betald{% endif %}</small></a>
+    <b class="app-amount">{{ kr(r.actual) }}</b>
+  </li>
+  {% else %}<li class="muted">Inga utgifter ännu.</li>{% endfor %}
+</ul>
+{% endblock %}

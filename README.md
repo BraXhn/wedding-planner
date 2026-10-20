@@ -16,12 +16,14 @@ En självhostad bröllopsplanerare för Unraid. Den är liten (fem Python-beroen
 | **Till cateringen** | Antal som kommer, allergier per person och per bord och en sammanställning (t.ex. ”2 × nötter”). Kan skrivas ut eller exporteras som CSV. |
 | **Placering** | Bord med antal platser. Dra hushåll till ett bord, eller tryck på hushållet och sedan på bordet i mobilen. Fulla bord markeras i rött och det finns en utskriftsvy. **Bordskort** med namn (ett per person, 8 per A4) och en **placeringslista** i bokstavsordning till entrén. **Föreslå placering** fyller borden med dem som saknar plats: grupper hålls ihop och ingen hamnar vid samma bord som den inte ska sitta med. |
 | **Att göra** | Förifylld svensk checklista med 38 punkter. **Deadlines räknas ut automatiskt** från bröllopsdatumet, till exempel hindersprövning en månad före. Ändras datumet flyttas de uträknade deadlines med; egna datum rörs inte. |
-| **Budget** | Budgeterat mot faktiskt, betalt, förfallodatum och summering |
+| **Budget** | Budgeterat mot faktiskt, betalt, förfallodatum och summering. Utgifter med **kvittofoto** läggs snabbt in från planeringsappen. |
+| **Packlista** | Det som ska med till vigseln, festen och natten efter, plus ett nödkit. Förifylld med förslag; bockas av i planeringsappen. |
 | **Leverantörer** | Status från förfrågan till bokad, kontaktuppgifter och pris. En bokad leverantör läggs in i budgeten med priset som budgeterat belopp. |
 | **Körschema** | Dagen minut för minut. Punkter markerade *Visa för gäster* syns i gästportalen. Tider före 06:00 räknas som natten efter. |
 | **Dagen** | För toastmaster och brudpar i mobilen på bröllopsdagen: vad som händer nu och härnäst, hela körschemat och talen per del av middagen. Toastmastern bockar av tal som hållits och har en timer per tal. Lägg sidan på hemskärmen så öppnas den som en app. |
-| **Appar i mobilen** | Två små appar för iPhone (och Android) som läggs på hemskärmen: **Toastmaster** på `/tm` – nästa tal med stor timer och ✓ Hållet, talen per del som kan bockas av, flyttas upp/ner, ändras och läggas till, samt programmet – och **Planering** på `/plan` – att göra-listan grupperad efter deadline med snabbtillägg och avbockning, programmet och det som är klart. I programmet skjuts en punkt och allt efter den ±5–30 minuter med ett tryck. Öppna adressen i Safari → Dela → *Lägg till på hemskärmen*; den som inte är inloggad hamnar på inloggningen och sedan tillbaka i appen. |
-| **Tal** | Talarlista för toastmaster. Gäster som anmäler tal i OSA-formuläret hamnar här automatiskt. Visar total talartid. |
+| **Appar i mobilen** | Två små appar för iPhone (och Android) som läggs på hemskärmen: **Toastmaster** på `/tm` – nästa tal med stor timer och ✓ Hållet, talen per del som kan bockas av, flyttas upp/ner, ändras och läggas till, samt programmet – och **Planering** på `/plan` – att göra-listan grupperad efter deadline med snabbtillägg och avbockning, programmet och det som är klart. I programmet skjuts en punkt och allt efter den ±5–30 minuter med ett tryck. Öppna adressen i Safari → Dela → *Lägg till på hemskärmen*; den som inte är inloggad hamnar på inloggningen och sedan tillbaka i appen.<br>Planeringsappen har också **Packa**, **Utgifter** (med kvittofoto) och en knapp som lägger deadlines i telefonens kalender. Toastmasterappen har en **pärm att skriva ut** (program, tal med fusklapp, kontakter, placering) som reserv.<br>**Utan nät:** apparna sparar sidorna i telefonen och visar senast sparade version; tal som bockas av offline skickas när nätet är tillbaka. **Timern** håller skärmen tänd, blir gul sista minuten och blinkar röd med ett pip när tiden är slut. **Mörkt läge** följer telefonen eller växlas med ◐.<br>**Aviseringar** (iPhone med iOS 16.4 eller senare, appen öppnad från hemskärmen): toastmasterappen påminner fem minuter före varje programpunkt på bröllopsdagen, planeringsappen meddelar när någon svarar på OSA. Slå på längst ned i appen. |
+| **Tal** | Talarlista för toastmaster. Gäster som anmäler tal i OSA-formuläret hamnar här automatiskt. Visar total talartid. **Fusklapp** och uttal av namnet per tal. Varje tal har en **egen länk** (`/t/…`) där talaren själv ändrar ämne, längd och önskemål (mikrofon, projektor) – toastmastern kopierar den i appen, och gäster som anmält tal hittar den i gästportalen. |
+| **Samåkning** | Gästerna anger i OSA-svaret att de har plats i bilen (hur många, varifrån) eller behöver skjuts. Under Gäster → Samåkning föreslås vem som åker med vem – samma ort först, ingen bil överfylls – och gästportalen visar det. Slås på under Inställningar. |
 | **Önskelista** | Gästerna reserverar presenter. Ni ser hur många som är reserverade, men inte av vem. |
 | **Bilder** | Gästernas bilder i ett galleri, med valfri granskning innan de visas, nedladdning som zip, utskrivbara **bordskort med QR-kod** och ett **bildspel** för projektor som visar nya bilder direkt. **Fotoutmaningar** (t.ex. ”Bästa dansmovet”) väljs vid uppladdning och syns som bildtext, och gästernas hälsningar i **gästboken** rullar mellan bilderna. |
 | **OSA-kort med QR** | För inbjudningar som skickas med posten: en QR-kod och en kort kod per hushåll, utskriftsark (8 kort per A4) och zip med PNG/SVG + CSV för dokumentkoppling i Word, InDesign eller Canva |
@@ -40,6 +42,9 @@ En självhostad bröllopsplanerare för Unraid. Den är liten (fem Python-beroen
 ### För gästerna (personlig länk, inget konto)
 - **OSA**: kommer eller inte, namn och allergier för var och en som kommer, talanmälan, låtönskemål och hälsning. Svaret kan ändras fram till OSA-deadline.
 - **Information**: när och var, program, hitta hit, boende, **frågor och svar** och knappen *Lägg till i kalendern*.
+- **Ditt bord** och vilka mer som sitter där, när ni slagit på det under Inställningar.
+- **Väder** för bröllopsdagen från SMHI de sista tio dagarna (kräver platsens koordinater under Inställningar).
+- **Samåkning**: vem man åker med, eller vilka som är med i bilen.
 - **Tidskapsel**: ett brev till brudparet som de får på ettårsdagen.
 - **Önskelista** med reservation, och en **Swish-QR** för penninggåvor om ni angett ett Swish-nummer.
 - **Bilder**: uppladdning och galleri, om ni har slagit på det.
@@ -85,6 +90,7 @@ Med en tunnel behövs inga öppna portar alls.
    | `/r/*` | Gästportalen | Personlig 192-bitars länk |
 | `/osa`, `/o/*` | OSA-kod och QR på tryckta inbjudningar | 50-bitars kod + spärr mot gissning |
    | `/p/*` | QR-koden på borden | Slumpad länk, kan bytas |
+   | `/t/*` | Talarens egen sida | Personlig 192-bitars länk per tal |
    | `/cal/*` | Kalenderprenumeration | Personlig länk, kan återkallas |
    | `/api/*` | Hemmahub | API-nyckel |
    | `/static/*` | CSS/JS | – |
@@ -236,6 +242,11 @@ All data ligger i `/mnt/user/appdata/wedding-planner/`: databasen `wedding.db` o
 sqlite3 /mnt/user/appdata/wedding-planner/wedding.db ".backup '/mnt/user/backups/wedding-$(date +%F).db'"
 rsync -a /mnt/user/appdata/wedding-planner/photos/ /mnt/user/backups/wedding-photos/
 ```
+
+## Utgående anslutningar
+Appen behöver inget utåt för att fungera. Två funktioner gör anrop när de är påslagna:
+- **Väder:** `opendata-download-metfcst.smhi.se` (HTTPS), högst en gång i timmen de sista tio dagarna.
+- **Aviseringar:** Apples, Googles, Mozillas och Microsofts push-tjänster (`*.push.apple.com`, `fcm.googleapis.com` m.fl.). Andra adresser nekas, så en webbläsare kan inte få servern att anropa interna adresser. Nycklarna (VAPID) skapas automatiskt och sparas i databasen.
 
 ## Miljövariabler
 

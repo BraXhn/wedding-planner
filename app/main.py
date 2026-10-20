@@ -14,11 +14,11 @@ from starlette.staticfiles import StaticFiles
 
 from . import scheduler
 from . import db as dbm
-from . import routes_account, routes_apps, routes_backup, routes_api, routes_import, routes_invites, routes_calendar, routes_cards, routes_crud, routes_day, routes_mail, routes_photos, routes_public, routes_reports, routes_seating, routes_thanks
+from . import routes_account, routes_apps, routes_backup, routes_api, routes_import, routes_invites, routes_calendar, routes_cards, routes_crud, routes_day, routes_mail, routes_photos, routes_public, routes_reports, routes_rides, routes_seating, routes_speaker, routes_thanks
 from .core import APP_VERSION, BASE, COOKIE_MODE, MAX_BODY, MAX_UPLOAD_BODY, Redirect, get_session, log, render
 from .routes_mail import configured as smtp_configured
 
-UPLOAD_PATH = re.compile(r"^/(p/[A-Za-z0-9_-]+|r/[A-Za-z0-9_-]+/photos)$")
+UPLOAD_PATH = re.compile(r"^/(p/[A-Za-z0-9_-]+|r/[A-Za-z0-9_-]+/photos|plan/utgifter)$")
 
 
 async def healthz(request: Request):
@@ -146,6 +146,8 @@ routes = [
     *routes_thanks.routes,
     *routes_cards.routes,
     *routes_seating.routes,
+    *routes_rides.routes,
+    *routes_speaker.routes,
     *routes_calendar.routes,   # före routes_public så /r/{token}/brollop.ics matchar
     *routes_public.routes,
     *routes_photos.routes,

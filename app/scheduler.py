@@ -1,4 +1,5 @@
-"""Bakgrundsjobb, en gång i timmen: daglig säkerhetskopia, veckobrev och tidskapseln.
+"""Bakgrundsjobb, en gång i timmen: daglig säkerhetskopia, veckobrev och tidskapseln. Varje minut:
+påminnelser via push innan programpunkterna på bröllopsdagen.
 En tråd räcker – appen kör med en worker. Varje jobb skyddas så att ett fel inte stoppar de andra."""
 import datetime as dt
 import threading
@@ -34,10 +35,22 @@ def run_jobs(log) -> None:
         log.error("capsule_failed error=%s: %s", type(e).__name__, e)
 
 
+def run_minute_jobs(log) -> None:
+    try:
+        from .push import programme_reminders
+        programme_reminders()
+    except Exception as e:  # noqa: BLE001
+        log.error("push_reminders_failed error=%s: %s", type(e).__name__, e)
+
+
 def start(log) -> None:
     def loop():
+        last = 0.0
         while True:
-            run_jobs(log)
-            time.sleep(3600)
+            if time.monotonic() - last >= 3600 or not last:
+                last = time.monotonic()
+                run_jobs(log)
+            run_minute_jobs(log)
+            time.sleep(60 - time.time() % 60 + 1)  # strax efter varje hel minut
 
     threading.Thread(target=loop, name="jobb", daemon=True).start()

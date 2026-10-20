@@ -171,6 +171,15 @@ async def totp_disable(request: Request):
     return render(request, "account.html", auth(request), active="account", totp_ok="Tvåstegsverifiering är avstängd.")
 
 
+def create_ics_token(user: dict) -> str:
+    """Ny personlig kalenderlänk; den gamla slutar fungera. Bara hashen sparas."""
+    token = new_token(32)
+    with dbm.db() as c:
+        c.execute("UPDATE users SET ics_token_hash = ? WHERE id = ?", (token_hash(token), user["user_id"]))
+    log.info("ics_created user=%s", user["username"])
+    return token
+
+
 async def ics_token(request: Request):
     """Skapar (eller återkallar) personlig kalenderprenumeration. Länken visas bara en gång."""
     user = auth(request)
@@ -180,9 +189,7 @@ async def ics_token(request: Request):
             c.execute("UPDATE users SET ics_token_hash = NULL WHERE id = ?", (user["user_id"],))
             log.info("ics_revoked user=%s", user["username"])
             return render(request, "account.html", auth(request), active="account", ics_ok="Kalenderlänken är återkallad.")
-        token = new_token(32)
-        c.execute("UPDATE users SET ics_token_hash = ? WHERE id = ?", (token_hash(token), user["user_id"]))
-    log.info("ics_created user=%s", user["username"])
+    token = create_ics_token(user)
     return render(request, "account.html", auth(request), active="account",
                   ics_url=f"{public_base(request)}/cal/{token}.ics")
 

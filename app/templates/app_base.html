@@ -13,16 +13,28 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="{{ app.name }}">
 <meta name="theme-color" content="#2f4a3e">
+<script src="{{ asset('theme.js') }}"></script>
 <script src="{{ asset('app.js') }}" defer></script>
 </head>
-<body class="appshell app-{{ app.key }}">
+<body class="appshell app-{{ app.key }}" data-app="{{ app.key }}" data-csrf="{{ user.csrf }}" data-sw="{{ '/' ~ app.key ~ '/sw.js' }}"
+  data-warm="{% for key, href, label, icon in app.tabs %}{{ href }} {% endfor %}{{ '/tm/parm' if app.key == 'tm' }}">
 <header class="app-head">
   <span class="app-title">{% block heading %}{{ app.name }}{% endblock %}</span>
   {% block headaction %}{% endblock %}
+  <button type="button" class="app-theme" data-theme-toggle aria-label="Byt mellan ljust och mörkt läge">◐</button>
 </header>
+<p class="app-offline" data-offline-banner hidden>Offline – du ser senast sparade versionen. Avbockningar skickas när nätet är tillbaka.</p>
 <main class="app-main">
 {% block content %}{% endblock %}
-<p class="app-foot muted small">Inloggad som {{ user.username }} · <a href="/">Hela planeraren</a></p>
+<div class="app-foot muted small">
+  <p class="app-push" data-push data-key="{{ push_key }}" hidden>
+    <button type="button" class="btn" data-push-on>🔔 Slå på aviseringar</button>
+    <span data-push-state hidden>🔔 Aviseringar på · <button type="button" class="linklike" data-push-test>Testa</button> · <button type="button" class="linklike" data-push-off>Stäng av</button></span>
+    <br><small>{{ 'Påminnelse fem minuter före varje programpunkt på bröllopsdagen.' if app.key == 'tm' else 'När någon svarar på OSA.' }}</small>
+  </p>
+  <p class="app-push-ios" data-push-ios hidden>Aviseringar: lägg först appen på hemskärmen (Dela → Lägg till på hemskärmen) och öppna den därifrån.</p>
+  <p>{% if app.key == 'tm' %}<a href="/tm/parm">Pärm att skriva ut</a> · {% else %}<a href="/plan/kalender">Deadlines i kalendern</a> · {% endif %}<a href="/">Hela planeraren</a><br>Inloggad som {{ user.username }}</p>
+</div>
 </main>
 <nav class="app-tabs" aria-label="Flikar">
   {% for key, href, label, icon in app.tabs %}<a href="{{ href }}" class="{{ 'active' if tab == key }}" {% if tab == key %}aria-current="page"{% endif %}><span aria-hidden="true">{{ icon }}</span>{{ label }}</a>{% endfor %}

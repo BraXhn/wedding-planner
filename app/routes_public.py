@@ -8,13 +8,13 @@ from starlette.responses import RedirectResponse
 from starlette.routing import Route
 
 from . import db as dbm
-from .entities import TIMELINE_ORDER
+from .entities import RIDE_OPTIONS, TIMELINE_ORDER
 from .core import (
-    MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_settings, log, normalize_swish, parse_date, public_base, public_rate_limit, read_form, render,
+    MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_settings, log, normalize_swish, parse_date, public_base, public_rate_limit, read_form, render, speech_token,
     swish_payload, sync_speech_from_guest, today,
 )
 from .qr import qr_svg
-from .people import parse_people, people_for, save_people
+from .people import coming_people, parse_people, people_for, save_people
 from .questions import answers_for, enabled_questions, parse_answers, save_answers
 from .routes_mail import notify_couple
 from .security import RateLimiter, normalize_code
@@ -87,12 +87,28 @@ def _portal_ctx(g, tab: str) -> dict:
         has_gifts = (bool(c.execute("SELECT 1 FROM wishlist LIMIT 1").fetchone()) or bool(s.get("gift_info"))
                      or bool(s.get("swish_number")))
         programme = c.execute(f"SELECT time, title, location FROM timeline WHERE public = 1 ORDER BY {TIMELINE_ORDER}").fetchall()
+        table = mates = None
+        if flag(s, "show_tables") and g["rsvp"] == "yes" and g["table_id"]:
+            table = c.execute("SELECT name FROM tables WHERE id = ?", (g["table_id"],)).fetchone()
+            mates = list(dict.fromkeys(p["name"] for p in coming_people(c)
+                                       if p["table_id"] == g["table_id"] and p["guest_id"] != g["id"]))
+        driver = c.execute("SELECT name FROM guests WHERE id = ? AND ride = 'har'", (g["ride_with_id"],)).fetchone() \
+            if g["ride_with_id"] and g["ride"] == "behover" else None
+        passengers = [r["name"] for r in c.execute("SELECT name FROM guests WHERE ride_with_id = ? AND ride = 'behover' "
+                                                   "AND rsvp = 'yes' ORDER BY name", (g["id"],))] if g["ride"] == "har" else []
+        speech = c.execute("SELECT id FROM speeches WHERE guest_id = ? AND status NOT IN ('Struken', 'Hållen')",
+                           (g["id"],)).fetchone()
+        speech = speech_token(c, speech["id"]) if speech else None
     deadline = parse_date(s.get("rsvp_deadline"))
     from .capsule import is_open
+    from .weather import forecast
     return dict(settings=s, guest=g, tab=tab, base=f"/r/{g['rsvp_token']}", has_gifts=has_gifts, has_capsule=is_open(s),
                 has_photos=flag(s, "photos_enabled"), programme=programme,
                 wedding_date=parse_date(s.get("wedding_date")), deadline=deadline,
-                closed=bool(deadline and today() > deadline), max_count=g["invited_count"] or 1)
+                closed=bool(deadline and today() > deadline), max_count=g["invited_count"] or 1,
+                table=table["name"] if table else None, mates=mates or [], driver=driver["name"] if driver else None,
+                passengers=passengers, speech_link=f"/t/{speech}" if speech else None,
+                weather=forecast(s), ride_options=RIDE_OPTIONS)
 
 
 # ======================================================================= OSA
@@ -130,11 +146,29 @@ async def rsvp(request: Request):
     song = str(form.get("song", "")).strip().replace("\n", " ").replace("\r", " ")[:200]
     message = str(form.get("message", "")).strip()[:2000]
     speech = 1 if form.get("speech") == "on" and answer == "yes" else 0
+    ride, seats, ride_from = g["ride"], g["ride_seats"], g["ride_from"]
+    if flag(ctx["settings"], "rideshare_enabled"):
+        ride = str(form.get("ride", "")) if answer == "yes" else ""
+        if ride not in {v for v, _ in RIDE_OPTIONS}:
+            errors.append("Välj ett alternativ för samåkning.")
+        try:
+            seats = int(form.get("ride_seats") or 0) if ride == "har" else 0
+        except ValueError:
+            seats = -1
+        if not 0 <= seats <= 8:
+            errors.append("Lediga platser i bilen ska vara 0–8.")
+        if ride == "har" and not seats:
+            errors.append("Ange hur många lediga platser ni har i bilen.")
+        ride_from = " ".join(str(form.get("ride_from", "")).split())[:80]
     if errors:
         return render(request, "rsvp.html", status=400, errors=errors, people=new_people or people, **ctx)
     with dbm.db() as c:
-        c.execute("UPDATE guests SET rsvp=?, attending=?, song=?, message=?, speech=?, rsvp_at=datetime('now') "
-                  "WHERE id = ?", (answer, count, song, message, speech, g["id"]))
+        c.execute("UPDATE guests SET rsvp=?, attending=?, song=?, message=?, speech=?, ride=?, ride_seats=?, ride_from=?, "
+                  "rsvp_at=datetime('now') WHERE id = ?", (answer, count, song, message, speech, ride or None, seats, ride_from, g["id"]))
+        if ride != "behover":
+            c.execute("UPDATE guests SET ride_with_id = NULL WHERE id = ?", (g["id"],))
+        if ride != "har":
+            c.execute("UPDATE guests SET ride_with_id = NULL WHERE ride_with_id = ?", (g["id"],))
         if new_people is not None:
             save_people(c, g["id"], new_people)
         if new_answers is not None:
@@ -165,6 +199,8 @@ def _notify_rsvp(request: Request, g, answer: str, count: int, people, speech: i
         lines.append(f"\nHälsning:\n{message}")
     lines.append(f"\nSe gästen: {public_base(request)}/m/guests/{g['id']}")
     notify_couple(f"OSA: {g['name']} {what}" + (" (ändrat)" if changed else ""), "\n".join(lines))
+    from .push import send
+    send("plan", f"OSA: {g['name']}", what[:1].upper() + what[1:] + (" (ändrat svar)" if changed else ""), "/plan")
 
 
 # ======================================================================= information

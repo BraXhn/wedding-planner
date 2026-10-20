@@ -1,0 +1,16 @@
+{% extends "app_base.html" %}
+{% block heading %}<a class="app-back" href="/plan" aria-label="Tillbaka">‹</a> Kalender{% endblock %}
+{% block content %}
+<section class="app-card">
+  <p>Prenumerera på deadlines, räkningar och bröllopsdagen i telefonens kalender. Kalendern uppdateras av sig själv när listan ändras.</p>
+  {% if ics_url %}
+  <p><a class="btn primary big" href="{{ webcal }}">📅 Lägg till i Kalender</a></p>
+  <p class="muted small">Eller kopiera länken (t.ex. till Google Kalender). Den visas bara nu.</p>
+  <div class="copyrow"><input id="icsurl" value="{{ ics_url }}" readonly aria-label="Kalenderlänk"><button type="button" class="btn" data-copy="icsurl">Kopiera</button></div>
+  {% else %}
+  <form method="post"><input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <button class="btn primary big" {% if user.has_ics %}data-confirm="Skapa ny länk? Den gamla slutar fungera."{% endif %}>{{ 'Skapa ny kalenderlänk' if user.has_ics else 'Skapa kalenderlänk' }}</button></form>
+  {% if user.has_ics %}<p class="muted small">Du har redan en länk. En ny ersätter den gamla. Återkalla under <a href="/account">Konto</a>.</p>{% endif %}
+  {% endif %}
+</section>
+{% endblock %}

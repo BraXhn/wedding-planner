@@ -8,11 +8,13 @@
 <ul class="app-list">
   {% for sp in p.speeches %}
   <li id="tal{{ sp.id }}" class="{{ 'done' if sp.status == 'Hållen' }}">
-    <form method="post" action="/tm/tal/{{ sp.id }}/hallen" class="app-check"><input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <form method="post" action="/tm/tal/{{ sp.id }}/hallen" class="app-check" data-offline-toggle><input type="hidden" name="csrf" value="{{ user.csrf }}">
       <button aria-label="{{ 'Ångra hållet' if sp.status == 'Hållen' else 'Markera som hållet' }}">{{ '✓' if sp.status == 'Hållen' else '' }}</button></form>
     <a class="app-row" href="/tm/tal/{{ sp.id }}">
       <b>{{ sp.speaker }}</b>
       <small class="muted">{{ sp.minutes }} min{% if sp.topic %} · {{ sp.topic }}{% endif %}{% if sp.status == 'Anmäld' %} · ej bekräftat{% endif %}</small>
+      {% if sp.pronunciation %}<small>Uttalas: {{ sp.pronunciation }}</small>{% endif %}
+      {% if sp.intro %}<small class="app-intro-short">{{ sp.intro|truncate(90) }}</small>{% endif %}
     </a>
     <span class="app-tools">
       {% if sp.status != 'Hållen' %}<button type="button" class="app-icon" data-timer-start="{{ sp.minutes or 5 }}" data-timer-label="{{ sp.speaker }}" aria-label="Starta timer">⏱</button>{% endif %}
