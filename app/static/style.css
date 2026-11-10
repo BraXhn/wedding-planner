@@ -477,7 +477,7 @@ body.slideshow main { max-width: none; padding: 0; }
 .pc-eyebrow { font-family: var(--sans); text-transform: uppercase; letter-spacing: .25em; font-size: 3cqw; color: var(--c); font-weight: 600; }
 .pc-heading { font-size: 9cqw; line-height: 1.1; color: var(--c); font-weight: 400; font-style: italic; overflow-wrap: anywhere; }
 .pc-body { font-size: 4.3cqw; line-height: 1.45; white-space: pre-line; overflow-wrap: anywhere; }
-.pc-footer { font-family: var(--sans); font-size: 2.8cqw; color: #6b6b6b; line-height: 1.4; }
+.pc-footer { font-family: var(--sans); font-size: 2.8cqw; color: #6b6b6b; line-height: 1.4; white-space: pre-line; overflow-wrap: anywhere; }
 .pcard:not(.p-vit) .pc-footer { color: #4d4d4d; }
 .pc-qr { width: 25cqw; margin: 1cqw 0; } .pc-qr svg { display: block; width: 100%; height: auto; } .pc-qr[hidden] { display: none; }
 .pcard [data-f]:empty { display: none; }

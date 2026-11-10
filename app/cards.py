@@ -27,7 +27,7 @@ KINDS = [("save", "Save the date"), ("invite", "Inbjudan"), ("thanks", "Tackkort
 
 PLACEHOLDERS = ["namn", "brudpar", "initialer", "datum", "tid", "plats", "adress", "klädkod", "osa_senast", "kod", "osa_adress",
                 "present", "program"]
-LIMITS = {"eyebrow": 120, "heading": 120, "body": 1500, "footer": 300}
+LIMITS = {"eyebrow": 120, "heading": 120, "body": 1500, "footer": 800}
 
 SEED = [
     {"kind": "save", "title": "Save the date", "design": "botanisk", "color": "skog", "size": "a6l", "audience": "all",

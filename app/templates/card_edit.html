@@ -48,7 +48,8 @@
     <label class="field"><span>Överrad</span><input name="eyebrow" value="{{ card.eyebrow or '' }}" maxlength="{{ limits.eyebrow }}" data-text="eyebrow" {{ 'disabled' if not can_write }}></label>
     <label class="field"><span>Rubrik</span><input name="heading" value="{{ card.heading or '' }}" maxlength="{{ limits.heading }}" data-text="heading" {{ 'disabled' if not can_write }}></label>
     <label class="field"><span>Text</span><textarea name="body" rows="8" maxlength="{{ limits.body }}" data-text="body" {{ 'disabled' if not can_write }}>{{ card.body or '' }}</textarea></label>
-    <label class="field"><span>Sista rad</span><input name="footer" value="{{ card.footer or '' }}" maxlength="{{ limits.footer }}" data-text="footer" {{ 'disabled' if not can_write }}></label>
+    <label class="field"><span>Text under QR-koden</span><textarea name="footer" rows="3" maxlength="{{ limits.footer }}" data-text="footer" {{ 'disabled' if not can_write }}>{{ card.footer or '' }}</textarea>
+      <small>Fritext längst ned på kortet, under QR-koden. Radbrytningar följer med.</small></label>
     {% if can_write %}
     <p class="small muted">Infoga i texten: {% for p in placeholders %}<button type="button" class="chip" data-insert="{{ '{' ~ p ~ '}' }}">{{ '{' ~ p ~ '}' }}</button> {% endfor %}</p>
     <div class="form-actions"><button class="btn primary">Spara</button></div>

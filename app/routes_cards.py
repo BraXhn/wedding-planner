@@ -85,7 +85,7 @@ def _parse(form) -> tuple[dict, list[str]]:
     vals["show_qr"] = 1 if form.get("show_qr") == "on" else 0
     for k in TEXTS:
         v = str(form.get(k, "")).replace("\r\n", "\n")
-        v = v.strip() if k == "body" else " ".join(v.split())
+        v = v.strip() if k in ("body", "footer") else " ".join(v.split())  # text och sista raden får ha radbrytningar
         if len(v) > cm.LIMITS[k]:
             errors.append(f"För lång text (högst {cm.LIMITS[k]} tecken).")
         vals[k] = v[:cm.LIMITS[k]]

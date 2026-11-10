@@ -802,6 +802,14 @@ codes = [format_code(x[0]) for x in q("SELECT rsvp_code FROM guests")]
 ok(h.count('class="pcard ') == n_households and all(k in h for k in codes) and h.count("<svg") >= n_households,
    "trycksaker: personlig inbjudan – ett kort per hushåll med egen kod och QR")
 ok("&lt;b&gt;Bertil&lt;/b&gt;" in h and "<b>Bertil" not in h, "trycksaker: texter och namn escapas")
+FREE = "Skanna <i>koden</i> och svara.\n\nVi längtar efter att se dig, {namn}!"
+req(a, f"/kort/{inv}", {**CARD, "footer": FREE})
+ok(q("SELECT footer FROM cards WHERE id=?", inv)[0][0] == FREE, "trycksaker: sista raden är fritext med radbrytningar")
+h = html(req(a, f"/kort/{inv}/skriv-ut"))
+ok("Skanna &lt;i&gt;koden&lt;/i&gt; och svara.\n\nVi längtar efter att se dig, Bertil!" in h and h.index('class="pc-qr"') < h.index("pc-footer"),
+   "trycksaker: fritexten under QR-koden escapas och fyller i platshållare")
+ok(req(a, f"/kort/{inv}", {**CARD, "footer": "x" * 801})[0] == 400, "trycksaker: för lång text under QR-koden nekas")
+req(a, f"/kort/{inv}", CARD)
 h = html(req(v, f"/kort/{inv}"))
 ok(req(v, f"/kort/{inv}")[0] == 200 and not any(k in h for k in codes), "trycksaker: läsare ser förhandsvisning utan riktiga koder")
 ok(req(v, f"/kort/{inv}/skriv-ut")[0] == 403, "trycksaker: läsare kan inte skriva ut kort med gästernas QR-koder")
