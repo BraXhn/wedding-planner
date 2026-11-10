@@ -1,6 +1,7 @@
 # Ändringslogg
 
 ## Ej släppt
+- **Trycksaker:** sista raden heter nu *Text under QR-koden* och är fritext med flera rader (upp till 800 tecken), t.ex. en hälsning eller instruktion till gästerna.
 - **Apparna fungerar utan nät.** Sidorna sparas i telefonen; tal som bockas av offline skickas när nätet är tillbaka.
 - **Aviseringar** i apparna (iOS 16.4+ från hemskärmen): påminnelse fem minuter före varje programpunkt i toastmasterappen, nya OSA-svar i planeringsappen.
 - **Timern** håller skärmen tänd, blir gul sista minuten och blinkar röd med ett pip när tiden är slut. Den fortsätter om man byter flik.
