@@ -26,6 +26,7 @@
     <button type="button" class="btn" data-copy="rsvplink">Kopiera</button>
   </div>
   <p class="muted small">Gästen svarar på OSA, ser information, önskelistan och kan ladda upp bilder.
+  {% if item.opened_at %}Öppnade länken första gången {{ item.opened_at }} (UTC).{% else %}Har inte öppnat länken än.{% endif %}
   {% if item.rsvp_at %}Svarade senast {{ item.rsvp_at }} (UTC).{% endif %}
   {% if item.invite_sent_at %}Inbjudan mejlad {{ item.invite_sent_at[:10] }}.{% endif %}
   {% if item.reminder_sent_at %}Påminnelse mejlad {{ item.reminder_sent_at[:10] }}.{% endif %}</p>
@@ -50,6 +51,44 @@
   </div>
   {% endif %}
 </form>
+
+{% if vendor %}
+<section class="card" id="betalningar">
+  <h2>Betalningar</h2>
+  {% if vendor.payments %}<ul class="report-list">{% for p in vendor.payments %}<li><a href="/m/payments/{{ p.id }}">{{ p.label }}</a> · {{ kr(p.amount) }}{% if p.due_date %} · {{ sv_date(p.due_date) }}{% endif %} · {{ 'betald' if p.paid else 'obetald' }}</li>{% endfor %}</ul>
+  {% else %}<p class="muted">Inga delbetalningar inlagda.</p>{% endif %}
+  <p class="small">{% if can_write %}<a href="/m/payments/new">Lägg till betalning</a> · {% endif %}<a href="/betalningar">Hela betalningsplanen</a></p>
+</section>
+<section class="card" id="dokument">
+  <h2>Dokument</h2>
+  {% if doc_error %}<p class="alert error">{{ doc_error }}</p>{% endif %}
+  {% if vendor.docs %}<ul class="report-list">{% for d in vendor.docs %}<li><a href="/dokument/{{ d.id }}">{{ d.name }}</a> <small class="muted">{{ (d.bytes / 1024 / 1024)|round(1) }} MB · {{ d.created_at[:10] }}</small>
+    {% if can_write %}<form method="post" action="/dokument/{{ d.id }}/ta-bort" class="inline" data-confirm="Ta bort dokumentet?"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike small danger-text">Ta bort</button></form>{% endif %}</li>{% endfor %}</ul>
+  {% else %}<p class="muted">Inga dokument. Ladda upp avtal och offerter som PDF.</p>{% endif %}
+  {% if can_write %}
+  <form method="post" action="/m/vendors/{{ item.id }}/dokument" enctype="multipart/form-data" class="inline-form">
+    <input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <input type="file" name="doc" accept="application/pdf,.pdf" required aria-label="PDF-fil">
+    <button class="btn">Ladda upp</button>
+  </form>
+  <p class="muted small">Bara PDF, högst {{ vendor.max_mb }} MB. Dokumenten syns bara för inloggade.</p>
+  {% endif %}
+</section>
+{% if can_write %}
+<section class="card linkbox" id="dela">
+  <h2>Dela körschemat</h2>
+  {% if vendor.share_link %}
+  <div class="copyrow"><input id="sharelink" value="{{ vendor.share_link }}" readonly><button type="button" class="btn" data-copy="sharelink">Kopiera</button></div>
+  <p class="muted small">Leverantören ser hela körschemat utan att logga in – men anteckningar bara för de punkter där leverantören är vald (Körschema → Leverantör). Inga gästuppgifter visas.</p>
+  <form method="post" action="/m/vendors/{{ item.id }}/dela" class="inline" data-confirm="Återkalla länken? Den slutar fungera direkt.">
+    <input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike small danger-text" name="action" value="revoke">Återkalla länken</button></form>
+  {% else %}
+  <p class="muted small">Skapa en läslänk till den här leverantören: hela körschemat, och anteckningarna för leverantörens egna punkter. Länken kan återkallas.</p>
+  <form method="post" action="/m/vendors/{{ item.id }}/dela"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="btn" name="action" value="create">Skapa länk</button></form>
+  {% endif %}
+</section>
+{% endif %}
+{% endif %}
 
 {% if qa %}
 <section class="card">

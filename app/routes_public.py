@@ -10,7 +10,7 @@ from starlette.routing import Route
 from . import db as dbm
 from .entities import RIDE_OPTIONS, TIMELINE_ORDER
 from .core import (
-    MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_settings, log, normalize_swish, parse_date, public_base, public_rate_limit, read_form, render, speech_token,
+    MAX_UPLOAD_MB, TOKEN_RE, client_ip, flag, get_session, get_settings, log, normalize_swish, parse_date, public_base, public_rate_limit, read_form, render, speech_token,
     swish_payload, sync_speech_from_guest, today,
 )
 from .qr import qr_svg
@@ -30,6 +30,9 @@ def guest_by_token(request: Request):
         g = c.execute("SELECT * FROM guests WHERE rsvp_token = ?", (token,)).fetchone()
     if not g:
         raise HTTPException(404)
+    if not g["opened_at"] and not get_session(request):  # er egen förhandstitt som inloggad räknas inte
+        with dbm.db() as c:
+            c.execute("UPDATE guests SET opened_at = datetime('now') WHERE id = ? AND opened_at IS NULL", (g["id"],))
     return g
 
 
@@ -204,11 +207,26 @@ def _notify_rsvp(request: Request, g, answer: str, count: int, people, speech: i
 
 
 # ======================================================================= information
+def map_links(s: dict) -> dict | None:
+    """Länkar som öppnar platsen i telefonens kartapp: koordinaterna om de finns, annars adressen."""
+    from urllib.parse import quote
+    from .weather import coords
+    name = ", ".join(x for x in (s.get("venue"), s.get("address")) if x)
+    pos = coords(s)
+    if pos:
+        ll = f"{pos[0]},{pos[1]}"
+        return {"apple": f"https://maps.apple.com/?ll={ll}&q={quote(s.get('venue') or 'Bröllopet')}",
+                "google": f"https://www.google.com/maps/search/?api=1&query={ll}"}
+    if not name:
+        return None
+    return {"apple": f"https://maps.apple.com/?q={quote(name)}", "google": f"https://www.google.com/maps/search/?api=1&query={quote(name)}"}
+
+
 async def info(request: Request):
     g = guest_by_token(request)
     with dbm.db() as c:
         faq = c.execute("SELECT question, answer FROM faq ORDER BY sort_no, id").fetchall()
-    return render(request, "portal_info.html", faq=faq, **_portal_ctx(g, "info"))
+    return render(request, "portal_info.html", faq=faq, maps=map_links(get_settings()), **_portal_ctx(g, "info"))
 
 
 # ======================================================================= önskelista

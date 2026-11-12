@@ -485,3 +485,130 @@ document.addEventListener("submit", (e) => {
     if (window.caches) caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
   }
 });
+
+// Planritning: dra bord och etiketter; läget sparas (i procent av lokalen) efter varje ändring
+const floor = document.querySelector("[data-floor]");
+if (floor) {
+  const place = (el) => {
+    el.style.left = el.dataset.x + "%"; el.style.top = el.dataset.y + "%";
+    el.classList.toggle("rot", el.dataset.rot === "90");
+  };
+  const items = () => [...floor.querySelectorAll("[data-ft], [data-fl]")];
+  items().forEach(place);
+  document.querySelector("[data-floor-names]")?.addEventListener("click", (e) => {
+    e.currentTarget.textContent = floor.classList.toggle("names") ? "Dölj namn" : "Visa namn";
+  });
+  if (floor.classList.contains("editable")) {
+    const status = document.querySelector("[data-floor-status]");
+    const ratioSel = document.querySelector("[data-floor-ratio]");
+    let timer = null;
+    const save = () => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const body = {
+          ratio: ratioSel ? ratioSel.value : "liggande",
+          tables: [...floor.querySelectorAll("[data-ft]")].map((t) => ({ id: Number(t.dataset.ft), x: Number(t.dataset.x), y: Number(t.dataset.y), rot: Number(t.dataset.rot) })),
+          labels: [...floor.querySelectorAll("[data-fl]")].map((l) => ({ text: l.textContent, x: Number(l.dataset.x), y: Number(l.dataset.y) })),
+        };
+        try {
+          const r = await fetch("/seating/plan", { method: "POST", credentials: "same-origin",
+            headers: { "Content-Type": "application/json", "X-CSRF-Token": floor.dataset.csrf }, body: JSON.stringify(body) });
+          if (status) status.textContent = r.ok ? "Sparat." : "Kunde inte spara – ladda om sidan.";
+        } catch (_) { if (status) status.textContent = "Kunde inte spara – kontrollera nätet."; }
+      }, 400);
+    };
+    let drag = null;
+    floor.addEventListener("pointerdown", (e) => {
+      const el = e.target.closest("[data-ft], [data-fl]");
+      if (!el) return;
+      drag = { el, moved: false }; el.setPointerCapture(e.pointerId); el.classList.add("dragging");
+    });
+    floor.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const box = floor.getBoundingClientRect();
+      const clamp = (v) => Math.min(98, Math.max(2, Math.round(v * 10) / 10));
+      drag.el.dataset.x = clamp(((e.clientX - box.left) / box.width) * 100);
+      drag.el.dataset.y = clamp(((e.clientY - box.top) / box.height) * 100);
+      drag.moved = true; place(drag.el);
+    });
+    const drop = () => { if (!drag) return; drag.el.classList.remove("dragging"); if (drag.moved) save(); drag = null; };
+    floor.addEventListener("pointerup", drop);
+    floor.addEventListener("pointercancel", drop);
+    floor.addEventListener("dblclick", (e) => {
+      const t = e.target.closest("[data-ft]"), l = e.target.closest("[data-fl]");
+      if (t && t.classList.contains("ft-lang")) { t.dataset.rot = t.dataset.rot === "90" ? "0" : "90"; place(t); save(); }
+      if (l && window.confirm(`Ta bort etiketten ”${l.textContent}”?`)) { l.remove(); save(); }
+    });
+    floor.addEventListener("keydown", (e) => {  // piltangenter flyttar markerat bord
+      const t = e.target.closest("[data-ft]");
+      const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (!t || !step) return;
+      e.preventDefault();
+      t.dataset.x = Math.min(98, Math.max(2, Number(t.dataset.x) + step[0]));
+      t.dataset.y = Math.min(98, Math.max(2, Number(t.dataset.y) + step[1]));
+      place(t); save();
+    });
+    document.querySelector("[data-floor-label]")?.addEventListener("click", () => {
+      const text = (window.prompt("Text på etiketten, t.ex. Dansgolv:") || "").trim().slice(0, Number(floor.dataset.labelMax));
+      if (!text) return;
+      const el = document.createElement("div");
+      el.className = "fl"; el.dataset.fl = ""; el.dataset.x = "50"; el.dataset.y = "8"; el.textContent = text;
+      floor.appendChild(el); place(el); save();
+    });
+    ratioSel?.addEventListener("change", () => {
+      floor.classList.remove("r-liggande", "r-kvadrat", "r-staende"); floor.classList.add("r-" + ratioSel.value); save();
+    });
+  }
+}
+
+// Passkeys (WebAuthn): inloggning och registrering. Servern kontrollerar allt; här översätts bara base64url ↔ bytes.
+const b64uEnc = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64uDec = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (ch) => ch.charCodeAt(0));
+const postJson = (url, body, csrf) => fetch(url, { method: "POST", credentials: "same-origin",
+  headers: { "Content-Type": "application/json", ...(csrf ? { "X-CSRF-Token": csrf } : {}) }, body: JSON.stringify(body || {}) });
+const passkeyOk = Boolean(window.PublicKeyCredential && navigator.credentials);
+
+const pkLogin = document.querySelector("[data-passkey-login]");
+if (pkLogin && passkeyOk) {
+  pkLogin.hidden = false;
+  const err = pkLogin.querySelector("[data-passkey-error]");
+  const fail = (msg) => { err.textContent = msg; err.hidden = false; };
+  pkLogin.querySelector("[data-passkey-go]").addEventListener("click", async () => {
+    err.hidden = true;
+    try {
+      const start = await postJson("/login/passkey/start");
+      if (!start.ok) return fail(start.status === 429 ? "För många försök. Vänta en stund." : "Det gick inte att börja inloggningen.");
+      const o = await start.json();
+      const cred = await navigator.credentials.get({ publicKey: { challenge: b64uDec(o.challenge), rpId: o.rpId, timeout: o.timeout, userVerification: o.userVerification } });
+      const res = await postJson("/login/passkey/finish", { id: cred.id, next: pkLogin.dataset.next,
+        clientDataJSON: b64uEnc(cred.response.clientDataJSON), authenticatorData: b64uEnc(cred.response.authenticatorData),
+        signature: b64uEnc(cred.response.signature) });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) return fail(out.error || "Inloggningen misslyckades.");
+      location.href = out.next || "/";
+    } catch (_) { fail("Inloggningen avbröts."); }
+  });
+}
+
+const pkAdd = document.querySelector("[data-passkey-add]");
+if (pkAdd && passkeyOk) {
+  pkAdd.hidden = false;
+  document.querySelector("[data-passkey-unsupported]")?.remove();
+  const err = pkAdd.querySelector("[data-passkey-error]");
+  const fail = (msg) => { err.textContent = msg; err.hidden = false; };
+  pkAdd.querySelector("[data-passkey-create]").addEventListener("click", async () => {
+    err.hidden = true;
+    try {
+      const start = await postJson("/account/passkey/start", {}, pkAdd.dataset.csrf);
+      if (!start.ok) return fail("Det gick inte att lägga till en passkey.");
+      const o = await start.json();
+      const cred = await navigator.credentials.create({ publicKey: { ...o, challenge: b64uDec(o.challenge),
+        user: { ...o.user, id: b64uDec(o.user.id) },
+        excludeCredentials: o.excludeCredentials.map((c) => ({ ...c, id: b64uDec(c.id) })) } });
+      const res = await postJson("/account/passkey/finish", { name: pkAdd.querySelector("[data-passkey-name]").value,
+        clientDataJSON: b64uEnc(cred.response.clientDataJSON), attestationObject: b64uEnc(cred.response.attestationObject) }, pkAdd.dataset.csrf);
+      if (!res.ok) return fail("Passkeyn kunde inte sparas.");
+      location.href = "/account#passkeys"; location.reload();
+    } catch (_) { fail("Det avbröts, eller så finns passkeyn redan på den här enheten."); }
+  });
+}

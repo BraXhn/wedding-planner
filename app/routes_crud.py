@@ -124,6 +124,11 @@ async def list_view(request: Request):
     if ent == "guests" and flt in ("pending", "yes", "no"):
         where.append("rsvp = ?")
         params.append(flt)
+    if ent == "guests" and flt in ("opened", "unopened"):
+        where.append("rsvp = 'pending' AND opened_at IS " + ("NOT NULL" if flt == "opened" else "NULL"))
+    if ent == "payments" and flt in ("open", "done"):
+        where.append("paid = ?")
+        params.append(1 if flt == "done" else 0)
     if ent in ("tasks", "packing") and flt in ("open", "done"):
         where.append("done = ?")
         params.append(1 if flt == "done" else 0)
@@ -175,6 +180,10 @@ async def item_form(request: Request):
         with dbm.db() as c:
             ctx["budget_item"] = c.execute("SELECT id, item FROM budget WHERE vendor_id = ? ORDER BY id LIMIT 1",
                                            (row["id"],)).fetchone()
+            from .routes_vendors import vendor_extras
+            ctx["vendor"] = vendor_extras(request, c, row, can_write(user, ent))
+            ctx["doc_error"] = {"tom": "Välj en PDF-fil.", "stor": "Filen är för stor.", "manga": "För många dokument på leverantören.",
+                                "format": "Bara PDF-filer kan laddas upp."}.get(request.query_params.get("dok"))
     if request.method == "GET":
         vals = dict(row) if row else {f["name"]: f.get("default") for f in spec["fields"]}
         return render(request, "form.html", user, vals=vals, can_write=can_write(user, ent), **ctx)
@@ -222,6 +231,9 @@ def delete_cleanup(c, ent: str, item_id: int) -> None:
         c.execute("UPDATE photos SET guest_id = NULL WHERE guest_id = ?", (item_id,))
     if ent == "wishlist":
         c.execute("DELETE FROM gift_reservations WHERE gift_id = ?", (item_id,))
+    if ent == "vendors":
+        from .routes_vendors import delete_doc_files
+        delete_doc_files(c, vendor_id=item_id)
     if ent == "budget":
         from .receipts import delete_receipt
         row = c.execute("SELECT receipt FROM budget WHERE id = ?", (item_id,)).fetchone()

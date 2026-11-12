@@ -9,6 +9,7 @@ DB_PATH = os.path.join(DATA_DIR, "wedding.db")
 PHOTO_DIR = os.path.join(DATA_DIR, "photos")
 TMP_DIR = os.path.join(DATA_DIR, ".tmp")
 RECEIPT_DIR = os.path.join(DATA_DIR, "receipts")
+DOC_DIR = os.path.join(DATA_DIR, "docs")
 
 _SQL_TYPE = {"int": "INTEGER", "money": "INTEGER", "bool": "INTEGER", "ref": "INTEGER"}
 
@@ -97,6 +98,33 @@ CREATE TABLE IF NOT EXISTS push_subs (
     auth TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS passkeys (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    cred_id TEXT NOT NULL UNIQUE,
+    public_key TEXT NOT NULL,
+    sign_count INTEGER NOT NULL DEFAULT 0,
+    name TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    last_used_at TEXT
+);
+CREATE TABLE IF NOT EXISTS vendor_docs (
+    id INTEGER PRIMARY KEY,
+    vendor_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    file TEXT NOT NULL UNIQUE,
+    bytes INTEGER NOT NULL,
+    uploaded_by TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS quiz_entries (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    score INTEGER NOT NULL,
+    total INTEGER NOT NULL,
+    answers TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS mail_log (
     id INTEGER PRIMARY KEY,
     guest_id INTEGER,
@@ -108,7 +136,7 @@ CREATE TABLE IF NOT EXISTS mail_log (
 );
 """
 
-_CORE_EXTRA = {"users": {"ics_token_hash": "TEXT"}, "photos": {"challenge_id": "INTEGER"}, "cards": {"paper": "TEXT NOT NULL DEFAULT 'vit'",
+_CORE_EXTRA = {"users": {"ics_token_hash": "TEXT"}, "photos": {"challenge_id": "INTEGER", "favorite": "INTEGER NOT NULL DEFAULT 0"}, "cards": {"paper": "TEXT NOT NULL DEFAULT 'vit'",
                                                              "qr_style": "TEXT NOT NULL DEFAULT 'prickar'",
                                                              "qr_center": "TEXT NOT NULL DEFAULT 'hjarta'",
                                                              "qr_color": "TEXT NOT NULL DEFAULT 'kort'"}}
@@ -150,6 +178,7 @@ def init_db() -> None:
     os.makedirs(PHOTO_DIR, exist_ok=True)
     os.makedirs(TMP_DIR, exist_ok=True)
     os.makedirs(RECEIPT_DIR, exist_ok=True)
+    os.makedirs(DOC_DIR, exist_ok=True)
     with db() as c:
         c.execute("PRAGMA journal_mode = WAL")
         c.executescript(_CORE_SCHEMA)
@@ -172,6 +201,7 @@ def init_db() -> None:
         for sp in c.execute("SELECT id FROM speeches WHERE token IS NULL").fetchall():  # talarens egen länk
             c.execute("UPDATE speeches SET token = ? WHERE id = ?", (new_token(24), sp["id"]))
         c.execute("CREATE UNIQUE INDEX IF NOT EXISTS speeches_token ON speeches(token)")
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS vendors_share ON vendors(share_token)")
         c.execute("""CREATE TABLE IF NOT EXISTS guest_people (
             id INTEGER PRIMARY KEY,
             guest_id INTEGER NOT NULL REFERENCES guests(id) ON DELETE CASCADE,

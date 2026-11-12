@@ -7,7 +7,10 @@ from starlette.responses import JSONResponse, RedirectResponse
 from starlette.routing import Route
 
 from . import db as dbm
-from .core import auth, csrf_form, csrf_header, log, render
+from .core import auth, csrf_form, csrf_header, get_settings, log, render, set_settings
+
+PLAN_RATIOS = [("liggande", "Liggande"), ("kvadrat", "Kvadratisk"), ("staende", "Stående")]
+MAX_LABELS, LABEL_MAX = 30, 40
 
 
 def seat_need(g) -> int:
@@ -89,7 +92,64 @@ async def seating_clear(request: Request):
     return RedirectResponse("/seating", 303)
 
 
+def _plan_settings() -> dict:
+    try:
+        plan = json.loads(get_settings().get("floor_plan") or "{}")
+    except ValueError:
+        plan = {}
+    ratio = plan.get("ratio") if plan.get("ratio") in dict(PLAN_RATIOS) else "liggande"
+    return {"ratio": ratio, "labels": plan.get("labels") or []}
+
+
+async def floor_plan(request: Request):
+    """Planritning: borden dras dit de står i lokalen. Bord som aldrig placerats läggs ut i ett rutnät."""
+    user = auth(request)
+    with dbm.db() as c:
+        tables = [dict(t) for t in c.execute("SELECT * FROM tables ORDER BY sort_no, name COLLATE NOCASE")]
+        guests = c.execute("SELECT name, rsvp, attending, invited_count, table_id FROM guests "
+                           "WHERE rsvp <> 'no' AND table_id IS NOT NULL ORDER BY name COLLATE NOCASE").fetchall()
+    cols = max(1, min(6, round(len(tables) ** 0.5 + 0.5)))
+    for i, t in enumerate(tables):
+        t["used"] = sum(seat_need(g) for g in guests if g["table_id"] == t["id"])
+        t["names"] = [g["name"] for g in guests if g["table_id"] == t["id"]]
+        if t["pos_x"] is None or t["pos_y"] is None:
+            t["pos_x"] = round(100 * (i % cols + 0.5) / cols, 1)
+            t["pos_y"] = round(min(92, 14 + 22 * (i // cols)), 1)
+    return render(request, "floor_plan.html", user, tables=tables, plan=_plan_settings(), ratios=PLAN_RATIOS,
+                  can_write=not user["readonly"], label_max=LABEL_MAX, active="seating")
+
+
+def _pos(v) -> float:
+    v = float(v)
+    if not 0 <= v <= 100:  # även NaN faller här
+        raise ValueError
+    return round(v, 1)
+
+
+async def floor_plan_save(request: Request):
+    user = auth(request, write=True, area="tables")
+    csrf_header(request, user)
+    try:
+        data = json.loads(await request.body())
+        tables = [(_pos(t["x"]), _pos(t["y"]), 90 if int(t.get("rot") or 0) == 90 else 0, int(t["id"]))
+                  for t in data.get("tables", [])][:200]
+        labels = [{"text": " ".join(str(lab["text"]).split())[:LABEL_MAX], "x": _pos(lab["x"]), "y": _pos(lab["y"])}
+                  for lab in data.get("labels", [])]
+        ratio = data.get("ratio")
+        if len(labels) > MAX_LABELS or ratio not in dict(PLAN_RATIOS) or not all(lab["text"] for lab in labels):
+            raise ValueError
+    except (ValueError, KeyError, TypeError, OverflowError, AttributeError):
+        raise HTTPException(400)
+    with dbm.db() as c:
+        c.executemany("UPDATE tables SET pos_x = ?, pos_y = ?, rot = ? WHERE id = ?", tables)
+    set_settings({"floor_plan": json.dumps({"ratio": ratio, "labels": labels})})
+    log.info("floor_plan_saved tables=%s labels=%s by=%s", len(tables), len(labels), user["username"])
+    return JSONResponse({"ok": True})
+
+
 routes = [
+    Route("/seating/plan", floor_plan),
+    Route("/seating/plan", floor_plan_save, methods=["POST"]),
     Route("/seating/forslag", seating_suggest, methods=["POST"]),
     Route("/seating/tom", seating_clear, methods=["POST"]),
     Route("/seating", seating),

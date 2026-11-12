@@ -280,6 +280,8 @@ async def admin_photo_action(request: Request):
             raise HTTPException(404)
         if action == "toggle":
             c.execute("UPDATE photos SET hidden = 1 - hidden WHERE id = ?", (pid,))
+        elif action == "favorite":  # utvald till minnesboken
+            c.execute("UPDATE photos SET favorite = 1 - favorite WHERE id = ?", (pid,))
         elif action == "delete":
             c.execute("DELETE FROM photos WHERE id = ?", (pid,))
             for f in (p["file"], p["file"].replace(".jpg", "_t.jpg")):
@@ -290,7 +292,7 @@ async def admin_photo_action(request: Request):
             log.info("photo_deleted id=%s by=%s", pid, user["username"])
         else:
             raise HTTPException(400)
-    return RedirectResponse(f"/photos#p{pid}" if action == "toggle" else "/photos", 303)
+    return RedirectResponse(f"/photos#p{pid}" if action in ("toggle", "favorite") else "/photos", 303)
 
 
 async def admin_greeting(request: Request):

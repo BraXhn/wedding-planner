@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Körschema · {{ settings.couple_names or "Bröllop" }}{% endblock %}
+{% block bodyclass %}public{% endblock %}
+{% block content %}
+<div class="invite">
+  <p class="eyebrow">Körschema för {{ vendor.name }}</p>
+  <h1 class="script">{{ settings.couple_names or "Bröllopet" }}</h1>
+  <p class="details">
+    {% if wedding_date %}{{ sv_date(wedding_date) }}{% endif %}{% if settings.wedding_time %} kl. {{ settings.wedding_time }}{% endif %}
+    {% if settings.venue %}<br>{{ settings.venue }}{% endif %}{% if settings.address %}<br>{{ settings.address }}{% endif %}
+  </p>
+</div>
+<div class="narrow-col">
+  <section class="card">
+    <div class="pagehead"><h2>Körschema</h2><div class="actions noprint"><a class="btn" href="#" data-print>Skriv ut</a></div></div>
+    <p class="muted small">Sidan visar alltid det senaste körschemat. Era punkter är markerade.</p>
+    {% if schedule %}
+    <ol class="day-list">
+      {% for t in schedule %}<li class="{{ 'current' if t.mine }}"><b>{{ t.time }}</b><span>{{ t.title }}{% if t.mine %} <span class="pill yes">er punkt</span>{% endif %}
+        {% if t.location or t.responsible %}<small class="muted">{{ t.location or '' }}{% if t.location and t.responsible %} · {% endif %}{{ t.responsible or '' }}</small>{% endif %}
+        {% if t.notes %}<small class="prewrap">{{ t.notes }}</small>{% endif %}</span></li>{% endfor %}
+    </ol>
+    {% else %}<p class="muted">Körschemat är inte klart än.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

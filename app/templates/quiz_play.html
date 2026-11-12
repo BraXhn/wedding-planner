@@ -1,0 +1,24 @@
+{% extends "guest_base.html" %}
+{% block portal %}
+<div class="card narrow">
+  <h2>Quiz om brudparet</h2>
+  {% if result %}
+    <p class="bignum">{{ result.score }} av {{ result.total }} rätt</p>
+    <p>Tack {{ player }}! Håll utkik efter ställningen på storbildsskärmen – de rätta svaren avslöjas av toastmastern.</p>
+    <p><a class="btn" href="{{ base }}/quiz">Försök igen</a></p>
+  {% elif not is_open %}
+    <p class="muted">Quizet är inte öppet just nu. Toastmastern säger till när det är dags!</p>
+  {% else %}
+    {% if error %}<p class="alert error">{{ error }}</p>{% endif %}
+    <form method="post">
+      <label class="field"><span>Namn eller lagnamn</span><input name="name" maxlength="{{ name_max }}" value="{{ player }}" required autocomplete="off"></label>
+      {% for q in questions %}
+      <fieldset class="choice quiz-q"><legend>{{ loop.index }}. {{ q.question }}</legend>
+        {% for o in q.options %}<label><input type="radio" name="q_{{ q.id }}" value="{{ loop.index }}" {{ 'checked' if picked.get(q.id) == loop.index }} required> {{ o }}</label>{% endfor %}
+      </fieldset>
+      {% endfor %}
+      <button class="btn primary wide">Skicka svar</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

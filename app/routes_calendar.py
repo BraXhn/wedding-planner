@@ -105,6 +105,8 @@ async def user_feed(request: Request):
             raise HTTPException(404)
         tasks = c.execute("SELECT * FROM tasks WHERE done = 0 AND COALESCE(due_date,'') <> ''").fetchall()
         bills = c.execute("SELECT * FROM budget WHERE paid = 0 AND COALESCE(due_date,'') <> ''").fetchall()
+        pays = c.execute("SELECT p.*, v.name AS vendor FROM payments p LEFT JOIN vendors v ON v.id = p.vendor_id "
+                         "WHERE p.paid = 0 AND COALESCE(p.due_date,'') <> ''").fetchall()
     s = get_settings()
     evs = wedding_event(s, public_only=False)
     rd = parse_date(s.get("rsvp_deadline"))
@@ -121,6 +123,11 @@ async def user_feed(request: Request):
             amount = b["actual"] or b["estimated"]
             evs.append(event(_uid("bill", b["id"]), f"Betala: {b['item']}" + (f" ({amount} kr)" if amount else ""),
                              d, alarm_days=3))
+    for p in pays:
+        d = parse_date(p["due_date"])
+        if d:
+            who = f"{p['vendor']}: " if p["vendor"] else ""
+            evs.append(event(_uid("pay", p["id"]), f"Betala: {who}{p['label']} ({p['amount'] or 0} kr)", d, alarm_days=3))
     log.info("ics_feed user=%s events=%s", u["username"], len(evs))
     return calendar(f"Bröllopsplanering – {s.get('couple_names') or ''}".strip(" –"), evs)
 

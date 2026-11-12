@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Minnesbok · {{ super() }}{% endblock %}
+{% block bodyclass %}binder{% endblock %}
+{% block content %}
+<div class="pagehead noprint">
+  <h1>Minnesbok</h1>
+  <div class="actions"><a class="btn" href="/photos">Välj bilder</a><a class="btn primary" href="#" data-print>Skriv ut / spara som PDF</a></div>
+</div>
+<p class="hint noprint">Hälsningar, låtönskemål och utvalda bilder från bröllopet. Markera bilder med ☆ under Bilder{% if fallback and photos %} – tills dess visas de första {{ photos|length }}{% endif %}. Skriv ut, eller välj ”Spara som PDF” i utskriftsdialogen.</p>
+<header class="mb-title">
+  <p class="eyebrow">Minnen från bröllopet</p>
+  <h1 class="script">{{ settings.couple_names or "Vårt bröllop" }}</h1>
+  <p>{% if wedding_date %}{{ sv_date(wedding_date) }}{% endif %}{% if settings.venue %} · {{ settings.venue }}{% endif %}{% if coming %} · {{ coming }} gäster{% endif %}</p>
+</header>
+{% if photos %}
+<section class="binder-sec"><h2>Bilder</h2>
+  <div class="mb-photos">{% for p in photos %}<figure><img src="/photos/img/{{ p.file }}" alt="" loading="lazy">{% if p.uploader %}<figcaption>{{ p.uploader }}</figcaption>{% endif %}</figure>{% endfor %}</div>
+</section>
+{% endif %}
+{% if greetings %}
+<section class="binder-sec"><h2>Gästboken</h2>
+  <div class="mb-notes">{% for g in greetings %}<blockquote><p class="prewrap">{{ g.text }}</p><cite>{{ g.name or 'Anonym' }}</cite></blockquote>{% endfor %}</div>
+</section>
+{% endif %}
+{% if messages %}
+<section class="binder-sec"><h2>Hälsningar i OSA-svaren</h2>
+  <div class="mb-notes">{% for m in messages %}<blockquote><p class="prewrap">{{ m.message }}</p><cite>{{ m.name }}</cite></blockquote>{% endfor %}</div>
+</section>
+{% endif %}
+{% if songs %}
+<section class="binder-sec"><h2>Låtarna som fick upp er på dansgolvet</h2>
+  <ol class="song-list">{% for s in songs %}<li><strong>{{ s.song }}</strong> <small class="muted">– {{ s.by|join(', ') }}</small></li>{% endfor %}</ol>
+</section>
+{% endif %}
+{% if board %}
+<section class="binder-sec"><h2>Quizet om brudparet</h2>
+  <ol>{% for e in board %}<li>{{ e.name }} – {{ e.score }} av {{ e.total }} rätt</li>{% endfor %}</ol>
+</section>
+{% endif %}
+{% if not (photos or greetings or messages or songs) %}<p class="card muted">Här samlas hälsningar, låtönskemål och bilder när gästerna börjat skicka in dem.</p>{% endif %}
+{% endblock %}

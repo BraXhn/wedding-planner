@@ -10,7 +10,7 @@
       {% if settings.dress_code %}<dt>Klädkod</dt><dd>{{ settings.dress_code }}</dd>{% endif %}
       {% if deadline %}<dt>OSA senast</dt><dd>{{ sv_date(deadline) }}</dd>{% endif %}
     </dl>
-    {% if wedding_date %}<p><a class="btn" href="{{ base }}/brollop.ics">📅 Lägg till i kalendern</a></p>{% endif %}
+    <p>{% if wedding_date %}<a class="btn" href="{{ base }}/brollop.ics">📅 Lägg till i kalendern</a> {% endif %}{% if maps %}<a class="btn" href="{{ maps.apple }}" rel="noopener">📍 Apple Kartor</a> <a class="btn" href="{{ maps.google }}" rel="noopener">📍 Google Maps</a>{% endif %}</p>
   </section>
   {% if programme %}
   <section class="card">

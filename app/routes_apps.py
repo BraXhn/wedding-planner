@@ -31,7 +31,7 @@ PLAN = {"key": "plan", "name": "Planering", "manifest": "manifest-plan.json", "i
                  ("klart", "/plan/klart", "Klart", "☑")]}
 APPS = {"tm": TM, "plan": PLAN}
 SPEECH_FIELDS = [f for f in ENTITIES["speeches"]["fields"] if f["name"] != "guest_id"]
-TIMELINE_FIELDS = ENTITIES["timeline"]["fields"]
+TIMELINE_FIELDS = [f for f in ENTITIES["timeline"]["fields"] if f["name"] != "vendor_id"]
 TASK_FIELDS = ENTITIES["tasks"]["fields"]
 
 
