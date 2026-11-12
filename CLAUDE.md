@@ -23,6 +23,9 @@ Starlette (inte FastAPI) + Jinja2 + SQLite. Kryptot (scrypt, TOTP, tokens) bygge
 - `app/push.py` – Web Push (VAPID + aes128gcm med `cryptography`); `send()` skickar i bakgrundstråd, `programme_reminders()` körs varje minut från `scheduler.py`. Service workern `static/sw.js` serveras som `/tm/sw.js` och `/plan/sw.js` (scope per app) och ger offline-läge.
 - `app/weather.py` – SMHI-prognos (snow1g), hämtas i bakgrunden och cachas; en sida väntar aldrig på SMHI. `app/receipts.py` – kvittofoton (samma omkodning som gästbilderna, i `DATA_DIR/receipts`).
 - `app/routes_speaker.py` – talarens sida `/t/{token}` (token i `speeches.token`, skapas med `speech_token()`); `app/routes_rides.py` – samåkning.
+- `app/passkeys.py` – WebAuthn (bara ES256, ingen attestering, UV krävs); utmaningarna hålls i minnet och förbrukas alltid vid första försöket. Rutterna ligger i `routes_account.py`.
+- `app/routes_vendors.py` – delat körschema `/v/{token}` (`vendors.share_token`), PDF-dokument i `DATA_DIR/docs` och betalningsplanen (entitet `payments`). `app/routes_quiz.py` – quiz (`/p/{token}/quiz`, `/r/{token}/quiz`, entitet `quiz`) och minnesboken.
+- Planritningen (`/seating/plan`) sparar bordens läge i procent (`tables.pos_x/pos_y/rot`) och etiketter i inställningen `floor_plan`; positionerna sätts av `app.js` (CSP tillåter inga inline-stilar).
 - `app/backup.py` – daglig SQLite-kopia i `DATA_DIR/backups` (bakgrundstråd som startas i `lifespan`).
 - `app/routes_*.py` – en modul per område; registreras i `app/main.py` (ordningen spelar roll där specifika sökvägar krockar med `/m/{ent}/...`).
 - `app/templates/`, `app/static/app.js`, `app/static/style.css` – all JS och CSS ligger i filerna (CSP tillåter inget inline).
@@ -31,19 +34,20 @@ Starlette (inte FastAPI) + Jinja2 + SQLite. Kryptot (scrypt, TOTP, tokens) bygge
 
 Appen ligger ute på internet; varje ändring håller dessa:
 
-- Inloggade vyer anropar `auth(request, write=…, admin=…, area=…)`; roller: admin, editor, toastmaster, viewer. Toastmaster är läsare (`user["readonly"]`) som får skriva i områdena `TOASTMASTER_AREAS` (tal, körschema) – skrivande vyer anger därför `area`. Läsare och toastmaster får aldrig se gästernas OSA-länkar, koder eller QR (de ger skrivrätt till gästens svar); kontrollera `user["readonly"]`, inte rollnamnet. Enda skrivundantaget för läsare: bocka av tal som hållna (`/dagen`, `/tm`). Talarens länk ger skrivrätt till talet och visas därför bara för den som får ändra tal.
+- Inloggade vyer anropar `auth(request, write=…, admin=…, area=…)`; roller: admin, editor, toastmaster, viewer. Toastmaster är läsare (`user["readonly"]`) som får skriva i områdena `TOASTMASTER_AREAS` (tal, körschema, quiz) – skrivande vyer anger därför `area`. Läsare och toastmaster får aldrig se gästernas OSA-länkar, koder eller QR (de ger skrivrätt till gästens svar); kontrollera `user["readonly"]`, inte rollnamnet. Enda skrivundantaget för läsare: bocka av tal som hållna (`/dagen`, `/tm`). Talarens länk ger skrivrätt till talet och visas därför bara för den som får ändra tal.
 - Varje POST verifierar CSRF: `csrf_form()` för formulär, `csrf_header()` för `fetch()`-anrop med JSON.
-- Publika token-sidor (`/r/`, `/p/`, `/o/`, `/osa`, `/cal/`, `/api/`) anropar `public_rate_limit()` eller en egen `RateLimiter`, validerar token/nyckel mot ett strikt mönster (`TOKEN_RE`, `KEY_RE`, `normalize_code`) och svarar 404/401 utan att avslöja om den finns.
+- Publika token-sidor (`/r/`, `/p/`, `/o/`, `/osa`, `/cal/`, `/api/`, `/t/`, `/v/`) anropar `public_rate_limit()` eller en egen `RateLimiter`, validerar token/nyckel mot ett strikt mönster (`TOKEN_RE`, `KEY_RE`, `normalize_code`) och svarar 404/401 utan att avslöja om den finns.
 - SQL är parametriserad; tabell- och kolumnnamn kommer bara från `ENTITIES` (vitlista).
 - Mallar autoescapar; `Markup` används bara för SVG som appen själv genererat.
 - Statiska filer länkas via `{{ asset('fil') }}` (innehållshash i URL:en); annars visar Cloudflare gammal CSS efter en uppdatering.
-- Uppladdade bilder kodas om med Pillow (tar bort EXIF/GPS); filnamn slumpas; allt skrivs under `DATA_DIR`.
+- Uppladdade bilder kodas om med Pillow (tar bort EXIF/GPS); filnamn slumpas; allt skrivs under `DATA_DIR`. Dokument måste vara PDF (`%PDF-`), får slumpat filnamn och skickas alltid som bilaga (`Content-Disposition: attachment`), aldrig inbäddat.
+- Leverantörens delade länk visar aldrig gästuppgifter och anteckningar bara för leverantörens egna programpunkter.
 - Push-adresser från webbläsaren godkänns bara mot `push.ALLOWED_HOSTS` (https, port 443) – servern får aldrig anropa en adress som klienten valt fritt.
 - Ny publik sökväg: lägg till den i bypass-tabellen för Cloudflare Access i `README.md`, annars når gästerna den inte.
 
 ## Tester
 
-End-to-end i `tests/test_features.py` och `tests/test_basic.py` (HTTP mot servern, `ok(villkor, "beskrivning")`), enhetstester utan server i `tests/test_units.py`. Varje ny funktion får tester för både lyckat flöde och säkerhetsgränsen (CSRF, roll, rate limit, escaping). Testerna delar en databas och körs i ordning; rate-limit-tester ligger sist i sitt avsnitt.
+End-to-end i `tests/test_features.py` och `tests/test_basic.py` (HTTP mot servern, `ok(villkor, "beskrivning")`), enhetstester utan server i `tests/test_units.py`. Varje ny funktion får tester för både lyckat flöde och säkerhetsgränsen (CSRF, roll, rate limit, escaping). Testerna delar en databas och körs i ordning; rate-limit-tester ligger sist i sitt avsnitt. Spärren för publika anrop (120 per IP och tio minuter) delas av hela sviten – nya avsnitt med många publika anrop skickar `X-Forwarded-For` med en egen adress.
 
 ## Arbetsflöde och driftsättning
 

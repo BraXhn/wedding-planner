@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Planritning · {{ super() }}{% endblock %}
+{% block bodyclass %}floorpage{% endblock %}
+{% block content %}
+<p class="crumb noprint"><a href="/seating">← Placering</a></p>
+<div class="pagehead noprint">
+  <h1>Planritning</h1>
+  <div class="actions">
+    {% if can_write %}
+    <select data-floor-ratio aria-label="Lokalens form">{% for k, lab in ratios %}<option value="{{ k }}" {{ 'selected' if plan.ratio == k }}>{{ lab }}</option>{% endfor %}</select>
+    <button type="button" class="btn" data-floor-label>+ Etikett</button>
+    {% endif %}
+    <button type="button" class="btn" data-floor-names>Visa namn</button>
+    <a class="btn primary" href="#" data-print>Skriv ut</a>
+  </div>
+</div>
+<p class="hint noprint">{% if can_write %}Dra borden dit de står i lokalen. Dubbelklicka på ett långbord för att vrida det. Etiketter (t.ex. ”Dansgolv”, ”Entré”) läggs till med knappen och tas bort med dubbelklick. Allt sparas direkt.{% else %}Så står borden i lokalen.{% endif %}
+  <span data-floor-status role="status"></span></p>
+{% if tables %}
+<div class="floor r-{{ plan.ratio }} {{ 'editable' if can_write }}" data-floor data-csrf="{{ user.csrf }}" data-label-max="{{ label_max }}">
+  {% for t in tables %}
+  <div class="ft ft-{{ {'Runt': 'runt', 'Långbord': 'lang'}.get(t.shape, 'fyrkant') }} {{ 'over' if t.used > (t.seats or 0) }}" data-ft="{{ t.id }}" data-x="{{ t.pos_x }}" data-y="{{ t.pos_y }}" data-rot="{{ t.rot or 0 }}" {% if can_write %}tabindex="0"{% endif %}>
+    <b>{{ t.name }}</b><small>{{ t.used }}/{{ t.seats or 0 }}</small>
+    {% if t.names %}<span class="ft-names">{{ t.names|join(', ') }}</span>{% endif %}
+  </div>
+  {% endfor %}
+  {% for lab in plan.labels %}<div class="fl" data-fl data-x="{{ lab.x }}" data-y="{{ lab.y }}">{{ lab.text }}</div>{% endfor %}
+</div>
+{% else %}<div class="card empty"><p class="muted">Inga bord än. <a href="/m/tables/new">Lägg till ett bord</a>.</p></div>{% endif %}
+{% endblock %}

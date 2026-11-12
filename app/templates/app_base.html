@@ -33,7 +33,7 @@
     <br><small>{{ 'Påminnelse fem minuter före varje programpunkt på bröllopsdagen.' if app.key == 'tm' else 'När någon svarar på OSA.' }}</small>
   </p>
   <p class="app-push-ios" data-push-ios hidden>Aviseringar: lägg först appen på hemskärmen (Dela → Lägg till på hemskärmen) och öppna den därifrån.</p>
-  <p>{% if app.key == 'tm' %}<a href="/tm/parm">Pärm att skriva ut</a> · {% else %}<a href="/plan/kalender">Deadlines i kalendern</a> · {% endif %}<a href="/">Hela planeraren</a><br>Inloggad som {{ user.username }}</p>
+  <p>{% if app.key == 'tm' %}<a href="/tm/parm">Pärm att skriva ut</a> · <a href="/quiz">Quiz</a> · {% else %}<a href="/plan/kalender">Deadlines i kalendern</a> · {% endif %}<a href="/">Hela planeraren</a><br>Inloggad som {{ user.username }}</p>
 </div>
 </main>
 <nav class="app-tabs" aria-label="Flikar">

@@ -1,15 +1,18 @@
+import json
 import re
 import secrets
+from urllib.parse import urlsplit
 
 from markupsafe import Markup
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import JSONResponse, RedirectResponse
 from starlette.routing import Route
 
 from . import db as dbm
+from . import passkeys as pk
 from .core import (
-    APP_PATH, LOGIN_IP, LOGIN_USER, ROLES, auth, client_ip, create_session, csrf_form,
+    APP_PATH, LOGIN_IP, LOGIN_USER, ROLES, auth, client_ip, create_session, csrf_form, csrf_header, public_rate_limit, templates,
     cookie_name, cookie_secure, get_session, log, public_base, read_form, render, safe_log, set_session_cookie,
 )
 from .qr import qr_svg
@@ -73,6 +76,130 @@ async def login(request: Request):
     resp = RedirectResponse("/account" if u["must_change_pw"] else (_safe_next(form.get("next")) or "/"), 303)
     set_session_cookie(resp, token, request)
     return resp
+
+
+# ======================================================================= passkeys
+def _rp(request: Request) -> tuple[str, str]:
+    """(origin, RP-id) – sajtens adress och värdnamn, som webbläsaren binder nyckeln till."""
+    origin = public_base(request)
+    return origin, urlsplit(origin).hostname or ""
+
+
+async def _json(request: Request) -> dict:
+    if not request.headers.get("content-type", "").startswith("application/json"):
+        raise HTTPException(415)
+    try:
+        data = json.loads(await request.body())
+    except ValueError:
+        raise HTTPException(400)
+    if not isinstance(data, dict):
+        raise HTTPException(400)
+    return data
+
+
+def _b64(data: dict, key: str) -> bytes:
+    try:
+        return pk.b64u_dec(str(data[key]))
+    except (KeyError, ValueError):
+        raise HTTPException(400)
+
+
+def passkeys_for(user_id: int) -> list:
+    with dbm.db() as c:
+        return c.execute("SELECT id, name, created_at, last_used_at FROM passkeys WHERE user_id = ? ORDER BY id", (user_id,)).fetchall()
+
+
+templates.env.globals.update(passkeys_for=passkeys_for)
+
+
+async def passkey_login_start(request: Request):
+    public_rate_limit(request)
+    await _json(request)
+    if LOGIN_IP.blocked(client_ip(request)):
+        raise HTTPException(429)
+    return JSONResponse({"challenge": pk.new_challenge(), "rpId": _rp(request)[1], "timeout": pk.CHALLENGE_TTL * 1000,
+                         "userVerification": "required"})
+
+
+async def passkey_login_finish(request: Request):
+    """Inloggning med passkey. Kräver användarverifiering på enheten och ersätter därför lösenord + engångskod."""
+    public_rate_limit(request)
+    data = await _json(request)
+    ip = client_ip(request)
+    if LOGIN_IP.blocked(ip):
+        raise HTTPException(429)
+    origin, rp_id = _rp(request)
+    cred_id = str(data.get("id", ""))[:1400]
+    with dbm.db() as c:
+        row = c.execute("SELECT p.*, u.username, u.must_change_pw FROM passkeys p JOIN users u ON u.id = p.user_id "
+                        "WHERE p.cred_id = ?", (cred_id,)).fetchone()
+        try:
+            if not row:
+                raise pk.PasskeyError("unknown")
+            count = pk.verify(row["public_key"], row["sign_count"], origin, rp_id, _b64(data, "clientDataJSON"),
+                              _b64(data, "authenticatorData"), _b64(data, "signature"))
+        except pk.PasskeyError as e:
+            LOGIN_IP.hit(ip)
+            log.warning("passkey_login_failed ip=%s reason=%s", ip, e)
+            return JSONResponse({"error": "Passkeyn kunde inte användas. Logga in med lösenord i stället."}, 401)
+        c.execute("UPDATE passkeys SET sign_count = ?, last_used_at = datetime('now') WHERE id = ?", (count, row["id"]))
+        old = request.cookies.get(cookie_name(request))
+        if old:  # förhindra session fixation
+            c.execute("DELETE FROM sessions WHERE token_hash = ?", (token_hash(old),))
+        token = create_session(c, row["user_id"])
+    log.info("login_ok ip=%s user=%s method=passkey", ip, row["username"])
+    resp = JSONResponse({"ok": True, "next": "/account" if row["must_change_pw"] else (_safe_next(data.get("next")) or "/")})
+    set_session_cookie(resp, token, request)
+    return resp
+
+
+async def passkey_register_start(request: Request):
+    user = auth(request)
+    csrf_header(request, user)
+    existing = passkeys_for(user["user_id"])
+    if len(existing) >= pk.MAX_PER_USER:
+        raise HTTPException(400, "Du har redan så många passkeys som går att ha.")
+    with dbm.db() as c:
+        ids = [r["cred_id"] for r in c.execute("SELECT cred_id FROM passkeys WHERE user_id = ?", (user["user_id"],))]
+    return JSONResponse({
+        "challenge": pk.new_challenge(user["user_id"]), "rp": {"id": _rp(request)[1], "name": "Bröllopsplaneraren"},
+        "user": {"id": pk.b64u(str(user["user_id"]).encode()), "name": user["username"], "displayName": user["username"]},
+        "pubKeyCredParams": [{"type": "public-key", "alg": -7}], "timeout": pk.CHALLENGE_TTL * 1000, "attestation": "none",
+        "authenticatorSelection": {"residentKey": "required", "userVerification": "required"},
+        "excludeCredentials": [{"type": "public-key", "id": i} for i in ids]})
+
+
+async def passkey_register_finish(request: Request):
+    user = auth(request)
+    csrf_header(request, user)
+    data = await _json(request)
+    origin, rp_id = _rp(request)
+    try:
+        cred_id, public_key, count = pk.register(user["user_id"], origin, rp_id, _b64(data, "clientDataJSON"),
+                                                 _b64(data, "attestationObject"))
+    except pk.PasskeyError as e:
+        log.warning("passkey_register_failed user=%s reason=%s", user["username"], e)
+        raise HTTPException(400, "Passkeyn kunde inte sparas.")
+    name = " ".join("".join(ch for ch in str(data.get("name", "")) if ch.isprintable()).split())[:40] or "Passkey"
+    with dbm.db() as c:
+        if c.execute("SELECT 1 FROM passkeys WHERE cred_id = ?", (cred_id,)).fetchone() \
+                or c.execute("SELECT COUNT(*) FROM passkeys WHERE user_id = ?", (user["user_id"],)).fetchone()[0] >= pk.MAX_PER_USER:
+            raise HTTPException(400, "Passkeyn finns redan.")
+        c.execute("INSERT INTO passkeys (user_id, cred_id, public_key, sign_count, name) VALUES (?, ?, ?, ?, ?)",
+                  (user["user_id"], cred_id, public_key, count, name))
+    log.info("passkey_added user=%s", user["username"])
+    return JSONResponse({"ok": True})
+
+
+async def passkey_delete(request: Request):
+    user = auth(request)
+    await csrf_form(request, user)
+    with dbm.db() as c:
+        if not c.execute("DELETE FROM passkeys WHERE id = ? AND user_id = ?",
+                         (request.path_params["key_id"], user["user_id"])).rowcount:
+            raise HTTPException(404)
+    log.info("passkey_removed user=%s", user["username"])
+    return RedirectResponse("/account#passkeys", 303)
 
 
 async def logout(request: Request):
@@ -263,6 +390,11 @@ def bootstrap_admin() -> None:
 
 routes = [
     Route("/login", login, methods=["GET", "POST"]),
+    Route("/login/passkey/start", passkey_login_start, methods=["POST"]),
+    Route("/login/passkey/finish", passkey_login_finish, methods=["POST"]),
+    Route("/account/passkey/start", passkey_register_start, methods=["POST"]),
+    Route("/account/passkey/finish", passkey_register_finish, methods=["POST"]),
+    Route("/account/passkey/{key_id:id}/ta-bort", passkey_delete, methods=["POST"]),
     Route("/logout", logout, methods=["POST"]),
     Route("/account", account),
     Route("/account/password", account_password, methods=["POST"]),

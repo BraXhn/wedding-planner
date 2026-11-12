@@ -86,9 +86,10 @@ ENTITIES = {
         "list": ["name", "group_name", "invited_count", "rsvp", "attending", "diet", "table_id"],
         "search": ["name", "email", "group_name", "diet", "street", "city"],
         "sum": ["invited_count", "attending"],
-        "filters": [("", "Alla"), ("pending", "Väntar"), ("yes", "Kommer"), ("no", "Kommer inte")],
+        "filters": [("", "Alla"), ("pending", "Väntar"), ("opened", "Öppnat, ej svarat"), ("unopened", "Inte öppnat"),
+                    ("yes", "Kommer"), ("no", "Kommer inte")],
         "extra_columns": {"rsvp_token": "TEXT", "rsvp_code": "TEXT", "rsvp_at": "TEXT", "invite_sent_at": "TEXT",
-                          "reminder_sent_at": "TEXT", "table_no": "TEXT"},
+                          "reminder_sent_at": "TEXT", "table_no": "TEXT", "opened_at": "TEXT"},
     },
     "tables": {
         "title": "Bord", "singular": "bord", "nav": False,
@@ -104,6 +105,7 @@ ENTITIES = {
         "search": ["name", "notes"],
         "sum": ["seats"],
         "filters": [],
+        "extra_columns": {"pos_x": "REAL", "pos_y": "REAL", "rot": "INTEGER"},
         "back": "/seating",
     },
     "tasks": {
@@ -156,6 +158,37 @@ ENTITIES = {
         "filters": [],
         "extra_columns": {"receipt": "TEXT"},
     },
+    "payments": {
+        "title": "Betalningar", "singular": "betalning", "nav": False,
+        "order": "paid, due_date IS NULL OR due_date = '', due_date, id",
+        "fields": [
+            F("label", "Vad", required=True, help="t.ex. ”Handpenning” eller ”Slutbetalning”"),
+            F("vendor_id", "Leverantör", "ref", ref="vendors"),
+            F("amount", "Belopp (kr)", "money", required=True),
+            F("due_date", "Förfaller", "date"),
+            F("paid", "Betald", "bool"),
+            F("notes", "Anteckningar", "textarea"),
+        ],
+        "list": ["label", "vendor_id", "amount", "due_date", "paid"],
+        "search": ["label", "notes"],
+        "sum": ["amount"],
+        "filters": [("", "Alla"), ("open", "Obetalda"), ("done", "Betalda")],
+    },
+    "quiz": {
+        "title": "Quiz", "singular": "fråga", "nav": False,
+        "order": "sort_no, id",
+        "fields": [
+            F("question", "Fråga", required=True, help="t.ex. ”Var träffades vi?”"),
+            F("options", "Svarsalternativ", "textarea", required=True, help="Ett per rad, två till sex stycken"),
+            F("correct", "Rätt svar (radnummer)", "int", default=1, min=1, max=6),
+            F("enabled", "Med i quizet", "bool", default=1),
+            F("sort_no", "Ordning", "int", default=0, min=0, max=999),
+        ],
+        "list": ["sort_no", "question", "correct", "enabled"],
+        "search": ["question", "options"],
+        "sum": [],
+        "filters": [],
+    },
     "vendors": {
         "title": "Leverantörer", "singular": "leverantör",
         "order": "category, name COLLATE NOCASE",
@@ -174,6 +207,7 @@ ENTITIES = {
         "search": ["name", "category", "contact", "notes"],
         "sum": ["price"],
         "filters": [],
+        "extra_columns": {"share_token": "TEXT"},
     },
     "timeline": {
         "title": "Körschema", "singular": "programpunkt",
@@ -184,6 +218,8 @@ ENTITIES = {
             F("location", "Plats"),
             F("responsible", "Ansvarig"),
             F("public", "Visa för gäster", "bool", help="Syns i gästportalen och på bilduppladdningssidan"),
+            F("vendor_id", "Leverantör", "ref", ref="vendors",
+              help="Leverantören ser anteckningarna för sina egna punkter via sin delade länk (Leverantörer → Dela körschemat)"),
             F("notes", "Anteckningar", "textarea"),
         ],
         "list": ["time", "title", "location", "responsible", "public"],
@@ -320,6 +356,7 @@ SETTINGS_DEFAULTS = {
     "swish_message": "Bröllopsgåva",
     "digest_enabled": "1",
     "capsule_enabled": "1",
+    "quiz_open": "0",
 }
 
 SETTINGS_FIELDS = [

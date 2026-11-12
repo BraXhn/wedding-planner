@@ -11,14 +11,18 @@ En självhostad bröllopsplanerare för Unraid. Den är liten (fem Python-beroen
 |---|---|
 | **Översikt** | Nedräkning, OSA-status, budget, försenade uppgifter, obetalda räkningar, tal, önskelista och bilder |
 | **Gäster** | Ett hushåll per rad: antal, grupp/sida, bord, e-post, postadress och låtönskemål. Under **Personer** står namn, om personen kommer och allergier per person. |
+| **Öppnat länken** | Gästlistan visar om ett hushåll som inte svarat har öppnat sin länk (”öppnat” / ”ej öppnat”), med filter för båda. Ert eget besök som inloggad räknas inte. |
 | **Importera** | Klistra in gästlistan från Excel, Numbers eller Google Kalkylark – eller ladda upp en CSV-fil. Förhandsvisning först; dubbletter och rader med fel hoppas över. |
 | **OSA-frågor** | Egna frågor i OSA-formuläret – ja/nej, val bland alternativ eller fritext – som kan stängas av var för sig. Förslag: skjuts från stationen, boende och barnstol. Svaren sammanställs med antal personer och kan exporteras. |
 | **Till cateringen** | Antal som kommer, allergier per person och per bord och en sammanställning (t.ex. ”2 × nötter”). Kan skrivas ut eller exporteras som CSV. |
-| **Placering** | Bord med antal platser. Dra hushåll till ett bord, eller tryck på hushållet och sedan på bordet i mobilen. Fulla bord markeras i rött och det finns en utskriftsvy. **Bordskort** med namn (ett per person, 8 per A4) och en **placeringslista** i bokstavsordning till entrén. **Föreslå placering** fyller borden med dem som saknar plats: grupper hålls ihop och ingen hamnar vid samma bord som den inte ska sitta med. |
+| **Placering** | Bord med antal platser. Dra hushåll till ett bord, eller tryck på hushållet och sedan på bordet i mobilen. Fulla bord markeras i rött och det finns en utskriftsvy. **Bordskort** med namn (ett per person, 8 per A4) och en **placeringslista** i bokstavsordning till entrén. **Planritning:** dra borden dit de står i lokalen, vrid långbord, lägg till etiketter som ”Dansgolv” och skriv ut. **Föreslå placering** fyller borden med dem som saknar plats: grupper hålls ihop och ingen hamnar vid samma bord som den inte ska sitta med. |
 | **Att göra** | Förifylld svensk checklista med 38 punkter. **Deadlines räknas ut automatiskt** från bröllopsdatumet, till exempel hindersprövning en månad före. Ändras datumet flyttas de uträknade deadlines med; egna datum rörs inte. |
 | **Budget** | Budgeterat mot faktiskt, betalt, förfallodatum och summering. Utgifter med **kvittofoto** läggs snabbt in från planeringsappen. |
 | **Packlista** | Det som ska med till vigseln, festen och natten efter, plus ett nödkit. Förifylld med förslag; bockas av i planeringsappen. |
 | **Leverantörer** | Status från förfrågan till bokad, kontaktuppgifter och pris. En bokad leverantör läggs in i budgeten med priset som budgeterat belopp. |
+| **Betalningsplan** | Delbetalningar per leverantör (handpenning, slutbetalning) med förfallodatum. Översikt över kvar att betala, per månad och per kategori. Obetalda kommer med i kalenderprenumerationen. |
+| **Dokument** | Avtal och offerter som PDF per leverantör. Syns bara för inloggade och laddas alltid ner som fil. |
+| **Delat körschema** | En läslänk per leverantör (`/v/…`) utan inloggning: hela körschemat, men anteckningar bara för de punkter där leverantören är vald. Inga gästuppgifter. Länken kan återkallas. |
 | **Körschema** | Dagen minut för minut. Punkter markerade *Visa för gäster* syns i gästportalen. Tider före 06:00 räknas som natten efter. |
 | **Dagen** | För toastmaster och brudpar i mobilen på bröllopsdagen: vad som händer nu och härnäst, hela körschemat och talen per del av middagen. Toastmastern bockar av tal som hållits och har en timer per tal. Lägg sidan på hemskärmen så öppnas den som en app. |
 | **Appar i mobilen** | Två små appar för iPhone (och Android) som läggs på hemskärmen: **Toastmaster** på `/tm` – nästa tal med stor timer och ✓ Hållet, talen per del som kan bockas av, flyttas upp/ner, ändras och läggas till, samt programmet – och **Planering** på `/plan` – att göra-listan grupperad efter deadline med snabbtillägg och avbockning, programmet och det som är klart. I programmet skjuts en punkt och allt efter den ±5–30 minuter med ett tryck. Öppna adressen i Safari → Dela → *Lägg till på hemskärmen*; den som inte är inloggad hamnar på inloggningen och sedan tillbaka i appen.<br>Planeringsappen har också **Packa**, **Utgifter** (med kvittofoto) och en knapp som lägger deadlines i telefonens kalender. Toastmasterappen har en **pärm att skriva ut** (program, tal med fusklapp, kontakter, placering) som reserv.<br>**Utan nät:** apparna sparar sidorna i telefonen och visar senast sparade version; tal som bockas av offline skickas när nätet är tillbaka. **Timern** håller skärmen tänd, blir gul sista minuten och blinkar röd med ett pip när tiden är slut. **Mörkt läge** följer telefonen eller växlas med ◐.<br>**Aviseringar** (iPhone med iOS 16.4 eller senare, appen öppnad från hemskärmen): toastmasterappen påminner fem minuter före varje programpunkt på bröllopsdagen, planeringsappen meddelar när någon svarar på OSA. Slå på längst ned i appen. |
@@ -26,6 +30,8 @@ En självhostad bröllopsplanerare för Unraid. Den är liten (fem Python-beroen
 | **Samåkning** | Gästerna anger i OSA-svaret att de har plats i bilen (hur många, varifrån) eller behöver skjuts. Under Gäster → Samåkning föreslås vem som åker med vem – samma ort först, ingen bil överfylls – och gästportalen visar det. Slås på under Inställningar. |
 | **Önskelista** | Gästerna reserverar presenter. Ni ser hur många som är reserverade, men inte av vem. |
 | **Bilder** | Gästernas bilder i ett galleri, med valfri granskning innan de visas, nedladdning som zip, utskrivbara **bordskort med QR-kod** och ett **bildspel** för projektor som visar nya bilder direkt. **Fotoutmaningar** (t.ex. ”Bästa dansmovet”) väljs vid uppladdning och syns som bildtext, och gästernas hälsningar i **gästboken** rullar mellan bilderna. |
+| **Quiz om brudparet** | Frågor med svarsalternativ som gästerna svarar på i mobilen via QR-koden på borden eller sin egen länk. Toastmastern öppnar och stänger quizet och visar ställningen – och sedan facit – på storbildsskärmen. |
+| **Minnesbok** | Efter bröllopet: gästbokens hälsningar, hälsningar från OSA-svaren, låtönskemål och bilder ni valt ut (☆ under Bilder) på en sida att skriva ut eller spara som PDF. |
 | **OSA-kort med QR** | För inbjudningar som skickas med posten: en QR-kod och en kort kod per hushåll, utskriftsark (8 kort per A4) och zip med PNG/SVG + CSV för dokumentkoppling i Word, InDesign eller Canva |
 | **Utskick** | E-post med personlig länk till varje hushåll, påminnelser till dem som inte svarat, redigerbara mallar och testutskick. Ni kan också få ett mejl varje gång någon svarar på OSA (Inställningar → Aviseringar). |
 | **Trycksaker** | Färdiga förslag på save the date, inbjudan, tackkort, meny, program och välkomstskylt. Ändra text, design (elva stycken, från klassisk och botanisk till monogram, art déco, krans och båge), färg och format (A6, A5, A4) med förhandsvisning direkt. Skriver ni ut på **färgat papper** väljer ni papperets färg – då skrivs ingen bakgrund ut, och förhandsvisningen visar hur det blir. Lång text krymps automatiskt så att den får plats. **QR-koden** kan vara prickar, rundade rutor, små hjärtan eller romber, med ett hjärta, två ringar, era initialer eller en kamera i mitten, i kortets färg eller svart. Platshållare som `{namn}`, `{datum}` och `{kod}` fylls i. Inbjudan och tackkort skrivs ut ett per hushåll med namn och egen OSA-QR. |
@@ -36,12 +42,13 @@ En självhostad bröllopsplanerare för Unraid. Den är liten (fem Python-beroen
 | **Kalender** | Personlig prenumerationslänk (.ics) med bröllopet, körschemat, deadlines och räkningar |
 | **API** | Nedräkningen (och valfri statistik) som JSON för t.ex. **Hemmahub** |
 | **Roller** | Administratör, Redigerare, Toastmaster och Läsare. Toastmaster och Läsare ser allt men inte gästernas OSA-länkar och koder; Toastmaster får dessutom ändra tal och körschema. Alla inloggade kan bocka av tal som hållna. |
+| **Passkeys** | Logga in med Face ID, Touch ID eller enhetens kod i stället för lösenord och engångskod. Läggs till under Konto. Lösenordet finns kvar som reserv. |
 | **Backup** | En kopia av databasen varje dygn (de senaste 14 sparas) och nedladdning för administratörer |
 | **CSV-export** | Alla listor kan exporteras till Excel |
 
 ### För gästerna (personlig länk, inget konto)
 - **OSA**: kommer eller inte, namn och allergier för var och en som kommer, talanmälan, låtönskemål och hälsning. Svaret kan ändras fram till OSA-deadline.
-- **Information**: när och var, program, hitta hit, boende, **frågor och svar** och knappen *Lägg till i kalendern*.
+- **Information**: när och var, program, hitta hit, boende, **frågor och svar**, knappen *Lägg till i kalendern* och länkar som öppnar platsen i **Apple Kartor eller Google Maps**.
 - **Ditt bord** och vilka mer som sitter där, när ni slagit på det under Inställningar.
 - **Väder** för bröllopsdagen från SMHI de sista tio dagarna (kräver platsens koordinater under Inställningar).
 - **Samåkning**: vem man åker med, eller vilka som är med i bilen.
@@ -91,6 +98,7 @@ Med en tunnel behövs inga öppna portar alls.
 | `/osa`, `/o/*` | OSA-kod och QR på tryckta inbjudningar | 50-bitars kod + spärr mot gissning |
    | `/p/*` | QR-koden på borden | Slumpad länk, kan bytas |
    | `/t/*` | Talarens egen sida | Personlig 192-bitars länk per tal |
+   | `/v/*` | Leverantörens körschema | Personlig länk per leverantör, kan återkallas |
    | `/cal/*` | Kalenderprenumeration | Personlig länk, kan återkallas |
    | `/api/*` | Hemmahub | API-nyckel |
    | `/static/*` | CSS/JS | – |
@@ -203,6 +211,7 @@ Varje bild avkodas och sparas om som en ny JPEG på högst 2560 px. Det tar bort
 - Lösenord hashas med **scrypt** (minnesintensiv, ca 32 MB per hash) och unikt salt.
 - Lösenord måste vara minst 12 tecken. Nya konton tvingas byta lösenord vid första inloggningen.
 - **TOTP-tvåstegsverifiering** med QR-kod, och skydd mot att samma kod används två gånger.
+- **Passkeys (WebAuthn)** med krav på användarverifiering. Utmaningar gäller i fem minuter och en gång; sajt, origin, signatur och räknare kontrolleras på servern. Misslyckade försök räknas mot samma spärr som lösenordsinloggningen.
 - **Rate limiting:** högst 5 misslyckade försök per användarnamn och 10 per IP på 15 minuter.
 - Samma felmeddelande och samma svarstid oavsett om användarnamnet finns.
 

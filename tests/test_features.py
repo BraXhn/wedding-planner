@@ -661,6 +661,210 @@ h = html(req(client(), f"/r/{gT[1]}"))
 m = re.search(r'href="/t/([A-Za-z0-9_-]+)"', h)
 ok(m is not None and q("SELECT guest_id FROM speeches WHERE token=?", m.group(1))[0][0] == gT[0], "gästportalen: länk till det egna talet")
 
+# ---------------------------------------------------------------- öppnad-status och kartlänk
+_req = req
+def req(op, path, data=None, follow=True, headers=None, raw=None, method=None):  # egen IP: delar inte spärrar med resten av sviten
+    return _req(op, path, data, follow, {"X-Forwarded-For": "10.9.9.9", **(headers or {})}, raw, method)
+gO = add_guest("Oöppnad Olle", 1)
+ok(q("SELECT opened_at FROM guests WHERE id=?", gO[0])[0][0] is None and "ej öppnat" in html(req(a, "/m/guests?f=unopened")),
+   "öppnad: ny gäst har inte öppnat länken")
+req(a, f"/r/{gO[1]}")
+ok(q("SELECT opened_at FROM guests WHERE id=?", gO[0])[0][0] is None, "öppnad: er egen förhandstitt som inloggad räknas inte")
+req(client(), f"/r/{gO[1]}")
+ok(q("SELECT opened_at FROM guests WHERE id=?", gO[0])[0][0] is not None, "öppnad: gästens första besök sparas")
+h1, h2 = html(req(a, "/m/guests?f=opened")), html(req(a, "/m/guests?f=unopened"))
+ok("Oöppnad Olle" in h1 and "Oöppnad Olle" not in h2, "öppnad: filter för öppnat men ej svarat")
+ok("Öppnade länken första gången" in html(req(a, f"/m/guests/{gO[0]}")), "öppnad: syns på gästen")
+req(a, "/settings", {**SET, "venue_lat": "59.365", "venue_lon": "18.013"})
+h = html(req(client(), f"/r/{gO[1]}/info"))
+ok("https://maps.apple.com/?ll=59.365,18.013" in h and "google.com/maps/search/?api=1&amp;query=59.365,18.013" in h, "kartlänkar med koordinater")
+req(a, "/settings", SET)
+ok("https://maps.apple.com/?q=Ulriksdals%20slott%2C%20Slottsv%C3%A4gen%201" in html(req(client(), f"/r/{gO[1]}/info")), "kartlänk med adress när koordinater saknas")
+
+# ---------------------------------------------------------------- leverantör: delat körschema, dokument, betalningar
+req(a, "/m/vendors/new", {"csrf": c, "name": "DJ <Disco>", "category": "Musik & underhållning", "status": "Bokad"})
+req(a, "/m/vendors/new", {"csrf": c, "name": "Fotograf Fia", "category": "Foto & film", "status": "Bokad"})
+dj = q("SELECT id FROM vendors WHERE name='DJ <Disco>'")[0][0]; fia = q("SELECT id FROM vendors WHERE name='Fotograf Fia'")[0][0]
+req(a, "/m/timeline/new", {"csrf": c, "time": "21:15", "title": "Första dansen", "vendor_id": dj, "notes": "Låt: <Hemlig> vals"})
+req(a, "/m/timeline/new", {"csrf": c, "time": "16:10", "title": "Gruppfoto", "vendor_id": fia, "notes": "Fotolista hos Fia"})
+ok("sharelink" not in html(req(a, f"/m/vendors/{dj}")), "delat körschema: ingen länk förrän den skapas")
+req(a, f"/m/vendors/{dj}/dela", {"csrf": c, "action": "create"})
+m = re.search(r'id="sharelink" value="[^"]*/v/([A-Za-z0-9_-]+)"', html(req(a, f"/m/vendors/{dj}")))
+ok(m is not None, "delat körschema: länk skapas"); vtok2 = m.group(1)
+h = html(req(client(), f"/v/{vtok2}"))
+ok("DJ &lt;Disco&gt;" in h and "Första dansen" in h and "Gruppfoto" in h and "Låt: &lt;Hemlig&gt; vals" in h and "Fotolista hos Fia" not in h,
+   "delat körschema: hela programmet, men bara egna anteckningar (escapat)")
+ok(gA[1] not in h and "Andersson" not in h, "delat körschema: inga gästuppgifter")
+ok("sharelink" not in html(req(v, f"/m/vendors/{dj}")) and req(v, f"/m/vendors/{dj}/dela", {"csrf": c2, "action": "create"})[0] == 403
+   and req(a, f"/m/vendors/{dj}/dela", {"csrf": "x", "action": "create"})[0] == 403, "delat körschema: läsare ser inte länken; roll och CSRF")
+ok(req(client(), "/v/" + "B" * 32)[0] == 404 and req(client(), "/v/x")[0] == 404, "delat körschema: okänd länk → 404")
+req(a, f"/m/vendors/{dj}/dela", {"csrf": c, "action": "revoke"})
+ok(req(client(), f"/v/{vtok2}")[0] == 404, "delat körschema: återkallad länk slutar fungera")
+PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+body, hd = multipart({"csrf": c}, [("doc", ("Avtal <DJ>.pdf", PDF, "application/pdf"))])
+req(a, f"/m/vendors/{dj}/dokument", raw=body, headers=hd)
+d = q("SELECT id, name, file FROM vendor_docs WHERE vendor_id=?", dj)
+ok(len(d) == 1 and d[0]["name"] == "Avtal <DJ>.pdf" and re.fullmatch(r"[0-9a-f]{32}\.pdf", d[0]["file"]) is not None, "dokument: PDF sparas med slumpat filnamn")
+ok("Avtal &lt;DJ&gt;.pdf" in html(req(a, f"/m/vendors/{dj}")), "dokument: namnet escapas")
+r = req(v, f"/dokument/{d[0]['id']}")
+ok(r[0] == 200 and r[2] == PDF and r[1]["Content-Type"] == "application/pdf" and r[1]["Content-Disposition"].startswith("attachment"),
+   "dokument: laddas ner som bilaga av inloggade")
+ok(req(client(), f"/dokument/{d[0]['id']}", follow=False)[0] == 303, "dokument: kräver inloggning")
+body, hd = multipart({"csrf": c}, [("doc", ("virus.pdf", b"<html><script>alert(1)</script>", "application/pdf"))])
+r = req(a, f"/m/vendors/{dj}/dokument", raw=body, headers=hd)
+ok("Bara PDF-filer" in html(r) and len(q("SELECT id FROM vendor_docs WHERE vendor_id=?", dj)) == 1, "dokument: annat än PDF nekas")
+body, hd = multipart({"csrf": c2}, [("doc", ("x.pdf", PDF, "application/pdf"))])
+ok(req(v, f"/m/vendors/{dj}/dokument", raw=body, headers=hd)[0] == 403, "dokument: läsare kan inte ladda upp")
+body, hd = multipart({"csrf": "fel"}, [("doc", ("x.pdf", PDF, "application/pdf"))])
+ok(req(a, f"/m/vendors/{dj}/dokument", raw=body, headers=hd)[0] == 403 and req(v, f"/dokument/{d[0]['id']}/ta-bort", {"csrf": c2})[0] == 403,
+   "dokument: CSRF och roll")
+req(a, "/m/payments/new", {"csrf": c, "label": "Handpenning", "vendor_id": dj, "amount": "2000", "due_date": "2026-01-15", "paid": "on"})
+req(a, "/m/payments/new", {"csrf": c, "label": "Slutbetalning <DJ>", "vendor_id": dj, "amount": "6000", "due_date": "2027-06-01"})
+req(a, "/m/payments/new", {"csrf": c, "label": "Fotopaket", "vendor_id": fia, "amount": "15000", "due_date": "2020-01-01"})
+h = html(req(a, "/betalningar"))
+ok("21 000 kr" in h.replace("\xa0", " ") and "juni 2027" in h and "Slutbetalning &lt;DJ&gt;" in h and "Foto &amp; film" in h,
+   "betalningsplan: kvar att betala, per månad och per kategori")
+slut = q("SELECT id FROM payments WHERE label='Slutbetalning <DJ>'")[0][0]
+req(a, f"/betalningar/{slut}/betald", {"csrf": c})
+ok(q("SELECT paid FROM payments WHERE id=?", slut)[0][0] == 1, "betalningsplan: markera betald")
+ok(req(v, f"/betalningar/{slut}/betald", {"csrf": c2})[0] == 403 and req(a, f"/betalningar/{slut}/betald", {"csrf": "x"})[0] == 403
+   and req(v, "/betalningar")[0] == 200, "betalningsplan: läsare ser men ändrar inte; CSRF")
+ok("Handpenning" in html(req(a, f"/m/vendors/{dj}")) and "Fotopaket" in html(req(a, "/m/payments?f=open")), "betalningar syns på leverantören och i listan")
+req(a, f"/m/vendors/{dj}/delete", {"csrf": c})
+ok(not os.path.exists(f"{S}/data/docs/{d[0]['file']}") and not q("SELECT 1 FROM vendor_docs WHERE vendor_id=?", dj)
+   and q("SELECT vendor_id FROM payments WHERE id=?", slut)[0][0] is None, "leverantör tas bort: dokumenten raderas, betalningarna kopplas loss")
+DB.execute("DELETE FROM timeline WHERE title IN ('Första dansen', 'Gruppfoto')"); DB.commit()
+
+# ---------------------------------------------------------------- quiz och minnesbok
+req(t, "/m/quiz/new", {"csrf": c3, "question": "Var träffades <vi>?", "options": "På jobbet\nPå en fest\nPå tåget", "correct": "2", "enabled": "on", "sort_no": "1"})
+req(t, "/m/quiz/new", {"csrf": c3, "question": "Vem friade?", "options": "Louise\nAnton", "correct": "1", "enabled": "on", "sort_no": "2"})
+req(t, "/m/quiz/new", {"csrf": c3, "question": "Trasig fråga", "options": "Bara ett", "correct": "5", "enabled": "on", "sort_no": "3"})
+qs = [x[0] for x in q("SELECT id FROM quiz ORDER BY sort_no")]
+ok(len(qs) == 3, "quiz: toastmastern lägger in frågor")
+ok(req(v, "/m/quiz/new", {"csrf": c2, "question": "x", "options": "a\nb", "correct": "1"})[0] == 403, "quiz: läsare kan inte ändra frågorna")
+h = html(req(client(), f"/p/{ptok}/quiz")); ok("inte öppet" in h and "Var träffades" not in h, "quiz: stängt från början")
+ok(req(client(), f"/p/{ptok}/quiz", {"name": "X", f"q_{qs[0]}": "2", f"q_{qs[1]}": "1"})[0] == 403, "quiz: svar nekas när det är stängt")
+ok(req(v, "/quiz", {"csrf": c2, "action": "open"})[0] == 403 and req(t, "/quiz", {"csrf": "x", "action": "open"})[0] == 403, "quiz: öppna kräver roll och CSRF")
+req(t, "/quiz", {"csrf": c3, "action": "open"})
+h = html(req(client(), f"/p/{ptok}/quiz"))
+ok("Var träffades &lt;vi&gt;?" in h and "Vem friade?" in h and "Trasig fråga" not in h, "quiz: öppet – frågorna visas (escapat), trasig fråga hoppas över")
+ok("Starta quizet" in html(req(client(), f"/p/{ptok}")), "quiz: länk på bordens QR-sida")
+r = req(client(), f"/p/{ptok}/quiz", {"name": "Bord <3>", f"q_{qs[0]}": "2", f"q_{qs[1]}": "2"})
+ok("1 av 2 rätt" in html(r) and "På en fest" not in html(r), "quiz: resultat utan att facit avslöjas")
+req(client(), f"/r/{gA[1]}/quiz", {"name": "Anderssons", f"q_{qs[0]}": "2", f"q_{qs[1]}": "1"})
+req(client(), f"/p/{ptok}/quiz", {"name": "bord <3>", f"q_{qs[0]}": "1", f"q_{qs[1]}": "2"})
+ok(req(client(), f"/p/{ptok}/quiz", {"name": "", f"q_{qs[0]}": "2", f"q_{qs[1]}": "1"})[0] == 400
+   and req(client(), f"/p/{ptok}/quiz", {"name": "Y", f"q_{qs[0]}": "9"})[0] == 400, "quiz: namn och alla svar krävs")
+h = html(req(v, "/quiz/stallning"))
+ok(h.index("Anderssons") < h.index("Bord &lt;3&gt;") and h.count("Bord &lt;3&gt;") == 1 and "På en fest" not in h,
+   "quiz: ställningen – bäst först, bästa resultat per lag, inget facit medan det är öppet")
+ok("På en fest" not in html(req(v, "/quiz/stallning?facit=1")), "quiz: facit visas inte medan quizet är öppet")
+req(t, "/quiz", {"csrf": c3, "action": "close"})
+ok("På en fest" in html(req(v, "/quiz/stallning?facit=1")), "quiz: facit på skärmen när quizet är stängt")
+ok(req(client(), "/quiz/stallning", follow=False)[0] == 303 and req(client(), "/p/" + "C" * 30 + "/quiz")[0] == 404, "quiz: ställningen kräver inloggning, fel bordslänk → 404")
+pid = q("SELECT id FROM photos WHERE hidden=0 ORDER BY id LIMIT 1")
+req(a, f"/photos/{pid[0][0]}", {"csrf": c, "action": "favorite"})
+ok(q("SELECT favorite FROM photos WHERE id=?", pid[0][0])[0][0] == 1 and "★ Utvald" in html(req(a, "/photos")), "minnesbok: bild väljs ut")
+ok(req(v, f"/photos/{pid[0][0]}", {"csrf": c2, "action": "favorite"})[0] == 403, "minnesbok: läsare kan inte välja bilder")
+h = html(req(v, "/minnesbok"))
+fav = q("SELECT file FROM photos WHERE id=?", pid[0][0])[0][0]
+ok("Minnesbok" in h and h.count("/photos/img/") == 1 and fav in h and "Gästboken" in h and "Anderssons" in h, "minnesbok: utvalda bilder, gästbok och quiz")
+ok(req(client(), "/minnesbok", follow=False)[0] == 303, "minnesbok: kräver inloggning")
+req(t, "/quiz", {"csrf": c3, "action": "reset"})
+ok(q("SELECT COUNT(*) FROM quiz_entries")[0][0] == 0, "quiz: nollställ")
+
+# ---------------------------------------------------------------- planritning
+h = html(req(a, "/seating/plan")); ok("data-floor" in h and h.count("data-ft=") == q("SELECT COUNT(*) FROM tables")[0][0], "planritning: alla bord ritas ut")
+JP = {"Content-Type": "application/json", "X-CSRF-Token": c}
+PLAN = {"ratio": "kvadrat", "tables": [{"id": t1, "x": 12.34, "y": 80, "rot": 90}], "labels": [{"text": "Dans<golv>", "x": 50, "y": 10}]}
+ok(req(a, "/seating/plan", raw=json.dumps(PLAN).encode(), headers=JP)[0] == 200
+   and tuple(q("SELECT pos_x, pos_y, rot FROM tables WHERE id=?", t1)[0]) == (12.3, 80.0, 90), "planritning: bordets läge sparas")
+h = html(req(v, "/seating/plan"))
+ok('data-x="12.3"' in h and "Dans&lt;golv&gt;" in h and "r-kvadrat" in h and "data-floor-label" not in h, "planritning: läsare ser planen (escapat) utan redigering")
+bad = [{**PLAN, "tables": [{"id": t1, "x": 500, "y": 1}]}, {**PLAN, "ratio": "rund"}, {**PLAN, "labels": [{"text": "x", "x": 1, "y": 1}] * 31},
+       {**PLAN, "tables": [{"id": t1, "x": "NaN", "y": 1}]}, {**PLAN, "labels": [{"text": " ", "x": 1, "y": 1}]}]
+ok(all(req(a, "/seating/plan", raw=json.dumps(b).encode(), headers=JP)[0] == 400 for b in bad), "planritning: orimliga värden nekas")
+ok(req(v, "/seating/plan", raw=json.dumps(PLAN).encode(), headers={**JP, "X-CSRF-Token": c2})[0] == 403
+   and req(a, "/seating/plan", raw=json.dumps(PLAN).encode(), headers={**JP, "X-CSRF-Token": "x"})[0] == 403
+   and req(a, "/seating/plan", {"csrf": c})[0] == 415, "planritning: roll, CSRF-header och JSON")
+
+# ---------------------------------------------------------------- passkeys
+import hashlib as _hl2, struct
+from cryptography.hazmat.primitives import hashes as _hs
+from cryptography.hazmat.primitives.asymmetric import ec as _ec2
+def _cb(v):  # minimal CBOR-kodare för testets "authenticator"
+    def head(major, n):
+        return bytes([major << 5 | n]) if n < 24 else bytes([major << 5 | 24, n]) if n < 256 else bytes([major << 5 | 25]) + n.to_bytes(2, "big")
+    if isinstance(v, int): return head(0, v) if v >= 0 else head(1, -1 - v)
+    if isinstance(v, bytes): return head(2, len(v)) + v
+    if isinstance(v, str): return head(3, len(v.encode())) + v.encode()
+    return head(5, len(v)) + b"".join(_cb(k) + _cb(x) for k, x in v.items())
+b64e = lambda b: base64.urlsafe_b64encode(b).decode().rstrip("=")
+ORIGIN = B; RPID = "127.0.0.1"
+class Authenticator:
+    def __init__(self): self.key = _ec2.generate_private_key(_ec2.SECP256R1()); self.cid = os.urandom(20); self.count = 0
+    def authdata(self, flags, attested=False, rp=RPID):
+        out = _hl2.sha256(rp.encode()).digest() + bytes([flags]) + self.count.to_bytes(4, "big")
+        if attested:
+            n = self.key.public_key().public_numbers()
+            out += b"\0" * 16 + len(self.cid).to_bytes(2, "big") + self.cid + _cb({1: 2, 3: -7, -1: 1, -2: n.x.to_bytes(32, "big"), -3: n.y.to_bytes(32, "big")})
+        return out
+    def create(self, challenge, flags=0x45, origin=ORIGIN):
+        cd = json.dumps({"type": "webauthn.create", "challenge": challenge, "origin": origin}).encode()
+        return {"clientDataJSON": b64e(cd), "attestationObject": b64e(_cb({"fmt": "none", "attStmt": {}, "authData": self.authdata(flags, True)}))}
+    def get(self, challenge, flags=0x05, origin=ORIGIN, rp=RPID, key=None):
+        cd = json.dumps({"type": "webauthn.get", "challenge": challenge, "origin": origin}).encode()
+        ad = self.authdata(flags, rp=rp)
+        sig = (key or self.key).sign(ad + _hl2.sha256(cd).digest(), _ec2.ECDSA(_hs.SHA256()))
+        return {"id": b64e(self.cid), "clientDataJSON": b64e(cd), "authenticatorData": b64e(ad), "signature": b64e(sig)}
+def pj(op, path, body, token=None):
+    hd_ = {"Content-Type": "application/json"}
+    if token: hd_["X-CSRF-Token"] = token
+    r_ = req(op, path, raw=json.dumps(body).encode(), headers=hd_, follow=False)
+    try: return r_[0], json.loads(r_[2]), r_[1]
+    except ValueError: return r_[0], {}, r_[1]
+dev = Authenticator()
+st, o, _ = pj(t, "/account/passkey/start", {}, c3)
+ok(st == 200 and o["rp"]["id"] == RPID and o["authenticatorSelection"]["userVerification"] == "required" and o["attestation"] == "none",
+   "passkey: registrering kräver användarverifiering")
+ok(pj(t, "/account/passkey/finish", {**dev.create(o["challenge"], origin="https://evil.example"), "name": "x"}, c3)[0] == 400, "passkey: fel origin nekas")
+ok(pj(t, "/account/passkey/finish", {**dev.create(o["challenge"]), "name": "x"}, c3)[0] == 400, "passkey: en utmaning kan bara användas en gång")
+o = pj(t, "/account/passkey/start", {}, c3)[1]
+ok(pj(t, "/account/passkey/finish", {**dev.create(o["challenge"], flags=0x41), "name": "x"}, c3)[0] == 400, "passkey: utan användarverifiering nekas")
+o = pj(t, "/account/passkey/start", {}, c3)[1]
+ok(pj(a, "/account/passkey/finish", {**dev.create(o["challenge"]), "name": "x"}, c)[0] == 400, "passkey: utmaningen gäller bara användaren som bad om den")
+o = pj(t, "/account/passkey/start", {}, c3)[1]
+ok(pj(t, "/account/passkey/finish", {**dev.create(o["challenge"]), "name": "Toastmasterns <iPhone>"}, c3)[0] == 200
+   and q("SELECT name FROM passkeys")[0][0] == "Toastmasterns <iPhone>", "passkey: läggs till")
+ok("Toastmasterns &lt;iPhone&gt;" in html(req(t, "/account")), "passkey: syns på kontosidan (escapat)")
+ok(pj(t, "/account/passkey/start", {}, "fel")[0] == 403 and pj(client(), "/account/passkey/start", {})[0] == 303, "passkey: registrering kräver CSRF och inloggning")
+ok("data-passkey-login" in html(req(client(), "/login")), "passkey: knapp på inloggningssidan")
+n = client(); st, o, _ = pj(n, "/login/passkey/start", {})
+ok(st == 200 and o["userVerification"] == "required" and len(o["challenge"]) >= 32, "passkey: inloggning startas")
+other = _ec2.generate_private_key(_ec2.SECP256R1())
+ok(pj(n, "/login/passkey/finish", dev.get(o["challenge"], key=other))[0] == 401, "passkey: fel signatur nekas")
+for label, kw in (("fel origin", {"origin": "https://evil.example"}), ("fel sajt (rpId)", {"rp": "evil.example"}), ("utan användarverifiering", {"flags": 0x01})):
+    ch = pj(n, "/login/passkey/start", {})[1]["challenge"]
+    ok(pj(n, "/login/passkey/finish", dev.get(ch, **kw))[0] == 401, f"passkey: {label} nekas")
+ok(pj(n, "/login/passkey/finish", dev.get("påhittad-utmaning-" + "x" * 30))[0] == 401, "passkey: okänd utmaning nekas")
+ok(req(n, "/login/passkey/finish", {"id": "x"}, follow=False)[0] == 415, "passkey: bara JSON (inget formulär från annan sajt)")
+ch = pj(n, "/login/passkey/start", {})[1]["challenge"]; dev.count = 5
+st, out, hdrs = pj(n, "/login/passkey/finish", {**dev.get(ch), "next": "/tm"})
+ok(st == 200 and out == {"ok": True, "next": "/tm"} and "wp_session" in hdrs.get("Set-Cookie", "") and "HttpOnly" in hdrs.get("Set-Cookie", ""),
+   "passkey: inloggning ger session och går tillbaka till appen")
+ok(req(n, "/tm")[0] == 200 and "tmaster" in html(req(n, "/account")) and req(n, "/m/guests/new", {"csrf": "x"})[0] == 403, "passkey: inloggad som rätt användare med rätt roll")
+ch = pj(client(), "/login/passkey/start", {})[1]["challenge"]; dev.count = 5
+ok(pj(client(), "/login/passkey/finish", dev.get(ch))[0] == 401, "passkey: räknare som inte ökar nekas (kopierad nyckel)")
+ch = pj(client(), "/login/passkey/start", {})[1]["challenge"]
+ok(pj(client(), "/login/passkey/finish", {**dev.get(ch), "next": "https://evil.example/"})[1].get("next") in (None, "/"), "passkey: next till annan sajt ignoreras")
+kid = q("SELECT id FROM passkeys")[0][0]
+ok(req(a, f"/account/passkey/{kid}/ta-bort", {"csrf": c})[0] == 404 and req(t, f"/account/passkey/{kid}/ta-bort", {"csrf": "x"})[0] == 403,
+   "passkey: bara ägaren kan ta bort, med CSRF")
+req(t, f"/account/passkey/{kid}/ta-bort", {"csrf": c3}); dev.count = 9
+ch = pj(client(), "/login/passkey/start", {})[1]["challenge"]
+ok(not q("SELECT 1 FROM passkeys") and pj(client(), "/login/passkey/finish", dev.get(ch))[0] == 401, "passkey: borttagen nyckel fungerar inte längre")
+req = _req
+
 # ---------------------------------------------------------------- säkerhetskopior
 ok(req(v, "/backup")[0] == 403 and req(v, "/backup/now.db")[0] == 403, "läsare når inte säkerhetskopior")
 h = html(req(a, "/backup")); m = re.search(r'href="/backup/files/(wedding-[0-9-]+\.db)"', h)

@@ -23,6 +23,10 @@
     {% else %}<p>Bilduppladdning är inte öppen just nu.</p>{% endif %}
   </section>
 
+  {% if flag(settings, 'quiz_open') %}
+  <section class="card"><h2>Quiz om brudparet 🎉</h2><p>Hur väl känner ni brudparet? Ställningen visas på storbildsskärmen.</p>
+    <p><a class="btn primary" href="{{ base }}/quiz">Starta quizet</a></p></section>
+  {% endif %}
   {% if flag(settings, 'photos_enabled') %}
   <section class="card" id="gastbok">
     <h2>Gästboken ✍️</h2>

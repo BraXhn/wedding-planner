@@ -48,6 +48,19 @@
   {% endif %}
 </section>
 
+<section class="card" id="passkeys">
+  <h2>Passkeys</h2>
+  <p class="muted small">Logga in med Face ID, Touch ID eller enhetens kod i stället för lösenord. Nyckeln sparas på enheten (på iPhone i iCloud-nyckelringen) och fungerar bara på den här adressen.</p>
+  {% set keys = passkeys_for(user.user_id) %}
+  {% if keys %}<ul class="report-list">{% for k in keys %}<li><strong>{{ k.name }}</strong> <small class="muted">tillagd {{ k.created_at[:10] }}{% if k.last_used_at %} · senast använd {{ k.last_used_at[:10] }}{% endif %}</small>
+    <form method="post" action="/account/passkey/{{ k.id }}/ta-bort" class="inline" data-confirm="Ta bort passkeyn ”{{ k.name }}”?"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike small danger-text">Ta bort</button></form></li>{% endfor %}</ul>{% endif %}
+  <div data-passkey-add data-csrf="{{ user.csrf }}" hidden>
+    <div class="copyrow"><input data-passkey-name maxlength="40" placeholder="Namn, t.ex. Antons iPhone" aria-label="Namn på passkeyn"><button type="button" class="btn primary" data-passkey-create>Lägg till passkey</button></div>
+    <p class="alert error" data-passkey-error hidden></p>
+  </div>
+  <p class="muted small" data-passkey-unsupported>Den här webbläsaren stöder inte passkeys.</p>
+</section>
+
 <section class="card">
   <h2>Kalender</h2>
   <p class="muted small">Prenumerera i din telefons kalender på bröllopet, körschemat, deadlines och obetalda räkningar. Uppdateras automatiskt.</p>

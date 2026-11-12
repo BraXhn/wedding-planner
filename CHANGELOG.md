@@ -1,6 +1,15 @@
 # Ändringslogg
 
 ## Ej släppt
+- **Passkeys:** logga in med Face ID/Touch ID i stället för lösenord och engångskod. Läggs till under Konto.
+- **Planritning** under Placering: dra borden dit de står, vrid långbord, lägg till etiketter och skriv ut.
+- **Betalningsplan:** delbetalningar per leverantör med översikt per månad och kategori; obetalda i kalenderprenumerationen.
+- **Dokument per leverantör:** avtal och offerter som PDF.
+- **Delat körschema:** läslänk per leverantör utan inloggning, med anteckningar bara för leverantörens egna punkter. Kan återkallas.
+- **Quiz om brudparet:** gästerna svarar i mobilen, ställning och facit på storbildsskärmen. Toastmastern sköter frågorna.
+- **Minnesbok** att skriva ut: gästbok, hälsningar, låtönskemål och utvalda bilder.
+- **Gästlistan** visar vilka som öppnat sin länk utan att svara.
+- **Gästportalen:** länkar som öppnar platsen i Apple Kartor och Google Maps.
 - **Trycksaker:** sista raden heter nu *Text under QR-koden* och är fritext med flera rader (upp till 800 tecken), t.ex. en hälsning eller instruktion till gästerna.
 - **Apparna fungerar utan nät.** Sidorna sparas i telefonen; tal som bockas av offline skickas när nätet är tillbaka.
 - **Aviseringar** i apparna (iOS 16.4+ från hemskärmen): påminnelse fem minuter före varje programpunkt i toastmasterappen, nya OSA-svar i planeringsappen.

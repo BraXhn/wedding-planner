@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Betalningsplan · {{ super() }}{% endblock %}
+{% block content %}
+<p class="crumb noprint"><a href="/m/budget">← Budget</a></p>
+<div class="pagehead">
+  <h1>Betalningsplan</h1>
+  <div class="actions noprint">{% if can_write %}<a class="btn primary" href="/m/payments/new">+ Ny betalning</a>{% endif %}<a class="btn" href="/m/payments">Lista</a><a class="btn" href="#" data-print>Skriv ut</a></div>
+</div>
+<p class="hint">Delbetalningar per leverantör – handpenning, slutbetalning och så vidare. Obetalda med datum kommer också med i kalenderprenumerationen.</p>
+<div class="stats">
+  <section class="card"><p class="eyebrow">Kvar att betala</p><p class="bignum">{{ kr(total - paid) }}</p><p class="muted small">av {{ kr(total) }}</p></section>
+  <section class="card"><p class="eyebrow">Betalt</p><p class="bignum">{{ kr(paid) }}</p></section>
+  <section class="card"><p class="eyebrow">Försenat</p><p class="bignum {{ 'danger-text' if late }}">{{ kr(late) }}</p></section>
+</div>
+<div class="day-cols">
+  <section class="card">
+    <h2>Per månad <small class="muted">obetalt</small></h2>
+    {% if months %}
+    <table class="binder-table">{% for key, amount in months %}<tr class="{{ 'late' if key and key < today[:7] }}"><th>{{ sv_month(key) if key else 'Utan datum' }}</th><td class="num">{{ kr(amount) }}</td></tr>{% endfor %}</table>
+    {% else %}<p class="muted">Inget kvar att betala.</p>{% endif %}
+  </section>
+  <section class="card">
+    <h2>Per kategori</h2>
+    {% if cats %}
+    <table class="binder-table"><tr><th>Kategori</th><td class="num"><b>Totalt</b></td><td class="num"><b>Kvar</b></td></tr>
+      {% for name, c in cats %}<tr><th>{{ name }}</th><td class="num">{{ kr(c.total) }}</td><td class="num">{{ kr(c.total - c.paid) }}</td></tr>{% endfor %}</table>
+    {% else %}<p class="muted">Inga betalningar inlagda.</p>{% endif %}
+  </section>
+</div>
+<section class="card">
+  <h2>Alla betalningar</h2>
+  {% if rows %}
+  <div class="table-wrap"><table class="responsive">
+    <thead><tr><th>Vad</th><th>Leverantör</th><th class="num">Belopp</th><th>Förfaller</th><th>Betald</th></tr></thead>
+    <tbody>{% for r in rows %}
+      <tr id="b{{ r.id }}" class="{{ 'done' if r.paid }}">
+        <td class="primary" data-label="Vad"><a href="/m/payments/{{ r.id }}">{{ r.label }}</a></td>
+        <td data-label="Leverantör">{% if r.vendor_id %}<a href="/m/vendors/{{ r.vendor_id }}">{{ r.vendor }}</a>{% endif %}</td>
+        <td class="num" data-label="Belopp">{{ kr(r.amount) }}</td>
+        <td class="date {{ 'late' if r.late }}" data-label="Förfaller">{{ sv_date(r.due_date) if r.due_date }}</td>
+        <td data-label="Betald">{% if can_write %}<form method="post" action="/betalningar/{{ r.id }}/betald" class="inline"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="check {{ 'on' if r.paid }}" aria-label="Växla betald"></button></form>{% else %}{{ 'Ja' if r.paid else 'Nej' }}{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">Lägg in den första betalningen med knappen ovan.</p>{% endif %}
+</section>
+{% endblock %}

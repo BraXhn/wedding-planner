@@ -6,6 +6,8 @@
   <div class="actions">
     {% if ent == 'guests' %}{% if can_write %}<a class="btn" href="/m/guests/import">Importera</a><a class="btn" href="/m/guests/qr">OSA-kort med QR</a>{% endif %}<a class="btn" href="/rapport/svar">OSA-frågor</a><a class="btn" href="/rapport/latar">Låtönskemål</a><a class="btn" href="/samakning">Samåkning</a><a class="btn" href="/rapport/mat">Till cateringen</a><a class="btn" href="/tack">Tackkort</a><a class="btn" href="/seating">Placering</a><a class="btn" href="/mail">Utskick</a>{% endif %}
     {% if ent == 'speeches' %}<a class="btn" href="#" data-print>Skriv ut</a>{% endif %}
+    {% if ent == 'quiz' %}<a class="btn" href="/quiz">← Quiz</a>{% endif %}
+    {% if ent in ('budget', 'vendors', 'payments') %}<a class="btn" href="/betalningar">Betalningsplan</a>{% endif %}
     <a class="btn" href="/m/{{ ent }}/export.csv">Exportera CSV</a>
     {% if can_write %}<a class="btn primary" href="/m/{{ ent }}/new">+ Ny {{ spec.singular }}</a>{% endif %}
   </div>
@@ -64,7 +66,7 @@
       {% elif loop.first or (ent == 'tasks' and col == 'title') or (ent == 'speeches' and col == 'speaker') %}
         <a href="/m/{{ ent }}/{{ r.id }}">{{ display(f, r[col], refs) or '(namnlös)' }}</a>
       {% elif col == 'rsvp' %}
-        <span class="pill {{ r.rsvp }}">{{ display(f, r[col]) }}</span>
+        <span class="pill {{ r.rsvp }}">{{ display(f, r[col]) }}</span>{% if ent == 'guests' and r.rsvp == 'pending' %} <small class="muted">{{ 'öppnat' if r.opened_at else 'ej öppnat' }}</small>{% endif %}
       {% elif col == 'diet' %}
         <span class="clip">{{ r[col] or '' }}</span>
       {% else %}{{ display(f, r[col], refs) }}{% endif %}

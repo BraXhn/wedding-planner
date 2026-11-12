@@ -51,7 +51,7 @@ MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "20"))       # per bild
 MAX_UPLOAD_BODY = int(os.environ.get("MAX_UPLOAD_REQUEST_MB", "120")) * 1024 * 1024  # per förfrågan
 ROLES = [("admin", "Administratör"), ("editor", "Redigerare"), ("toastmaster", "Toastmaster"), ("viewer", "Läsare")]
 READONLY_ROLES = ("viewer", "toastmaster")       # ser allt utom gästernas OSA-länkar/koder, ändrar inget …
-TOASTMASTER_AREAS = ("speeches", "timeline")     # … utom att toastmastern får ändra tal och program
+TOASTMASTER_AREAS = ("speeches", "timeline", "quiz")     # … utom att toastmastern får ändra tal, program och quiz
 
 LOGIN_IP = RateLimiter(10, 15 * 60)      # misslyckade inloggningar per IP
 LOGIN_USER = RateLimiter(5, 15 * 60)     # misslyckade inloggningar per användarnamn
@@ -189,6 +189,13 @@ def asset(path: str) -> str:
 
 templates.env.globals.update(asset=asset)
 templates.env.globals.update(can_write_area=lambda user, area=None: bool(user) and can_write(user, area))
+def sv_month(key: str) -> str:
+    """"2027-05" → "maj 2027"."""
+    y, m = key.split("-")
+    return f"{MONTHS[int(m) - 1]} {y}"
+
+
+templates.env.globals.update(sv_month=sv_month)
 templates.env.globals.update(display=display, kr=kr, sv_date=sv_date, ENTITIES=ENTITIES, flag=flag,
                              APP_VERSION=APP_VERSION)
 

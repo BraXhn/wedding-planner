@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Quiz · {{ super() }}{% endblock %}
+{% block bodyclass %}quizboard{% endblock %}
+{% block content %}
+<div class="qb" {% if not show_key %}data-autorefresh="8"{% endif %}>
+  <p class="eyebrow">Quiz om brudparet{% if is_open %} · skanna QR-koden på bordet{% endif %}</p>
+  {% if show_key %}
+  <h1>Facit</h1>
+  <ol class="qb-key">{% for q in questions %}<li>{{ q.question }} <strong>{{ q.options[q.correct - 1] }}</strong></li>{% endfor %}</ol>
+  {% else %}
+  <h1>Ställning <small>{{ entries }} svar</small></h1>
+  {% if board %}
+  <ol class="qb-list">{% for e in board %}<li class="{{ 'qb-top' if loop.index <= 3 }}"><span class="qb-place">{{ loop.index }}</span><span class="qb-name">{{ e.name }}</span><b>{{ e.score }} / {{ e.total }}</b></li>{% endfor %}</ol>
+  {% else %}<p class="qb-empty">Inga svar än – vem blir först?</p>{% endif %}
+  {% endif %}
+  <p class="show-help noprint"><a href="/quiz">tillbaka</a></p>
+</div>
+{% endblock %}

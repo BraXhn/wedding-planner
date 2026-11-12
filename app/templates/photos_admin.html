@@ -6,6 +6,7 @@
   <div class="actions">
     <a class="btn" href="/photos/bildspel">Bildspel</a>
     <a class="btn" href="/m/challenges">Fotoutmaningar</a>
+    <a class="btn" href="/minnesbok">Minnesbok</a>
     <a class="btn" href="/photos/cards">Skriv ut bordskort</a>
     {% if photos %}<a class="btn" href="/photos/all.zip">Ladda ner alla (zip)</a>{% endif %}
   </div>
@@ -50,6 +51,7 @@
       <span class="small">{{ p.guest_name or p.uploader or 'Anonym' }}{% if p.challenge %} · 🎯 {{ p.challenge }}{% endif %}{% if p.hidden %} · <strong class="warn">dold</strong>{% endif %}</span>
       {% if can_write %}
       <span>
+        <form method="post" action="/photos/{{ p.id }}" class="inline"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike small" name="action" value="favorite" title="Utvald till minnesboken">{{ '★ Utvald' if p.favorite else '☆ Välj' }}</button></form>
         <form method="post" action="/photos/{{ p.id }}" class="inline"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike small" name="action" value="toggle">{{ 'Visa' if p.hidden else 'Dölj' }}</button></form>
         <form method="post" action="/photos/{{ p.id }}" class="inline" data-confirm="Radera bilden permanent?"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="linklike small danger-text" name="action" value="delete">Radera</button></form>
       </span>

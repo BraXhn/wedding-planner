@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Quiz · {{ super() }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/dagen">← Dagen</a></p>
+<div class="pagehead">
+  <h1>Quiz om brudparet</h1>
+  <div class="actions"><a class="btn" href="/m/quiz">Frågor</a><a class="btn" href="/quiz/stallning">Ställning på skärmen</a>{% if not is_open %}<a class="btn" href="/quiz/stallning?facit=1">Facit på skärmen</a>{% endif %}</div>
+</div>
+<p class="hint">Gästerna svarar i mobilen: via QR-koden på borden (samma som för bilderna) eller sin egen länk. Öppna quizet när det är dags, visa ställningen på storbildsskärmen och stäng det innan facit visas.</p>
+<div class="stats">
+  <section class="card"><p class="eyebrow">Läge</p><p class="bignum">{{ 'Öppet' if is_open else 'Stängt' }}</p>
+    {% if can_edit %}<form method="post" action="/quiz"><input type="hidden" name="csrf" value="{{ user.csrf }}">
+      <button class="btn {{ '' if is_open else 'primary' }}" name="action" value="{{ 'close' if is_open else 'open' }}">{{ 'Stäng quizet' if is_open else 'Öppna quizet' }}</button></form>{% endif %}</section>
+  <section class="card"><p class="eyebrow">Frågor</p><p class="bignum">{{ questions|length }}</p>
+    {% if skipped %}<p class="small danger-text">{{ skipped }} fråga/frågor är inte med: avstängd, färre än två alternativ eller rätt svar som inte finns.</p>{% endif %}</section>
+  <section class="card"><p class="eyebrow">Inskickade svar</p><p class="bignum">{{ entries }}</p>
+    {% if can_edit and entries %}<form method="post" action="/quiz" data-confirm="Ta bort alla inskickade svar?"><input type="hidden" name="csrf" value="{{ user.csrf }}">
+      <button class="btn danger" name="action" value="reset">Nollställ</button></form>{% endif %}</section>
+</div>
+<div class="day-cols">
+  <section class="card"><h2>Ställning</h2>
+    {% if board %}<ol class="day-list">{% for e in board %}<li><b>{{ e.score }}/{{ e.total }}</b><span>{{ e.name }}</span></li>{% endfor %}</ol>
+    {% else %}<p class="muted">Inga svar än.</p>{% endif %}</section>
+  <section class="card"><h2>Frågor och facit</h2>
+    {% if questions %}<ol>{% for q in questions %}<li><strong>{{ q.question }}</strong><br><span class="muted">{% for o in q.options %}{% if loop.index == q.correct %}<b class="ok-text">{{ o }}</b>{% else %}{{ o }}{% endif %}{{ ' · ' if not loop.last }}{% endfor %}</span></li>{% endfor %}</ol>
+    {% else %}<p class="muted">Inga frågor än. <a href="/m/quiz/new">Lägg till den första</a>.</p>{% endif %}</section>
+</div>
+{% endblock %}
